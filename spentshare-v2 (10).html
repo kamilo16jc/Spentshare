@@ -1,0 +1,1722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>SpentShare</title>
+<meta name="theme-color" content="#ff6b35">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="SpentShare">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;900&family=Nunito+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+:root{--orange:#ff6b35;--orange-light:#fff5f0;--green:#3ecf8e;--green-light:#f0fdf8;--blue:#4f8ef7;--blue-light:#eff6ff;--red:#f56565;--red-light:#fff5f5;--cream:#f7f3ee;--white:#ffffff;--text:#1a1a2e;--text2:#555;--muted:#aaa;--border:#ede9e3;--card-shadow:0 4px 20px rgba(0,0,0,0.06);}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Nunito Sans',sans-serif;background:var(--cream);color:var(--text);min-height:100vh;overflow-x:hidden;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);}
+
+/* SPLASH */
+#splash{position:fixed;inset:0;background:var(--cream);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;z-index:1000;transition:opacity 0.7s ease,transform 0.7s ease;}
+#splash.hide{opacity:0;transform:scale(1.05);pointer-events:none;}
+.coin-wrapper{position:relative;width:110px;height:110px;}
+.coin{width:110px;height:110px;border-radius:50%;background:linear-gradient(135deg,var(--orange),#f7931e);display:flex;align-items:center;justify-content:center;font-size:48px;box-shadow:0 12px 40px rgba(255,107,53,0.35);opacity:0;transform:scale(0) rotate(-180deg);animation:coinSpin 0.8s 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards;}
+@keyframes coinSpin{to{opacity:1;transform:scale(1) rotate(0deg);}}
+.split-line{position:absolute;background:var(--cream);width:3px;height:0;top:50%;left:50%;transform-origin:top center;border-radius:2px;animation:growLine 0.5s 1.1s ease forwards;}
+.split-line:nth-child(2){transform:translateX(-50%) rotate(0deg);}
+.split-line:nth-child(3){transform:translateX(-50%) rotate(60deg);}
+.split-line:nth-child(4){transform:translateX(-50%) rotate(120deg);}
+@keyframes growLine{to{height:55px;}}
+.dot{position:absolute;width:13px;height:13px;border-radius:50%;top:50%;left:50%;opacity:0;}
+.dot:nth-child(5){background:var(--orange);animation:flyDot 0.5s 1.5s cubic-bezier(0.34,1.56,0.64,1) forwards;--tx:-60px;--ty:-60px;}
+.dot:nth-child(6){background:var(--green);animation:flyDot 0.5s 1.6s cubic-bezier(0.34,1.56,0.64,1) forwards;--tx:60px;--ty:-60px;}
+.dot:nth-child(7){background:var(--blue);animation:flyDot 0.5s 1.7s cubic-bezier(0.34,1.56,0.64,1) forwards;--tx:0px;--ty:70px;}
+@keyframes flyDot{to{opacity:1;transform:translate(var(--tx),var(--ty));}}
+.splash-text{display:flex;align-items:baseline;}
+.letter{font-family:'Nunito',sans-serif;font-size:46px;font-weight:900;opacity:0;transform:translateY(30px);display:inline-block;}
+.spent-l .letter{color:var(--text);}
+.share-l .letter{color:var(--orange);}
+.spent-l .letter:nth-child(1){animation:lPop 0.4s 1.80s cubic-bezier(0.34,1.56,0.64,1) forwards;}
+.spent-l .letter:nth-child(2){animation:lPop 0.4s 1.88s cubic-bezier(0.34,1.56,0.64,1) forwards;}
+.spent-l .letter:nth-child(3){animation:lPop 0.4s 1.96s cubic-bezier(0.34,1.56,0.64,1) forwards;}
+.spent-l .letter:nth-child(4){animation:lPop 0.4s 2.04s cubic-bezier(0.34,1.56,0.64,1) forwards;}
+.spent-l .letter:nth-child(5){animation:lPop 0.4s 2.12s cubic-bezier(0.34,1.56,0.64,1) forwards;}
+.share-l .letter:nth-child(1){animation:lPop 0.4s 2.20s cubic-bezier(0.34,1.56,0.64,1) forwards;}
+.share-l .letter:nth-child(2){animation:lPop 0.4s 2.28s cubic-bezier(0.34,1.56,0.64,1) forwards;}
+.share-l .letter:nth-child(3){animation:lPop 0.4s 2.36s cubic-bezier(0.34,1.56,0.64,1) forwards;}
+.share-l .letter:nth-child(4){animation:lPop 0.4s 2.44s cubic-bezier(0.34,1.56,0.64,1) forwards;}
+.share-l .letter:nth-child(5){animation:lPop 0.4s 2.52s cubic-bezier(0.34,1.56,0.64,1) forwards;}
+@keyframes lPop{to{opacity:1;transform:translateY(0);}}
+.splash-tagline{font-size:13px;font-weight:400;color:var(--muted);letter-spacing:2.5px;text-transform:uppercase;opacity:0;animation:fadeUp 0.6s 3s ease forwards;}
+.splash-loader{width:160px;height:3px;background:#e8e3dd;border-radius:10px;overflow:hidden;opacity:0;animation:fadeUp 0.3s 3.2s ease forwards;}
+.splash-loader-bar{height:100%;width:0;background:linear-gradient(90deg,var(--orange),var(--green));border-radius:10px;animation:loadBar 1.2s 3.3s ease forwards;}
+@keyframes loadBar{to{width:100%;}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+/* AUTH */
+#authScreen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:900;opacity:0;transform:translateY(20px);transition:opacity 0.7s ease 0.2s,transform 0.7s ease 0.2s;pointer-events:none;background:var(--cream);}
+#authScreen.show{opacity:1;transform:translateY(0);pointer-events:all;}
+#authScreen.hide{opacity:0;transform:scale(0.97);pointer-events:none;}
+.auth-card{background:white;border-radius:28px;padding:40px 36px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.08);position:relative;overflow:hidden;margin:20px;max-height:92vh;overflow-y:auto;}
+.card-accent{position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,var(--orange),var(--green),var(--blue));}
+.card-logo{display:flex;align-items:center;gap:10px;margin-bottom:24px;}
+.mini-coin{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--orange),#f7931e);display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 4px 12px rgba(255,107,53,0.3);flex-shrink:0;}
+.mini-name{font-family:'Nunito',sans-serif;font-size:22px;font-weight:900;color:var(--text);}
+.mini-name span{color:var(--orange);}
+.auth-tabs{display:flex;background:var(--cream);border-radius:14px;padding:4px;margin-bottom:24px;gap:4px;}
+.auth-tab{flex:1;padding:10px;border:none;background:transparent;border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;transition:all 0.2s;}
+.auth-tab.active{background:white;color:var(--orange);box-shadow:0 2px 8px rgba(0,0,0,0.08);}
+.lang-toggle{display:flex;background:var(--cream);border-radius:12px;padding:4px;margin-bottom:20px;width:fit-content;gap:2px;}
+.lang-btn{padding:6px 16px;border:none;background:transparent;border-radius:9px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;transition:all 0.2s;letter-spacing:0.5px;}
+.lang-btn.active{background:white;color:var(--orange);box-shadow:0 2px 8px rgba(0,0,0,0.08);}
+.welcome-title{font-family:'Nunito',sans-serif;font-size:22px;font-weight:900;color:var(--text);margin-bottom:4px;}
+.welcome-sub{font-size:13px;color:var(--muted);margin-bottom:20px;}
+.google-btn{width:100%;padding:13px;border:2px solid var(--border);border-radius:14px;background:white;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;color:var(--text);transition:all 0.2s;margin-bottom:14px;}
+.google-btn:hover{border-color:var(--blue);background:var(--blue-light);}
+.divider{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border);}
+.divider span{font-size:12px;color:var(--muted);}
+.form-group{margin-bottom:14px;}
+.form-label{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;display:block;}
+.form-input{width:100%;padding:12px 14px;border:2px solid var(--border);border-radius:14px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:600;color:var(--text);background:white;outline:none;transition:border-color 0.2s;}
+.form-input:focus{border-color:var(--orange);box-shadow:0 0 0 4px rgba(255,107,53,0.08);}
+.form-input::placeholder{color:#ccc;font-weight:400;}
+.auth-btn{width:100%;padding:15px;background:linear-gradient(135deg,var(--orange),#f7931e);border:none;border-radius:16px;font-family:'Nunito',sans-serif;font-size:16px;font-weight:900;color:white;cursor:pointer;box-shadow:0 8px 24px rgba(255,107,53,0.35);transition:all 0.2s;margin-top:6px;}
+.auth-btn:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(255,107,53,0.45);}
+.auth-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none;}
+.success-overlay{position:absolute;inset:0;background:linear-gradient(135deg,var(--orange),var(--green));border-radius:28px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;opacity:0;pointer-events:none;transition:opacity 0.4s;}
+.success-overlay.show{opacity:1;pointer-events:all;}
+@keyframes popBig{from{transform:scale(0);}to{transform:scale(1);}}
+@keyframes shake{0%,100%{transform:translateX(0);}20%{transform:translateX(-8px);}40%{transform:translateX(8px);}60%{transform:translateX(-6px);}80%{transform:translateX(6px);}}
+.shake{animation:shake 0.4s ease;}
+
+/* GROUP SCREEN */
+#groupScreen{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:800;background:var(--cream);opacity:0;transition:opacity 0.5s ease;overflow:visible;}
+#groupScreen.show{opacity:1;}
+#groupScreen.hide{opacity:0;}
+.group-card{background:white;border-radius:28px;padding:36px 32px;width:100%;max-width:460px;box-shadow:0 20px 60px rgba(0,0,0,0.08);position:relative;overflow:hidden;margin:20px;max-height:90vh;overflow-y:auto;}
+.group-list{display:flex;flex-direction:column;gap:10px;margin-bottom:16px;}
+.group-item{display:flex;align-items:center;gap:14px;padding:14px 16px;border:2px solid var(--border);border-radius:18px;cursor:pointer;transition:all 0.2s;background:white;}
+.group-item:hover{border-color:var(--orange);transform:translateY(-2px);box-shadow:0 6px 20px rgba(255,107,53,0.12);}
+.group-emoji{font-size:28px;}
+.group-info{flex:1;}
+.group-name-txt{font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;color:var(--text);}
+.group-members-txt{font-size:12px;color:var(--muted);margin-top:2px;}
+.group-open-btn{background:var(--orange);color:white;border:none;border-radius:50px;padding:6px 16px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;cursor:pointer;}
+.new-group-btn{width:100%;padding:14px;border:2px dashed var(--border);border-radius:18px;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;color:var(--muted);transition:all 0.2s;margin-bottom:16px;}
+.new-group-btn:hover{border-color:var(--orange);color:var(--orange);background:var(--orange-light);}
+.join-section{border-top:1px solid var(--border);padding-top:16px;}
+.join-title{font-size:13px;font-weight:700;color:var(--text2);margin-bottom:10px;}
+.join-row{display:flex;gap:8px;}
+.join-input{flex:1;padding:11px 14px;border:2px solid var(--border);border-radius:14px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:700;color:var(--text);outline:none;text-transform:uppercase;letter-spacing:3px;transition:border-color 0.2s;}
+.join-input:focus{border-color:var(--green);}
+.join-btn{padding:11px 20px;background:var(--green);border:none;border-radius:14px;color:white;font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all 0.2s;}
+.join-btn:hover{background:#2db87a;}
+
+/* MODALS */
+.modal-overlay{position:fixed;inset:0;background:rgba(26,26,46,0.5);z-index:1000;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.3s;backdrop-filter:blur(4px);}
+.modal-overlay.show{opacity:1;pointer-events:all;}
+.modal{background:white;border-radius:28px 28px 0 0;padding:28px 24px 40px;width:100%;max-width:480px;transform:translateY(100%);transition:transform 0.4s cubic-bezier(0.34,1.1,0.64,1);max-height:90vh;overflow-y:auto;}
+.modal-overlay.show .modal{transform:translateY(0);}
+.modal-handle{width:40px;height:4px;background:var(--border);border-radius:4px;margin:0 auto 20px;}
+.modal-title{font-family:'Nunito',sans-serif;font-size:20px;font-weight:900;color:var(--text);margin-bottom:20px;}
+.emoji-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:4px;}
+.emoji-btn{aspect-ratio:1;border-radius:12px;border:2px solid var(--border);background:white;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;}
+.emoji-btn:hover,.emoji-btn.selected{border-color:var(--orange);background:var(--orange-light);transform:scale(1.1);}
+.invite-code-box{background:var(--green-light);border:1px solid rgba(62,207,142,0.3);border-radius:14px;padding:16px;text-align:center;margin-top:14px;}
+.invite-code-val{font-family:'Nunito',sans-serif;font-size:30px;font-weight:900;color:var(--green);letter-spacing:6px;}
+.invite-code-sub{font-size:12px;color:var(--muted);margin-top:4px;}
+.copy-btn{background:var(--green);border:none;border-radius:10px;padding:6px 16px;color:white;font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;cursor:pointer;margin-top:8px;transition:all 0.2s;}
+.copy-btn:hover{background:#2db87a;}
+.chips-area{display:flex;flex-wrap:wrap;margin-top:8px;min-height:28px;}
+.member-chip{display:inline-flex;align-items:center;gap:6px;background:var(--blue-light);border:1px solid rgba(79,142,247,0.2);border-radius:50px;padding:4px 10px;font-size:12px;font-weight:600;color:var(--blue);margin:3px;}
+.chip-x{cursor:pointer;opacity:0.6;font-size:10px;}
+.chip-x:hover{opacity:1;}
+
+/* DASHBOARD */
+#dashboard{display:none;padding-bottom:80px;opacity:0;transition:opacity 0.5s ease;}
+#dashboard.show{display:block;opacity:1;}
+.header{background:white;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 12px rgba(0,0,0,0.05);position:sticky;top:0;z-index:50;}
+.header-logo{display:flex;align-items:center;gap:8px;}
+.header-coin{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--orange),#f7931e);display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 3px 10px rgba(255,107,53,0.3);}
+.header-name{font-family:'Nunito',sans-serif;font-size:17px;font-weight:900;color:var(--text);}
+.header-name span{color:var(--orange);}
+.header-right{display:flex;align-items:center;gap:8px;}
+.group-selector{display:flex;align-items:center;gap:6px;background:var(--cream);padding:6px 12px;border-radius:50px;cursor:pointer;transition:background 0.2s;border:none;}
+.group-selector:hover{background:var(--border);}
+.group-sel-emoji{font-size:16px;}
+.group-sel-name{font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;color:var(--text);max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.group-sel-arrow{font-size:10px;color:var(--muted);}
+.user-btn{display:flex;align-items:center;gap:6px;background:var(--cream);padding:6px 10px;border-radius:50px;cursor:pointer;transition:background 0.2s;border:none;}
+.user-btn:hover{background:var(--border);}
+.user-avatar-circle{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--orange),var(--green));display:flex;align-items:center;justify-content:center;font-family:'Nunito',sans-serif;font-size:12px;font-weight:900;color:white;}
+.main{max-width:480px;margin:0 auto;padding:18px 16px;}
+.balance-card{background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:24px;padding:22px;margin-bottom:18px;position:relative;overflow:hidden;box-shadow:0 12px 40px rgba(26,26,46,0.25);}
+.balance-card::before{content:'';position:absolute;width:200px;height:200px;background:var(--orange);border-radius:50%;opacity:0.08;top:-60px;right:-60px;}
+.balance-card::after{content:'';position:absolute;width:150px;height:150px;background:var(--green);border-radius:50%;opacity:0.06;bottom:-50px;left:-30px;}
+.balance-label{font-size:11px;font-weight:600;color:rgba(255,255,255,0.4);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;}
+.balance-month{font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;color:rgba(255,255,255,0.5);margin-bottom:4px;}
+.balance-amount{font-family:'Nunito',sans-serif;font-size:42px;font-weight:900;color:white;letter-spacing:-2px;margin-bottom:16px;position:relative;z-index:1;}
+.balance-members{display:flex;gap:8px;position:relative;z-index:1;overflow-x:auto;padding-bottom:2px;}
+.balance-member{flex-shrink:0;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:9px 12px;min-width:75px;}
+.bm-name{font-size:10px;color:rgba(255,255,255,0.5);font-weight:600;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70px;}
+.bm-amount{font-family:'Nunito',sans-serif;font-size:15px;font-weight:900;color:white;}
+.bm-amount.positive{color:var(--green);}
+.bm-amount.negative{color:#ff8a80;}
+.bm-status{font-size:10px;color:rgba(255,255,255,0.35);margin-top:1px;}
+.section-title{font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;}
+.quick-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:22px;}
+.qa-btn{background:white;border:none;border-radius:18px;padding:16px;cursor:pointer;display:flex;align-items:center;gap:12px;box-shadow:var(--card-shadow);transition:all 0.2s;text-align:left;}
+.qa-btn:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(0,0,0,0.1);}
+.qa-icon{width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.qa-icon.orange{background:var(--orange-light);}
+.qa-icon.green{background:var(--green-light);}
+.qa-icon.blue{background:var(--blue-light);}
+.qa-icon.red{background:var(--red-light);}
+.qa-label{font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;color:var(--text);line-height:1.3;}
+.debt-section{margin-bottom:22px;}
+.debt-card{background:white;border-radius:18px;padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:14px;box-shadow:var(--card-shadow);animation:slideIn 0.3s ease;}
+.debt-card.settled{background:var(--green-light);border:1px solid rgba(62,207,142,0.2);}
+.debt-avatar-row{display:flex;align-items:center;gap:4px;flex-shrink:0;}
+.debt-av{font-size:22px;line-height:1;}
+.debt-arrow{font-size:14px;color:var(--muted);}
+.debt-info{flex:1;}
+.debt-text{font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px;}
+.debt-text strong{color:var(--orange);}
+.debt-text.ok strong{color:var(--green);}
+.debt-sub{font-size:11px;color:var(--muted);}
+.debt-amount{font-family:'Nunito',sans-serif;font-size:17px;font-weight:900;color:var(--orange);flex-shrink:0;}
+.settle-quick-btn{background:var(--orange);border:none;border-radius:10px;padding:6px 12px;color:white;font-family:'Nunito',sans-serif;font-size:11px;font-weight:700;cursor:pointer;transition:all 0.2s;flex-shrink:0;}
+.settle-quick-btn:hover{background:#e55a25;transform:scale(1.05);}
+.expenses-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.see-all{font-size:12px;font-weight:700;color:var(--orange);background:none;border:none;cursor:pointer;font-family:'Nunito',sans-serif;}
+.expense-item{background:white;border-radius:18px;padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:14px;box-shadow:var(--card-shadow);transition:all 0.2s;cursor:pointer;animation:slideIn 0.3s ease;}
+@keyframes slideIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+.expense-item:hover{transform:translateX(4px);}
+.expense-emoji{width:46px;height:46px;border-radius:14px;background:var(--cream);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+.expense-info{flex:1;min-width:0;}
+.expense-desc{font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.expense-meta{font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.expense-who{background:var(--cream);padding:2px 7px;border-radius:6px;font-weight:600;color:var(--text2);font-size:11px;}
+.expense-amount{font-family:'Nunito',sans-serif;font-size:16px;font-weight:900;color:var(--text);flex-shrink:0;}
+.expense-split{font-size:11px;color:var(--muted);text-align:right;margin-top:2px;}
+.expense-split.green{color:var(--green);}
+.empty-state{text-align:center;padding:40px 20px;color:var(--muted);}
+.empty-state .empty-icon{font-size:48px;margin-bottom:10px;}
+.empty-state p{font-size:14px;font-weight:600;}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:white;padding:10px 20px;padding-bottom:calc(10px + env(safe-area-inset-bottom));display:flex;justify-content:space-around;box-shadow:0 -4px 20px rgba(0,0,0,0.06);z-index:50;}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:6px 14px;border-radius:14px;transition:all 0.2s;border:none;background:none;}
+.nav-item.active{background:var(--orange-light);}
+.nav-item .nav-icon{font-size:22px;}
+.nav-item .nav-label{font-family:'Nunito',sans-serif;font-size:10px;font-weight:700;color:var(--muted);letter-spacing:0.5px;}
+.nav-item.active .nav-label{color:var(--orange);}
+.fab{position:fixed;bottom:72px;right:20px;width:58px;height:58px;border-radius:50%;background:linear-gradient(135deg,var(--orange),#f7931e);border:none;color:white;font-size:28px;cursor:pointer;box-shadow:0 8px 24px rgba(255,107,53,0.45);display:flex;align-items:center;justify-content:center;transition:all 0.2s;z-index:60;}
+.fab:hover{transform:scale(1.1) rotate(90deg);}
+
+/* FORM ELEMENTS */
+.cat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.cat-pill{padding:10px 6px;border:2px solid var(--border);border-radius:12px;background:white;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all 0.15s;}
+.cat-pill:hover,.cat-pill.selected{border-color:var(--orange);background:var(--orange-light);}
+.cat-emoji{font-size:22px;}
+.cat-name{font-size:10px;font-weight:700;color:var(--text2);}
+.paid-grid{display:flex;gap:8px;flex-wrap:wrap;}
+.paid-btn{flex:1;min-width:60px;padding:10px 6px;border:2px solid var(--border);border-radius:14px;background:white;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all 0.15s;}
+.paid-btn:hover,.paid-btn.selected{border-color:var(--blue);background:var(--blue-light);}
+.paid-btn .paid-avatar{font-size:20px;}
+.paid-btn .paid-name{font-size:11px;font-weight:700;color:var(--text);text-align:center;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.split-grid{display:flex;gap:8px;}
+.split-btn{flex:1;padding:10px;border:2px solid var(--border);border-radius:12px;background:white;cursor:pointer;font-size:11px;font-weight:700;color:var(--text2);font-family:'Nunito',sans-serif;transition:all 0.15s;display:flex;flex-direction:column;align-items:center;gap:2px;}
+.split-btn .split-emoji{font-size:18px;}
+.split-btn:hover,.split-btn.selected{border-color:var(--green);background:var(--green-light);color:#1a7a52;}
+.submit-btn-form{width:100%;padding:15px;background:linear-gradient(135deg,var(--orange),#f7931e);border:none;border-radius:16px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:900;color:white;cursor:pointer;box-shadow:0 8px 24px rgba(255,107,53,0.35);transition:all 0.2s;margin-top:8px;}
+.submit-btn-form:hover{transform:translateY(-2px);}
+.submit-btn-form:disabled{opacity:0.5;cursor:not-allowed;transform:none;}
+.detail-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);}
+.detail-row:last-child{border-bottom:none;}
+.detail-label{font-size:13px;color:var(--text2);}
+.detail-value{font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;color:var(--text);}
+.detail-value.pos{color:var(--green);}
+.detail-value.neg{color:var(--red);}
+.member-row-m{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+.member-row-m:last-child{border:none;}
+
+/* STATS */
+.bar-track{background:var(--border);border-radius:50px;height:12px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:50px;transition:width 0.8s cubic-bezier(0.34,1.2,0.64,1);width:0;}
+.bar-fill.c0{background:linear-gradient(90deg,var(--orange),#f7931e);}
+.bar-fill.c1{background:linear-gradient(90deg,var(--blue),#60a5fa);}
+.bar-fill.c2{background:linear-gradient(90deg,var(--green),#34d399);}
+.bar-fill.c3{background:linear-gradient(90deg,#a78bfa,#818cf8);}
+.bar-fill.c4{background:linear-gradient(90deg,#f59e0b,#fbbf24);}
+.bar-fill.cat{background:linear-gradient(90deg,#a78bfa,#818cf8);}
+
+/* SYNC & MISC */
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;margin-right:4px;animation:pulse 2s infinite;}
+.sync-dot.offline{background:var(--muted);animation:none;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+.sync-label{font-size:11px;color:var(--muted);display:flex;align-items:center;margin-bottom:14px;}
+.skeleton{background:linear-gradient(90deg,#f0ece7 25%,#e8e4df 50%,#f0ece7 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:18px;height:70px;margin-bottom:8px;}
+@keyframes shimmer{from{background-position:200% 0;}to{background-position:-200% 0;}}
+
+.profile-overlay{position:fixed;inset:0;z-index:500;display:none;background:transparent;}
+.profile-overlay.show{display:block;}
+.profile-backdrop-click{position:fixed;inset:0;background:transparent;z-index:501;cursor:default;}
+.profile-dropdown{position:fixed;top:60px;right:16px;background:white;border-radius:20px;padding:8px;min-width:260px;box-shadow:0 8px 40px rgba(0,0,0,0.15);border:1px solid var(--border);transform:translateY(-8px) scale(0.97);opacity:0;transition:all 0.2s cubic-bezier(0.34,1.2,0.64,1);z-index:502;}
+.profile-overlay.show .profile-dropdown{transform:translateY(0) scale(1);opacity:1;}
+.profile-header{padding:14px 12px 12px;border-bottom:1px solid var(--border);margin-bottom:6px;}
+.profile-avatar-big{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--orange),var(--green));display:flex;align-items:center;justify-content:center;font-family:'Nunito',sans-serif;font-size:18px;font-weight:900;color:white;margin-bottom:10px;}
+.profile-name{font-family:'Nunito',sans-serif;font-size:15px;font-weight:900;color:var(--text);}
+.profile-email{font-size:12px;color:var(--muted);margin-top:2px;}
+.profile-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;cursor:pointer;transition:background 0.15s;border:none;background:none;width:100%;text-align:left;}
+.profile-item:hover{background:var(--cream);}
+.profile-item-icon{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+.profile-item-label{font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;color:var(--text);}
+.profile-item.danger .profile-item-label{color:var(--red);}
+.profile-item.danger:hover{background:var(--red-light);}
+.profile-lang-row{display:flex;gap:6px;margin-top:4px;}
+.profile-lang-btn{flex:1;padding:7px;border:2px solid var(--border);border-radius:10px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;background:white;transition:all 0.15s;}
+.profile-lang-btn.active{border-color:var(--orange);color:var(--orange);background:var(--orange-light);}
+
+
+
+.avatar-picker-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:12px 0;}
+.avatar-emoji-btn{aspect-ratio:1;border-radius:14px;border:2px solid var(--border);background:white;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;}
+.avatar-emoji-btn:hover,.avatar-emoji-btn.selected{border-color:var(--orange);background:var(--orange-light);transform:scale(1.1);}
+.avatar-display{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;overflow:hidden;flex-shrink:0;}
+.avatar-display img{width:100%;height:100%;object-fit:cover;}
+.avatar-display.initials{background:linear-gradient(135deg,var(--orange),var(--green));font-family:'Nunito',sans-serif;font-size:18px;font-weight:900;color:white;}
+.avatar-upload-btn{width:100%;padding:10px;border:2px dashed var(--border);border-radius:14px;background:transparent;cursor:pointer;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;color:var(--muted);transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px;}
+.avatar-upload-btn:hover{border-color:var(--orange);color:var(--orange);background:var(--orange-light);}
+.avatar-section-title{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;margin-top:12px;}
+.avatar-preview-big{width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;overflow:hidden;margin:0 auto 12px;border:3px solid var(--border);}
+.avatar-preview-big img{width:100%;height:100%;object-fit:cover;}
+.avatar-preview-big.initials{background:linear-gradient(135deg,var(--orange),var(--green));font-family:'Nunito',sans-serif;font-size:28px;font-weight:900;color:white;}
+
+.toast{position:fixed;top:80px;left:50%;transform:translateX(-50%) translateY(-20px);background:var(--text);color:white;padding:12px 20px;border-radius:50px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;opacity:0;pointer-events:none;transition:all 0.3s;z-index:999;white-space:nowrap;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <div class="coin-wrapper">
+    <div class="coin">💰</div>
+    <div class="split-line"></div><div class="split-line"></div><div class="split-line"></div>
+    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+  </div>
+  <div class="splash-text">
+    <div class="spent-l"><span class="letter">S</span><span class="letter">p</span><span class="letter">e</span><span class="letter">n</span><span class="letter">t</span></div>
+    <div class="share-l"><span class="letter">S</span><span class="letter">h</span><span class="letter">a</span><span class="letter">r</span><span class="letter">e</span></div>
+  </div>
+  <div class="splash-tagline" id="splashTagline">Split expenses with anyone</div>
+  <div class="splash-loader"><div class="splash-loader-bar"></div></div>
+</div>
+
+<!-- AUTH -->
+<div id="authScreen">
+  <div class="auth-card" id="authCard">
+    <div class="card-accent"></div>
+    <div class="card-logo">
+      <div class="mini-coin">💰</div>
+      <div class="mini-name">Spent<span>Share</span></div>
+    </div>
+    <div class="lang-toggle">
+      <button class="lang-btn active" onclick="setLang('en')" id="btnEn">EN</button>
+      <button class="lang-btn" onclick="setLang('es')" id="btnEs">ES</button>
+    </div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tabLogin" onclick="switchTab('login')" data-i18n="tabLogin">Log in</button>
+      <button class="auth-tab" id="tabReg" onclick="switchTab('register')" data-i18n="tabRegister">Sign up</button>
+    </div>
+    <!-- LOGIN -->
+    <div id="loginForm">
+      <div class="welcome-title" data-i18n="loginTitle">Welcome back 👋</div>
+      <div class="welcome-sub" data-i18n="loginSub">Sign in to your account</div>
+      <button class="google-btn" onclick="googleAuth()">
+        <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/></svg>
+        <span data-i18n="googleBtn">Continue with Google</span>
+      </button>
+      <div class="divider"><span data-i18n="orLabel">or</span></div>
+      <div class="form-group"><label class="form-label" data-i18n="emailLabel">Email</label><input class="form-input" type="email" id="loginEmail" placeholder="you@email.com"></div>
+      <div class="form-group"><label class="form-label" data-i18n="passwordLabel">Password</label><input class="form-input" type="password" id="loginPassword" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <button class="auth-btn" id="loginBtn" onclick="doLogin()" data-i18n="loginBtn">Sign in →</button>
+    </div>
+    <!-- REGISTER -->
+    <div id="registerForm" style="display:none">
+      <div class="welcome-title" data-i18n="registerTitle">Create account 🎉</div>
+      <div class="welcome-sub" data-i18n="registerSub">Free forever, no credit card needed</div>
+      <button class="google-btn" onclick="googleAuth()">
+        <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/></svg>
+        <span data-i18n="googleBtn">Continue with Google</span>
+      </button>
+      <div class="divider"><span data-i18n="orLabel">or</span></div>
+      <div class="form-group"><label class="form-label" data-i18n="nameLabel">Full name</label><input class="form-input" type="text" id="regName" placeholder="Your name"></div>
+      <div class="form-group"><label class="form-label" data-i18n="emailLabel">Email</label><input class="form-input" type="email" id="regEmail" placeholder="you@email.com"></div>
+      <div class="form-group"><label class="form-label" data-i18n="passwordLabel">Password</label><input class="form-input" type="password" id="regPassword" placeholder="Min. 8 characters" onkeydown="if(event.key==='Enter')doRegister()"></div>
+      <button class="auth-btn" id="registerBtn" onclick="doRegister()" data-i18n="registerBtn">Create account →</button>
+    </div>
+    <div class="success-overlay" id="authSuccess">
+      <div style="font-size:56px;animation:popBig 0.5s cubic-bezier(0.34,1.56,0.64,1)">✅</div>
+      <div id="authSuccessText" style="font-family:'Nunito',sans-serif;font-size:22px;font-weight:900;color:white">Welcome!</div>
+    </div>
+  </div>
+</div>
+
+<!-- GROUP SCREEN -->
+<div id="groupScreen">
+  <div class="group-card">
+    <div class="card-accent"></div>
+    <div class="card-logo">
+      <div class="mini-coin">💰</div>
+      <div class="mini-name">Spent<span>Share</span></div>
+      <button onclick="logoutUser()" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;font-family:'Nunito',sans-serif;font-weight:700;" data-i18n="logoutBtn">Log out</button>
+    </div>
+    <div class="section-title" data-i18n="myGroupsLabel">MY GROUPS</div>
+    <div class="group-list" id="groupList"><div class="skeleton" style="height:64px"></div><div class="skeleton" style="height:64px"></div></div>
+    <button class="new-group-btn" onclick="openCreateGroupModal()"><span style="font-size:18px">＋</span><span data-i18n="newGroupBtn">Create new group</span></button>
+    <div class="join-section">
+      <div class="join-title" data-i18n="joinTitle">Join with an invite code</div>
+      <div class="join-row">
+        <input class="join-input" type="text" id="joinCodeInput" placeholder="XX-0000" maxlength="7">
+        <button class="join-btn" onclick="joinGroup()" data-i18n="joinBtn">Join</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CREATE GROUP MODAL -->
+<div class="modal-overlay" id="createGroupModal" onclick="closeOnOverlay(event,'createGroupModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" data-i18n="createGroupTitle">✨ New group</div>
+    <div class="form-group"><label class="form-label" data-i18n="groupNameLabel">Group name</label><input class="form-input" type="text" id="newGroupName" placeholder='e.g. "Casa Melrose"'></div>
+    <div class="form-group">
+      <label class="form-label" data-i18n="groupEmojiLabel">Icon</label>
+      <div class="emoji-grid">
+        <button class="emoji-btn selected" onclick="selEmoji(this)">🏠</button><button class="emoji-btn" onclick="selEmoji(this)">✈️</button><button class="emoji-btn" onclick="selEmoji(this)">🍕</button><button class="emoji-btn" onclick="selEmoji(this)">🎉</button><button class="emoji-btn" onclick="selEmoji(this)">💼</button><button class="emoji-btn" onclick="selEmoji(this)">🚗</button><button class="emoji-btn" onclick="selEmoji(this)">🏖️</button><button class="emoji-btn" onclick="selEmoji(this)">🎮</button><button class="emoji-btn" onclick="selEmoji(this)">🐾</button><button class="emoji-btn" onclick="selEmoji(this)">💪</button><button class="emoji-btn" onclick="selEmoji(this)">🎓</button><button class="emoji-btn" onclick="selEmoji(this)">🏋️</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" data-i18n="inviteEmailsLabel">Invite members (optional)</label>
+      <input class="form-input" type="email" id="inviteEmailInput" placeholder="friend@email.com" onkeydown="if(event.key==='Enter'||event.key===','){event.preventDefault();addChip();}">
+      <div class="chips-area" id="inviteChips"></div>
+    </div>
+    <button class="submit-btn-form" id="createGroupBtn" onclick="createGroup()" data-i18n="createGroupBtn">Create group →</button>
+    <div id="newGroupCodeBox" style="display:none" class="invite-code-box">
+      <div style="font-size:12px;color:var(--muted)" data-i18n="shareCodeLabel">Share this code with friends</div>
+      <div class="invite-code-val" id="newGroupCode">--</div>
+      <div class="invite-code-sub" data-i18n="codeValid">Valid for 30 days</div>
+      <button class="copy-btn" onclick="copyInviteCode()" data-i18n="copyBtn">📋 Copy</button>
+      <div style="margin-top:10px"><button class="submit-btn-form" onclick="goToNewGroup()" data-i18n="openGroupBtn" style="margin-top:0;padding:12px">Open group →</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+  <div class="header">
+    <div class="header-logo">
+      <div class="header-coin">💰</div>
+      <div class="header-name">Spent<span>Share</span></div>
+    </div>
+    <div class="header-right">
+      <button class="group-selector" onclick="goToGroupPicker()">
+        <span class="group-sel-emoji" id="headerGroupEmoji">🏠</span>
+        <span class="group-sel-name" id="headerGroupName">Group</span>
+        <span class="group-sel-arrow">▼</span>
+      </button>
+      <button class="user-btn" onclick="openProfile()" style="padding:4px;">
+        <div class="avatar-display initials" id="userInitialCircle" style="width:32px;height:32px;font-size:14px;">?</div>
+      </button>
+    </div>
+  </div>
+  <div class="main">
+    <div class="sync-label"><span class="sync-dot" id="syncDot"></span><span id="syncLabel">Connecting...</span></div>
+    <div class="balance-card">
+      <div class="balance-label" id="t-balanceLabel">MONTHLY EXPENSES</div>
+      <div class="balance-month" id="balanceMonth">—</div>
+      <div class="balance-amount" id="totalMonth">$0.00</div>
+      <div class="balance-members" id="balanceMembers"></div>
+    </div>
+    <div class="section-title" id="t-quickActions">Quick actions</div>
+    <div class="quick-actions">
+      <button class="qa-btn" onclick="openModal()"><div class="qa-icon orange">➕</div><div class="qa-label" id="t-addExpense">Add expense</div></button>
+      <button class="qa-btn" onclick="openSettleModal()"><div class="qa-icon green">🤝</div><div class="qa-label" id="t-settle">Settle debt</div></button>
+      <button class="qa-btn" onclick="openMembersModal()"><div class="qa-icon blue">👥</div><div class="qa-label" id="t-members">Members</div></button>
+      <button class="qa-btn" onclick="openStatsModal()"><div class="qa-icon red">📈</div><div class="qa-label" id="t-stats">Statistics</div></button>
+    </div>
+    <div class="debt-section">
+      <div class="expenses-header">
+        <div class="section-title" style="margin:0" id="t-whoOwes">💸 Who owes who</div>
+        <button class="see-all" onclick="openDebtDetail()" id="t-detail">Detail →</button>
+      </div>
+      <div id="debtSummary"></div>
+    </div>
+    <div class="expenses-header">
+      <div class="section-title" style="margin:0" id="t-recentExpenses">Recent expenses</div>
+      <button class="see-all" id="t-seeAll">See all →</button>
+    </div>
+    <div id="loadingSkeletons"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
+    <div id="expensesList"></div>
+  </div>
+  <button class="fab" onclick="openModal()">+</button>
+  <div class="bottom-nav">
+    <button class="nav-item active" onclick="setTab(this)"><span class="nav-icon">🏠</span><span class="nav-label" id="t-nav1">Home</span></button>
+    <button class="nav-item" onclick="setTab(this);openStatsModal()"><span class="nav-icon">📊</span><span class="nav-label" id="t-nav2">Stats</span></button>
+    <button class="nav-item" onclick="setTab(this);openMembersModal()"><span class="nav-icon">👥</span><span class="nav-label" id="t-nav3">Members</span></button>
+    <button class="nav-item" onclick="setTab(this);goToGroupPicker()"><span class="nav-icon">🔀</span><span class="nav-label" id="t-nav4">Groups</span></button>
+  </div>
+</div>
+
+<!-- ADD EXPENSE MODAL -->
+<div class="modal-overlay" id="addModal" onclick="closeOnOverlay(event,'addModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" data-i18n="addModalTitle">💸 New expense</div>
+    <div class="form-group"><label class="form-label" data-i18n="amountLabel">Amount</label><input class="form-input" style="font-size:32px;font-weight:900;text-align:center;color:var(--orange)" type="number" id="inputAmount" placeholder="$0.00" min="0" step="0.01"></div>
+    <div class="form-group"><label class="form-label" data-i18n="descLabel">Description</label><input class="form-input" type="text" id="inputDesc" placeholder="e.g. Groceries, gas..."></div>
+    <div class="form-group">
+      <label class="form-label" data-i18n="catLabel">Category</label>
+      <div class="cat-grid">
+        <button class="cat-pill selected" data-cat="food" onclick="selectCat(this)"><span class="cat-emoji">🛒</span><span class="cat-name" data-i18n="catFood">Food</span></button>
+        <button class="cat-pill" data-cat="transport" onclick="selectCat(this)"><span class="cat-emoji">🚗</span><span class="cat-name" data-i18n="catTransport">Transport</span></button>
+        <button class="cat-pill" data-cat="utilities" onclick="selectCat(this)"><span class="cat-emoji">💡</span><span class="cat-name" data-i18n="catUtilities">Utilities</span></button>
+        <button class="cat-pill" data-cat="health" onclick="selectCat(this)"><span class="cat-emoji">💊</span><span class="cat-name" data-i18n="catHealth">Health</span></button>
+        <button class="cat-pill" data-cat="entertainment" onclick="selectCat(this)"><span class="cat-emoji">🎬</span><span class="cat-name" data-i18n="catEntertainment">Entertainment</span></button>
+        <button class="cat-pill" data-cat="home" onclick="selectCat(this)"><span class="cat-emoji">🏠</span><span class="cat-name" data-i18n="catHome">Home</span></button>
+        <button class="cat-pill" data-cat="education" onclick="selectCat(this)"><span class="cat-emoji">📚</span><span class="cat-name" data-i18n="catEducation">Education</span></button>
+        <button class="cat-pill" data-cat="other" onclick="selectCat(this)"><span class="cat-emoji">📦</span><span class="cat-name" data-i18n="catOther">Other</span></button>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label" data-i18n="paidByLabel">Who paid?</label><div class="paid-grid" id="paidByGrid"></div></div>
+    <div class="form-group">
+      <label class="form-label" data-i18n="splitLabel">Split between</label>
+      <div class="split-grid">
+        <button class="split-btn selected" data-split="all" onclick="selectSplit(this)"><span class="split-emoji">👥</span><span data-i18n="splitAll">Everyone</span></button>
+        <button class="split-btn" data-split="two" onclick="selectSplit(this)"><span class="split-emoji">👤</span><span data-i18n="splitTwo">Two people</span></button>
+        <button class="split-btn" data-split="solo" onclick="selectSplit(this)"><span class="split-emoji">🧾</span><span data-i18n="splitSolo">Just me</span></button>
+      </div>
+    </div>
+    <div class="form-group" id="withWhomGroup" style="display:none"><label class="form-label" data-i18n="withWhomLabel">Split with who?</label><div class="paid-grid" id="withWhomGrid"></div></div>
+    <button class="submit-btn-form" id="submitBtn" onclick="addExpense()" data-i18n="addBtn">Add expense ✓</button>
+  </div>
+</div>
+
+<!-- SETTLE MODAL -->
+<div class="modal-overlay" id="settleModal" onclick="closeOnOverlay(event,'settleModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" data-i18n="settleModalTitle">🤝 Settle debt</div>
+    <div class="form-group"><label class="form-label" data-i18n="settleFromLabel">Who pays?</label><div class="paid-grid" id="settleFromGrid"></div></div>
+    <div class="form-group"><label class="form-label" data-i18n="settleToLabel">Who receives?</label><div class="paid-grid" id="settleToGrid"></div></div>
+    <div class="form-group"><label class="form-label" data-i18n="amountLabel">Amount</label><input class="form-input" style="font-size:32px;font-weight:900;text-align:center;color:var(--orange)" type="number" id="settleAmount" placeholder="$0.00" min="0" step="0.01"></div>
+    <button class="submit-btn-form" onclick="addSettle()" data-i18n="savePayBtn">Record payment ✓</button>
+  </div>
+</div>
+
+<!-- MEMBERS MODAL -->
+<div class="modal-overlay" id="membersModal" onclick="closeOnOverlay(event,'membersModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" data-i18n="membersModalTitle">👥 Members</div>
+    <div id="membersList" style="margin-bottom:20px"></div>
+    <div style="border-top:1px solid var(--border);padding-top:16px">
+      <label class="form-label" data-i18n="inviteMoreLabel">Invite someone</label>
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <input class="form-input" type="email" id="inviteMoreEmail" placeholder="email@example.com" style="flex:1;padding:11px 14px;">
+        <button onclick="sendInviteEmail()" style="background:var(--green);border:none;border-radius:14px;padding:0 18px;color:white;font-family:'Nunito',sans-serif;font-weight:700;cursor:pointer;white-space:nowrap" data-i18n="sendInviteBtn">Send</button>
+      </div>
+      <div class="invite-code-box">
+        <div style="font-size:12px;color:var(--muted)" data-i18n="groupCodeLabel">Group invite code</div>
+        <div class="invite-code-val" id="groupInviteCode">--</div>
+        <div class="invite-code-sub" data-i18n="codeValid">Valid for 30 days</div>
+        <button class="copy-btn" onclick="copyInviteCode()" data-i18n="copyBtn">📋 Copy</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- STATS MODAL -->
+<div class="modal-overlay" id="statsModal" onclick="closeOnOverlay(event,'statsModal')">
+  <div class="modal" style="padding-bottom:50px">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📈 <span data-i18n="statsTitle">Statistics</span> — <span id="statsMonthLabel" style="color:var(--orange)"></span></div>
+    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:18px;padding:16px 20px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center">
+      <div><div style="font-size:11px;color:rgba(255,255,255,0.4);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px" data-i18n="statsTotal">Monthly total</div><div id="statsTotalAmt" style="font-family:'Nunito',sans-serif;font-size:32px;font-weight:900;color:white;letter-spacing:-1px">$0.00</div></div>
+      <div style="font-size:40px">💰</div>
+    </div>
+    <div class="section-title" style="margin-bottom:12px" data-i18n="statsByMember">By member</div>
+    <div id="memberBars" style="margin-bottom:22px"></div>
+    <div class="section-title" style="margin-bottom:12px" data-i18n="statsByCat">By category</div>
+    <div id="categoryBars" style="margin-bottom:22px"></div>
+    <div class="section-title" style="margin-bottom:12px" data-i18n="statsTop">Top expenses</div>
+    <div id="topExpenses"></div>
+  </div>
+</div>
+
+<!-- DEBT DETAIL MODAL -->
+<div class="modal-overlay" id="debtModal" onclick="closeOnOverlay(event,'debtModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" data-i18n="debtModalTitle">💰 Balance detail</div>
+    <div id="debtDetailContent"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- FIREBASE -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, doc, deleteDoc, getDocs, setDoc, getDoc, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, updateProfile } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+const app = initializeApp({
+  apiKey:"AIzaSyB-KQnjwvoRvUciDDFR5eHOjwGZbh8DBZI",
+  authDomain:"spendshare-ed3fa.firebaseapp.com",
+  projectId:"spendshare-ed3fa",
+  storageBucket:"spendshare-ed3fa.firebasestorage.app",
+  messagingSenderId:"142707923361",
+  appId:"1:142707923361:web:55b965b821dfa336b413e0"
+});
+
+const db = getFirestore(app);
+const auth = getAuth(app);
+const gProvider = new GoogleAuthProvider();
+
+window._db=db; window._auth=auth;
+window._addDoc=addDoc; window._col=collection; window._srvTs=serverTimestamp;
+window._delDoc=deleteDoc; window._docRef=doc; window._getDocs=getDocs;
+window._setDoc=setDoc; window._getDoc=getDoc; window._query=query;
+window._where=where; window._orderBy=orderBy; window._onSnap=onSnapshot;
+
+onAuthStateChanged(auth, async user => {
+  window._curUser = user;
+  if (user) {
+    const initial = (user.displayName||user.email||'?')[0].toUpperCase();
+    document.getElementById('userInitialCircle').textContent = initial;
+    await setDoc(doc(db,'users',user.uid),{
+      uid:user.uid, name:user.displayName||user.email.split('@')[0],
+      email:user.email, updatedAt:serverTimestamp()
+    },{merge:true});
+    window._afterAuthCallback();
+  }
+});
+
+window._doSignUp = async (email,pass,name) => {
+  const c = await createUserWithEmailAndPassword(auth,email,pass);
+  await updateProfile(c.user,{displayName:name});
+  return c.user;
+};
+window._doSignIn = (e,p) => signInWithEmailAndPassword(auth,e,p);
+window._doGoogle = () => signInWithPopup(auth,gProvider);
+window._doSignOut = () => signOut(auth);
+</script>
+
+<script>
+// ── STATE ──
+let lang = 'en';
+let currentGroup = null;
+let groupUnsub = null;
+let userGroups = [];
+let selectedCat = 'food';
+let selectedPaidBy = null;
+let selectedSplit = 'all';
+let selectedWithWhom = null;
+let settleFrom = null;
+let settleTo = null;
+let selEmoji_ = '🏠';
+let inviteEmails = [];
+let newlyCreatedGroupId = null;
+const catEmojis = {food:'🛒',transport:'🚗',utilities:'💡',health:'💊',entertainment:'🎬',home:'🏠',education:'📚',other:'📦'};
+const months_en=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const months_es=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+// ── TRANSLATIONS ──
+const TX = {
+  en:{
+    tabLogin:'Log in',tabRegister:'Sign up',
+    loginTitle:'Welcome back 👋',loginSub:'Sign in to your account',
+    registerTitle:'Create account 🎉',registerSub:'Free forever, no credit card needed',
+    googleBtn:'Continue with Google',orLabel:'or',
+    nameLabel:'Full name',emailLabel:'Email',passwordLabel:'Password',
+    loginBtn:'Sign in →',registerBtn:'Create account →',logoutBtn:'Log out',
+    myGroupsLabel:'MY GROUPS',newGroupBtn:'Create new group',
+    joinTitle:'Join with an invite code',joinBtn:'Join',
+    createGroupTitle:'✨ New group',groupNameLabel:'Group name',
+    groupEmojiLabel:'Icon',inviteEmailsLabel:'Invite members (optional)',
+    createGroupBtn:'Create group →',shareCodeLabel:'Share this code',
+    codeValid:'Valid for 30 days',copyBtn:'📋 Copy',openGroupBtn:'Open group →',
+    addModalTitle:'💸 New expense',settleModalTitle:'🤝 Settle debt',
+    debtModalTitle:'💰 Balance detail',membersModalTitle:'👥 Members',
+    amountLabel:'Amount',descLabel:'Description',catLabel:'Category',
+    paidByLabel:'Who paid?',splitLabel:'Split between',withWhomLabel:'Split with who?',
+    splitAll:'Everyone',splitTwo:'Two people',splitSolo:'Just me',
+    addBtn:'Add expense ✓',savePayBtn:'Record payment ✓',
+    settleFromLabel:'Who pays?',settleToLabel:'Who receives?',
+    inviteMoreLabel:'Invite someone',sendInviteBtn:'Send',groupCodeLabel:'Invite code',
+    statsTitle:'Statistics',statsTotal:'Monthly total',statsByMember:'By member',
+    statsByCat:'By category',statsTop:'Top expenses',
+    balanceLabel:'MONTHLY EXPENSES',quickActions:'Quick actions',
+    addExpense:'Add expense',settle:'Settle debt',members:'Members',stats:'Statistics',
+    whoOwes:'💸 Who owes who',detail:'Detail →',
+    recentExpenses:'Recent expenses',seeAll:'See all →',
+    nav1:'Home',nav2:'Stats',nav3:'Members',nav4:'Groups',
+    syncOk:'Synced ✓',syncOff:'Offline',syncLoad:'Connecting...',
+    allClear:'All settled! 🎉',allClearSub:'No pending debts this month',
+    statusOk:' ok',statusOwedTo:' owed to you',statusOwes:' owes',
+    paidLabel:'Paid',owesLabel:'Owes',
+    loading:'Loading...',saving:'Saving...',today:'Today',perPerson:' each',solo:'Just me',
+    settleDesc:(a,b)=>`${a} settled with ${b}`,settlePayDesc:(a,b)=>`${a} paid ${b}`,
+    toastSettledZero:'✅ Debt settled!',
+    confirmDelete:'Delete this expense?',toastDeleted:'🗑️ Deleted',
+    confirmSettle:(a,b,amt)=>`Confirm ${a} paid $${amt} to ${b}?`,
+    errSave:'❌ Error saving',errRegister:'❌ Error recording',errDelete:'❌ Error deleting',
+    errAmount:'⚠️ Enter a valid amount',errDesc:'⚠️ Add a description',
+    errPaidBy:'⚠️ Who paid?',errWithWhom:'⚠️ Select who to split with',
+    errFrom:'⚠️ Who pays?',errTo:'⚠️ Who receives?',errDiff:'⚠️ Select different people',
+    errEmail:'⚠️ Enter a valid email',errPassword:'⚠️ Password min 8 characters',
+    errName:'⚠️ Enter your name',errGroupName:'⚠️ Enter a group name',
+    errJoinCode:'⚠️ Enter a code',errCodeNotFound:'❌ Code not found',
+    toastGroupCreated:'✅ Group created!',toastJoined:'✅ Joined!',
+    toastInviteSent:'✅ Invite sent!',toastCopied:'📋 Copied!',
+    toastAdded:'✅ Expense added',toastSettle:'✅ Payment recorded',
+    catFood:'Food',catTransport:'Transport',catUtilities:'Utilities',
+    catHealth:'Health',catEntertainment:'Entertainment',catHome:'Home',
+    catEducation:'Education',catOther:'Other',
+    debtByPerson:'By person',debtPending:'Pending debts',
+    membersOf:(n)=>`Members of ${n}`,noGroups:'No groups yet. Create one!',languageLabel:'Language',chooseAvatarLabel:'Choose avatar',uploadPhotoLabel:'Upload photo'
+  },
+  es:{
+    tabLogin:'Entrar',tabRegister:'Registrarse',
+    loginTitle:'¡Bienvenido! 👋',loginSub:'Inicia sesión en tu cuenta',
+    registerTitle:'Crear cuenta 🎉',registerSub:'Gratis para siempre',
+    googleBtn:'Continuar con Google',orLabel:'o',
+    nameLabel:'Nombre completo',emailLabel:'Correo',passwordLabel:'Contraseña',
+    loginBtn:'Entrar →',registerBtn:'Crear cuenta →',logoutBtn:'Cerrar sesión',
+    myGroupsLabel:'MIS GRUPOS',newGroupBtn:'Crear nuevo grupo',
+    joinTitle:'Unirse con código de invitación',joinBtn:'Unirse',
+    createGroupTitle:'✨ Nuevo grupo',groupNameLabel:'Nombre del grupo',
+    groupEmojiLabel:'Ícono',inviteEmailsLabel:'Invitar miembros (opcional)',
+    createGroupBtn:'Crear grupo →',shareCodeLabel:'Comparte este código',
+    codeValid:'Válido por 30 días',copyBtn:'📋 Copiar',openGroupBtn:'Abrir grupo →',
+    addModalTitle:'💸 Nuevo gasto',settleModalTitle:'🤝 Liquidar deuda',
+    debtModalTitle:'💰 Detalle de balances',membersModalTitle:'👥 Miembros',
+    amountLabel:'Monto',descLabel:'Descripción',catLabel:'Categoría',
+    paidByLabel:'¿Quién pagó?',splitLabel:'¿Cómo dividir?',withWhomLabel:'¿Con quién?',
+    splitAll:'Todos',splitTwo:'Dos personas',splitSolo:'Solo yo',
+    addBtn:'Agregar gasto ✓',savePayBtn:'Registrar pago ✓',
+    settleFromLabel:'¿Quién paga?',settleToLabel:'¿A quién?',
+    inviteMoreLabel:'Invitar a alguien',sendInviteBtn:'Enviar',groupCodeLabel:'Código de invitación',
+    statsTitle:'Estadísticas',statsTotal:'Total del mes',statsByMember:'Por miembro',
+    statsByCat:'Por categoría',statsTop:'Top gastos',
+    balanceLabel:'GASTOS DEL MES',quickActions:'Acciones rápidas',
+    addExpense:'Agregar gasto',settle:'Liquidar deuda',members:'Miembros',stats:'Estadísticas',
+    whoOwes:'💸 Quién debe a quién',detail:'Detalle →',
+    recentExpenses:'Gastos recientes',seeAll:'Ver todos →',
+    nav1:'Inicio',nav2:'Stats',nav3:'Miembros',nav4:'Grupos',
+    syncOk:'Sincronizado ✓',syncOff:'Sin conexión',syncLoad:'Conectando...',
+    allClear:'¡Todo al día! 🎉',allClearSub:'No hay deudas pendientes',
+    statusOk:' al día',statusOwedTo:' a favor',statusOwes:' debe',
+    paidLabel:'Pagó',owesLabel:'Debe',
+    loading:'Cargando...',saving:'Guardando...',today:'Hoy',perPerson:' c/u',solo:'Solo',
+    settleDesc:(a,b)=>`${a} liquidó deuda con ${b}`,settlePayDesc:(a,b)=>`${a} le pagó a ${b}`,
+    toastSettledZero:'✅ Deuda liquidada',
+    confirmDelete:'¿Eliminar este gasto?',toastDeleted:'🗑️ Eliminado',
+    confirmSettle:(a,b,amt)=>`¿Registrar que ${a} pagó $${amt} a ${b}?`,
+    errSave:'❌ Error al guardar',errRegister:'❌ Error al registrar',errDelete:'❌ Error al eliminar',
+    errAmount:'⚠️ Ingresa un monto válido',errDesc:'⚠️ Agrega una descripción',
+    errPaidBy:'⚠️ ¿Quién pagó?',errWithWhom:'⚠️ Selecciona con quién dividir',
+    errFrom:'⚠️ ¿Quién paga?',errTo:'⚠️ ¿A quién?',errDiff:'⚠️ Selecciona personas diferentes',
+    errEmail:'⚠️ Ingresa un correo válido',errPassword:'⚠️ Contraseña mínimo 8 caracteres',
+    errName:'⚠️ Ingresa tu nombre',errGroupName:'⚠️ Ingresa el nombre del grupo',
+    errJoinCode:'⚠️ Ingresa un código',errCodeNotFound:'❌ Código no encontrado',
+    toastGroupCreated:'✅ ¡Grupo creado!',toastJoined:'✅ ¡Te uniste!',
+    toastInviteSent:'✅ Invitación enviada',toastCopied:'📋 ¡Copiado!',
+    toastAdded:'✅ Gasto agregado',toastSettle:'✅ Pago registrado',
+    catFood:'Comida',catTransport:'Transporte',catUtilities:'Servicios',
+    catHealth:'Salud',catEntertainment:'Ocio',catHome:'Casa',
+    catEducation:'Educación',catOther:'Otro',
+    debtByPerson:'Por persona',debtPending:'Deudas pendientes',
+    membersOf:(n)=>`Miembros de ${n}`,noGroups:'Sin grupos. ¡Crea uno!',languageLabel:'Idioma',chooseAvatarLabel:'Elegir avatar',uploadPhotoLabel:'Subir foto'
+  }
+};
+
+function t(k,...a){ const v=TX[lang][k]; return typeof v==='function'?v(...a):(v||k); }
+
+function setLang(l){
+  lang=l;
+  document.getElementById('btnEn').classList.toggle('active',l==='en');
+  document.getElementById('btnEs').classList.toggle('active',l==='es');
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const k=el.dataset.i18n; const v=TX[l][k];
+    if(v!==undefined && typeof v==='string') el.textContent=v;
+  });
+  updateDashboardLabels();
+  if(window._expenses){renderExpenses(window._expenses);updateBalances(window._expenses);}
+}
+
+function updateDashboardLabels(){
+  const ids={
+    't-balanceLabel':'balanceLabel','t-quickActions':'quickActions',
+    't-addExpense':'addExpense','t-settle':'settle','t-members':'members','t-stats':'stats',
+    't-whoOwes':'whoOwes','t-detail':'detail',
+    't-recentExpenses':'recentExpenses','t-seeAll':'seeAll',
+    't-nav1':'nav1','t-nav2':'nav2','t-nav3':'nav3','t-nav4':'nav4',
+  };
+  Object.entries(ids).forEach(([id,k])=>{const el=document.getElementById(id);if(el)el.textContent=t(k);});
+}
+
+// ── SPLASH ──
+setTimeout(()=>{
+  document.getElementById('splash').classList.add('hide');
+  setTimeout(()=>{
+    document.getElementById('splash').style.display='none';
+    document.getElementById('authScreen').classList.add('show');
+  },700);
+},4800);
+
+// ── AUTH ──
+window._afterAuthCallback = async function(){
+  document.getElementById('authScreen').classList.add('hide');
+  setTimeout(async()=>{
+    document.getElementById('authScreen').style.display='none';
+    await loadUserGroups();
+    showGroupScreen();
+  },500);
+};
+
+function switchTab(tab){
+  document.getElementById('tabLogin').classList.toggle('active',tab==='login');
+  document.getElementById('tabReg').classList.toggle('active',tab==='register');
+  document.getElementById('loginForm').style.display=tab==='login'?'block':'none';
+  document.getElementById('registerForm').style.display=tab==='register'?'block':'none';
+}
+
+async function doLogin(){
+  const email=document.getElementById('loginEmail').value.trim();
+  const pass=document.getElementById('loginPassword').value;
+  if(!email.includes('@')){showToast(t('errEmail'));return;}
+  if(pass.length<6){showToast(t('errPassword'));return;}
+  const btn=document.getElementById('loginBtn');
+  btn.disabled=true;btn.textContent=t('loading');
+  try{
+    await window._doSignIn(email,pass);
+    document.getElementById('authSuccess').classList.add('show');
+    document.getElementById('authSuccessText').textContent=lang==='es'?'¡Bienvenido!':'Welcome!';
+  }catch(e){
+    showToast('❌ '+(e.code==='auth/invalid-credential'?'Invalid email or password':e.message));
+    document.getElementById('authCard').classList.add('shake');
+    setTimeout(()=>document.getElementById('authCard').classList.remove('shake'),500);
+  }
+  btn.disabled=false;btn.textContent=t('loginBtn');
+}
+
+async function doRegister(){
+  const name=document.getElementById('regName').value.trim();
+  const email=document.getElementById('regEmail').value.trim();
+  const pass=document.getElementById('regPassword').value;
+  if(!name){showToast(t('errName'));return;}
+  if(!email.includes('@')){showToast(t('errEmail'));return;}
+  if(pass.length<8){showToast(t('errPassword'));return;}
+  const btn=document.getElementById('registerBtn');
+  btn.disabled=true;btn.textContent=t('loading');
+  try{
+    await window._doSignUp(email,pass,name);
+    document.getElementById('authSuccess').classList.add('show');
+    document.getElementById('authSuccessText').textContent=`Welcome, ${name}! 🎉`;
+  }catch(e){
+    showToast('❌ '+(e.code==='auth/email-already-in-use'?'Email already in use':e.message));
+    document.getElementById('authCard').classList.add('shake');
+    setTimeout(()=>document.getElementById('authCard').classList.remove('shake'),500);
+  }
+  btn.disabled=false;btn.textContent=t('registerBtn');
+}
+
+async function googleAuth(){
+  try{ await window._doGoogle(); }
+  catch(e){ showToast('❌ '+e.message); }
+}
+
+async function logoutUser(){
+  if(groupUnsub){groupUnsub();groupUnsub=null;}
+  currentGroup=null;window._expenses=null;window._groupMembers=null;userGroups=[];
+  await window._doSignOut();
+  ['dashboard','groupScreen'].forEach(id=>{
+    const el=document.getElementById(id);
+    el.classList.remove('show');el.style.display='none';
+  });
+  closeModal('addModal');closeModal('settleModal');closeModal('statsModal');
+  closeModal('debtModal');closeModal('membersModal');closeModal('createGroupModal');
+  document.getElementById('authSuccess').classList.remove('show');
+  document.getElementById('loginEmail').value='';
+  document.getElementById('loginPassword').value='';
+  switchTab('login');
+  const auth=document.getElementById('authScreen');
+  auth.style.display='flex';auth.classList.remove('hide');
+  setTimeout(()=>auth.classList.add('show'),50);
+}
+
+// ── GROUPS ──
+function generateCode(){
+  const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return [0,1].map(()=>c[Math.floor(Math.random()*c.length)]).join('')+'-'+
+    [0,1,2,3].map(()=>c[Math.floor(Math.random()*c.length)]).join('');
+}
+
+async function loadUserGroups(){
+  if(!window._curUser)return;
+  try{
+    const snap=await window._getDocs(window._query(
+      window._col(window._db,'groups'),
+      window._where('memberUids','array-contains',window._curUser.uid)
+    ));
+    userGroups=snap.docs.map(d=>({id:d.id,...d.data()}));
+  }catch(e){userGroups=[];}
+}
+
+function showGroupScreen(){
+  const gs=document.getElementById('groupScreen');
+  gs.style.display='flex';gs.classList.remove('hide');
+  setTimeout(()=>gs.classList.add('show'),50);
+  renderGroupList();
+}
+
+function renderGroupList(){
+  const list=document.getElementById('groupList');
+  if(userGroups.length===0){
+    list.innerHTML=`<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px;font-weight:600">${t('noGroups')}</div>`;return;
+  }
+  list.innerHTML=userGroups.map(g=>`
+    <div class="group-item">
+      <div class="group-emoji" style="cursor:pointer" onclick="selectGroup('${g.id}')">${g.emoji||'🏠'}</div>
+      <div class="group-info" style="cursor:pointer" onclick="selectGroup('${g.id}')">
+        <div class="group-name-txt">${g.name}</div>
+        <div class="group-members-txt">${(g.memberUids||[]).length} ${lang==='es'?'miembros':'members'}</div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+        <button class="group-open-btn" onclick="selectGroup('${g.id}')">${t('openGroupBtn')}</button>
+        <button onclick="deleteGroup('${g.id}','${g.name.replace(/'/g,"\'")}')" style="background:var(--red-light);border:1px solid rgba(245,101,101,0.2);color:var(--red);border-radius:50px;padding:6px 12px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='var(--red)';this.style.color='white'" onmouseout="this.style.background='var(--red-light)';this.style.color='var(--red)'">🗑️</button>
+      </div>
+    </div>`).join('');
+}
+
+async function deleteGroup(gid, gname){
+  const msg = lang==='es' ? `¿Eliminar el grupo "${gname}"? Esto borrará todos los gastos.` : `Delete group "${gname}"? This will delete all expenses.`;
+  if(!confirm(msg)) return;
+  try {
+    // Delete all expenses in the group
+    const expSnap = await window._getDocs(window._col(window._db, `groups/${gid}/expenses`));
+    await Promise.all(expSnap.docs.map(d => window._delDoc(window._docRef(window._db, `groups/${gid}/expenses`, d.id))));
+    // Delete the group
+    await window._delDoc(window._docRef(window._db, 'groups', gid));
+    userGroups = userGroups.filter(g => g.id !== gid);
+    renderGroupList();
+    showToast(lang==='es' ? '🗑️ Grupo eliminado' : '🗑️ Group deleted');
+  } catch(e) { showToast(t('errDelete')); }
+}
+
+async function selectGroup(gid){
+  const grp=userGroups.find(g=>g.id===gid);
+  if(!grp)return;
+  currentGroup=grp;
+  try{
+    // Load fresh group data from Firestore
+    const grpDoc = await window._getDoc(window._docRef(window._db,'groups',gid));
+    if(grpDoc.exists()){
+      const gdata = grpDoc.data();
+      currentGroup = {...grp, ...gdata, id:gid};
+      grp.memberUids = gdata.memberUids||[];
+      grp.memberEmails = gdata.memberEmails||[];
+    }
+    const uids = currentGroup.memberUids||[];
+    const emails = currentGroup.memberEmails||[];
+    const docs = await Promise.all(uids.map(uid=>window._getDoc(window._docRef(window._db,'users',uid))));
+    window._groupMembers = [];
+    docs.forEach((d,i)=>{
+      if(d.exists()){
+        // Use doc.id as uid to ensure correctness
+        const data = d.data();
+        data.uid = d.id;
+        window._groupMembers.push(data);
+      } else {
+        // Fallback: user exists in auth but hasn't saved profile yet
+        const email = emails[i]||'';
+        window._groupMembers.push({uid:uids[i], name:email?email.split('@')[0]:'Member', email});
+      }
+    });
+    console.log('Members loaded:', window._groupMembers.map(m=>m.name+'/'+m.uid));
+  }catch(e){ console.error('loadMembers',e); window._groupMembers=[]; }
+  document.getElementById('headerGroupEmoji').textContent=grp.emoji||'🏠';
+  document.getElementById('headerGroupName').textContent=grp.name;
+  document.getElementById('groupInviteCode').textContent=grp.inviteCode||'--';
+  const gs=document.getElementById('groupScreen');
+  gs.classList.add('hide');
+  setTimeout(()=>{gs.style.display='none';gs.classList.remove('show','hide');finalizeDashboard();},400);
+}
+
+function goToGroupPicker(){
+  if(groupUnsub){groupUnsub();groupUnsub=null;}
+  const dash=document.getElementById('dashboard');
+  dash.classList.remove('show');
+  setTimeout(async()=>{
+    dash.style.display='none';
+    closeModal('addModal');closeModal('settleModal');closeModal('statsModal');
+    closeModal('debtModal');closeModal('membersModal');
+    await loadUserGroups();showGroupScreen();
+  },400);
+}
+
+function openCreateGroupModal(){
+  document.getElementById('newGroupCodeBox').style.display='none';
+  document.getElementById('newGroupName').value='';
+  document.getElementById('inviteChips').innerHTML='';
+  inviteEmails=[];selEmoji_='🏠';
+  document.querySelectorAll('.emoji-btn').forEach((b,i)=>b.classList.toggle('selected',i===0));
+  openModal('createGroupModal');
+}
+
+function selEmoji(btn){
+  document.querySelectorAll('.emoji-btn').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');selEmoji_=btn.textContent;
+}
+
+function addChip(){
+  const inp=document.getElementById('inviteEmailInput');
+  const email=inp.value.trim().replace(',','');
+  if(!email.includes('@')||inviteEmails.includes(email)){inp.value='';return;}
+  inviteEmails.push(email);
+  const chip=document.createElement('span');
+  chip.className='member-chip';
+  chip.innerHTML=`${email} <span class="chip-x" onclick="removeChip(this,'${email}')">✕</span>`;
+  document.getElementById('inviteChips').appendChild(chip);
+  inp.value='';
+}
+
+function removeChip(el,email){inviteEmails=inviteEmails.filter(e=>e!==email);el.parentElement.remove();}
+
+async function createGroup(){
+  const name=document.getElementById('newGroupName').value.trim();
+  if(!name){showToast(t('errGroupName'));return;}
+  const btn=document.getElementById('createGroupBtn');
+  btn.disabled=true;btn.textContent=t('saving');
+  try{
+    const uid=window._curUser.uid;
+    const code=generateCode();
+    const ref=await window._addDoc(window._col(window._db,'groups'),{
+      name,emoji:selEmoji_,memberUids:[uid],
+      memberEmails:[window._curUser.email],
+      inviteCode:code,createdBy:uid,createdAt:window._srvTs()
+    });
+    newlyCreatedGroupId=ref.id;
+    userGroups.push({id:ref.id,name,emoji:selEmoji_,memberUids:[uid],memberEmails:[window._curUser.email],inviteCode:code});
+    renderGroupList();
+    document.getElementById('newGroupCode').textContent=code;
+    document.getElementById('groupInviteCode').textContent=code;
+    document.getElementById('newGroupCodeBox').style.display='block';
+    showToast(t('toastGroupCreated'));
+  }catch(e){showToast(t('errSave'));}
+  btn.disabled=false;btn.textContent=t('createGroupBtn');
+}
+
+async function goToNewGroup(){
+  if(!newlyCreatedGroupId)return;
+  closeModal('createGroupModal');
+  await selectGroup(newlyCreatedGroupId);
+  newlyCreatedGroupId=null;
+}
+
+async function joinGroup(){
+  const code=document.getElementById('joinCodeInput').value.trim().toUpperCase();
+  if(!code){showToast(t('errJoinCode'));return;}
+  try{
+    const snap=await window._getDocs(window._query(window._col(window._db,'groups'),window._where('inviteCode','==',code)));
+    if(snap.empty){showToast(t('errCodeNotFound'));return;}
+    const gDoc=snap.docs[0];
+    const uid=window._curUser.uid;
+    const data=gDoc.data();
+    if(!(data.memberUids||[]).includes(uid)){
+      await window._setDoc(window._docRef(window._db,'groups',gDoc.id),{
+        memberUids:[...(data.memberUids||[]),uid],
+        memberEmails:[...(data.memberEmails||[]),window._curUser.email]
+      },{merge:true});
+    }
+    if(!userGroups.find(g=>g.id===gDoc.id)) userGroups.push({id:gDoc.id,...data});
+    renderGroupList();
+    showToast(t('toastJoined'));
+    document.getElementById('joinCodeInput').value='';
+  }catch(e){showToast(t('errSave'));}
+}
+
+function copyInviteCode(){
+  const code=(currentGroup?.inviteCode)||document.getElementById('newGroupCode').textContent;
+  navigator.clipboard.writeText(code).then(()=>showToast(t('toastCopied'))).catch(()=>{});
+}
+
+// ── DASHBOARD ──
+function finalizeDashboard(){
+  const dash=document.getElementById('dashboard');
+  dash.style.display='block';
+  setTimeout(()=>dash.classList.add('show'),50);
+  updateDashboardLabels();
+  loadAvatar();
+  renderMemberGrids();
+  subscribeExpenses();
+}
+
+function getAvatar(name, uid){
+  if(uid){ const saved=localStorage.getItem('avatar_'+uid); if(saved) return saved; }
+  const av=['👤','👩','👨','🧑','👦','👧'];
+  return av[(name||'?').charCodeAt(0)%av.length];
+}
+
+function renderMemberGrids(){
+  const members=window._groupMembers||[];
+  const me=window._curUser;
+  ['paidByGrid','settleFromGrid','settleToGrid','withWhomGrid'].forEach(id=>{
+    document.getElementById(id).innerHTML=members.map(m=>`
+      <button class="paid-btn ${id==='paidByGrid'&&m.uid===me?.uid?'selected':''}"
+        data-uid="${m.uid}" data-name="${m.name}"
+        onclick="${id==='paidByGrid'?'selectPaidBy':id==='settleFromGrid'?'selectSettleFrom':id==='settleToGrid'?'selectSettleTo':'selectWithWhom'}(this)">
+        <span class="paid-avatar">${getAvatar(m.name)}</span>
+        <span class="paid-name">${(m.name||'').split(' ')[0]}</span>
+      </button>`).join('');
+  });
+  selectedPaidBy=me?.uid||(members[0]?.uid);
+}
+
+let expUnsub=null;
+function subscribeExpenses(){
+  if(expUnsub){expUnsub();expUnsub=null;}
+  if(!currentGroup)return;
+  const q=window._query(window._col(window._db,`groups/${currentGroup.id}/expenses`),window._orderBy('createdAt','desc'));
+  expUnsub=window._onSnap(q,snap=>{
+    document.getElementById('syncDot').classList.remove('offline');
+    document.getElementById('syncLabel').textContent=t('syncOk');
+    const expenses=snap.docs.map(d=>({id:d.id,...d.data()}));
+    window._expenses=expenses;
+    renderExpenses(expenses);updateBalances(expenses);
+    document.getElementById('loadingSkeletons').style.display='none';
+  },()=>{
+    document.getElementById('syncDot').classList.add('offline');
+    document.getElementById('syncLabel').textContent=t('syncOff');
+    document.getElementById('loadingSkeletons').style.display='none';
+  });
+  groupUnsub=expUnsub;
+}
+
+function renderExpenses(expenses){
+  const list=document.getElementById('expensesList');
+  if(!expenses||expenses.length===0){
+    list.innerHTML=`<div class="empty-state"><div class="empty-icon">💸</div><p>${lang==='es'?'No hay gastos aún':'No expenses yet'}</p><small style="font-size:12px;margin-top:4px;display:block">${lang==='es'?'Toca + para agregar el primero':'Tap + to add the first one'}</small></div>`;return;
+  }
+  const members=window._groupMembers||[];
+  list.innerHTML=expenses.slice(0,10).map(e=>{
+    const locale=lang==='es'?'es-MX':'en-US';
+    const date=e.createdAt?.toDate?e.createdAt.toDate().toLocaleDateString(locale,{day:'numeric',month:'short'}):t('today');
+    const emoji=catEmojis[e.category]||'📦';
+    const isSettle=e.type==='settle';
+    const n=members.length||1;
+    const splitLabel=e.split==='all'?(lang==='es'?`÷ ${n} personas`:`÷ ${n} people`):e.split==='two'?(lang==='es'?'÷ 2 personas':'÷ 2 people'):t('solo');
+    const paidByName=members.find(m=>m.uid===e.paidByUid)?.name||e.paidBy||'?';
+    return `<div class="expense-item" onclick="deleteExpensePrompt('${e.id}')">
+      <div class="expense-emoji">${isSettle?'🤝':emoji}</div>
+      <div class="expense-info">
+        <div class="expense-desc">${e.description}</div>
+        <div class="expense-meta">
+          <span class="expense-who">${(paidByName).split(' ')[0]}</span>
+          <span>${date}</span>
+          ${!isSettle?`<span>${splitLabel}</span>`:''}
+        </div>
+      </div>
+      <div>
+        <div class="expense-amount">$${parseFloat(e.amount).toFixed(2)}</div>
+        ${isSettle?`<div class="expense-split green">${t('paidLabel')} ✓</div>`:
+          `<div class="expense-split">${e.split==='all'?'$'+(e.amount/n).toFixed(2)+t('perPerson'):e.split==='two'?'$'+(e.amount/2).toFixed(2)+t('perPerson'):t('solo')}</div>`}
+      </div></div>`;
+  }).join('');
+}
+
+function calcBalances(expenses){
+  const now=new Date();
+  const monthly=(expenses||[]).filter(e=>{
+    if(!e.createdAt?.toDate)return true;
+    const d=e.createdAt.toDate();
+    return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
+  });
+  const members=window._groupMembers||[];
+  const net={};
+  members.forEach(a=>{net[a.uid]={};members.forEach(b=>net[a.uid][b.uid]=0);});
+  monthly.forEach(e=>{
+    if(e.type==='settle'){
+      const amt=parseFloat(e.amount)||0;
+      if(e.paidByUid&&e.settledToUid&&net[e.paidByUid]&&net[e.settledToUid]){
+        net[e.paidByUid][e.settledToUid]-=amt;
+        net[e.settledToUid][e.paidByUid]+=amt;
+      }return;
+    }
+    const amt=parseFloat(e.amount)||0;
+    let debtors=[];
+    if(e.split==='all') debtors=members.filter(m=>m.uid!==e.paidByUid);
+    else if(e.split==='two'){const partner=e.splitWithUid||members.filter(m=>m.uid!==e.paidByUid)[0]?.uid;debtors=partner?[{uid:partner}].filter(m=>m.uid!==e.paidByUid):[];}
+    if(debtors.length>0){
+      const share=amt/(debtors.length+1);
+      debtors.forEach(d=>{
+        if(net[d.uid]&&net[d.uid][e.paidByUid]!==undefined){net[d.uid][e.paidByUid]+=share;net[e.paidByUid][d.uid]-=share;}
+      });
+    }
+  });
+  const debts=[];const processed=new Set();
+  members.forEach(a=>members.forEach(b=>{
+    if(a.uid===b.uid)return;
+    const key=[a.uid,b.uid].sort().join('-');
+    if(processed.has(key))return;processed.add(key);
+    const owes=net[a.uid]?.[b.uid]||0;
+    if(Math.abs(owes)<0.01)return;
+    if(owes>0)debts.push({from:a,to:b,amount:owes});
+    else debts.push({from:b,to:a,amount:-owes});
+  }));
+  return{debts,monthly};
+}
+
+function updateBalances(expenses){
+  const now=new Date();
+  const{debts,monthly}=calcBalances(expenses);
+  const members=window._groupMembers||[];
+  const netPos={};members.forEach(m=>netPos[m.uid]=0);
+  debts.forEach(d=>{netPos[d.from.uid]-=d.amount;netPos[d.to.uid]+=d.amount;});
+  // render balance cards
+  const bm=document.getElementById('balanceMembers');
+  bm.innerHTML=members.map((m,i)=>{
+    const net=netPos[m.uid]||0;
+    return `<div class="balance-member">
+      <div class="bm-name">${(m.name||'').split(' ')[0]}</div>
+      <div class="bm-amount ${net>=0?'positive':'negative'}">$${Math.abs(net).toFixed(2)}</div>
+      <div class="bm-status">${Math.abs(net)<0.01?'✓'+t('statusOk'):net>0?'▲'+t('statusOwedTo'):'▼'+t('statusOwes')}</div>
+    </div>`;
+  }).join('');
+  const total=monthly.filter(e=>e.type!=='settle').reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
+  document.getElementById('totalMonth').textContent='$'+total.toFixed(2);
+  const mn=lang==='es'?months_es:months_en;
+  document.getElementById('balanceMonth').textContent=`${mn[now.getMonth()]} ${now.getFullYear()}`;
+  renderDebtSummary(debts);
+}
+
+function renderDebtSummary(debts){
+  const el=document.getElementById('debtSummary');if(!el)return;
+  if(debts.length===0){
+    el.innerHTML=`<div class="debt-card settled"><div style="font-size:28px">🎉</div><div class="debt-info"><div class="debt-text ok"><strong>${t('allClear')}</strong></div><div class="debt-sub">${t('allClearSub')}</div></div></div>`;return;
+  }
+  el.innerHTML=debts.map(d=>`
+    <div class="debt-card">
+      <div class="debt-avatar-row"><span class="debt-av">${getAvatar(d.from.name)}</span><span class="debt-arrow">→</span><span class="debt-av">${getAvatar(d.to.name)}</span></div>
+      <div class="debt-info">
+        <div class="debt-text"><strong>${(d.from.name||'').split(' ')[0]}</strong> ${lang==='es'?'le debe a':'owes'} <strong>${(d.to.name||'').split(' ')[0]}</strong></div>
+        <div class="debt-sub">${t('tapSettle')||'Tap Settle to clear'}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
+        <div class="debt-amount">$${d.amount.toFixed(2)}</div>
+        <button class="settle-quick-btn" onclick="quickSettle('${d.from.uid}','${d.to.uid}',${d.amount.toFixed(2)},'${(d.from.name||'').replace(/'/g,'')}',' ${(d.to.name||'').replace(/'/g,'')}')">${t('settleBtn')||'Settle'}</button>
+      </div>
+    </div>`).join('');
+}
+
+function renderDebtDetail(debts,expenses){
+  const{monthly}=calcBalances(expenses);
+  const members=window._groupMembers||[];
+  const paid={};const owedTotal={};
+  members.forEach(m=>{paid[m.uid]=0;owedTotal[m.uid]=0;});
+  monthly.filter(e=>e.type!=='settle').forEach(e=>{
+    const amt=parseFloat(e.amount)||0;
+    paid[e.paidByUid]=(paid[e.paidByUid]||0)+amt;
+    if(e.split==='all') members.forEach(m=>owedTotal[m.uid]=(owedTotal[m.uid]||0)+amt/members.length);
+    else if(e.split==='two'){
+      const p=e.splitWithUid||members.filter(m=>m.uid!==e.paidByUid)[0]?.uid;
+      const share=amt/2;
+      if(p)owedTotal[p]=(owedTotal[p]||0)+share;
+      owedTotal[e.paidByUid]=(owedTotal[e.paidByUid]||0)+share;
+    }
+  });
+  const el=document.getElementById('debtDetailContent');if(!el)return;
+  const memberRows=members.map(m=>{
+    const net=(paid[m.uid]||0)-(owedTotal[m.uid]||0);
+    return `<div class="detail-row">
+      <div class="detail-label">${getAvatar(m.name)} ${(m.name||'').split(' ')[0]}</div>
+      <div>
+        <div class="detail-value">${t('paidLabel')} $${(paid[m.uid]||0).toFixed(2)}</div>
+        <div class="detail-value" style="font-size:11px;color:var(--muted)">${t('owesLabel')} $${(owedTotal[m.uid]||0).toFixed(2)}</div>
+        <div class="detail-value ${net>=0?'pos':'neg'}">${net>=0?'▲':'▼'} $${Math.abs(net).toFixed(2)}</div>
+      </div></div>`;
+  }).join('');
+  const debtRows=debts.length===0
+    ?`<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">🎉 ${t('allClear')}</div>`
+    :debts.map(d=>`<div class="detail-row">
+      <div class="detail-label">${getAvatar(d.from.name)} <strong>${(d.from.name||'').split(' ')[0]}</strong> → ${getAvatar(d.to.name)} ${(d.to.name||'').split(' ')[0]}</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="detail-value neg">$${d.amount.toFixed(2)}</div>
+        <button class="settle-quick-btn" onclick="quickSettle('${d.from.uid}','${d.to.uid}',${d.amount.toFixed(2)},'${(d.from.name||'').replace(/'/g,'')}','${(d.to.name||'').replace(/'/g,'')}');closeModal('debtModal')">${t('settleBtn')||'Settle'}</button>
+      </div></div>`).join('');
+  el.innerHTML=`
+    <div style="margin-bottom:20px">
+      <div class="section-title" style="margin-bottom:12px">${t('debtByPerson')}</div>${memberRows}
+    </div>
+    <div>
+      <div class="section-title" style="margin-bottom:12px">${t('debtPending')}</div>${debtRows}
+    </div>`;
+}
+
+function openDebtDetail(){
+  const expenses=window._expenses||[];
+  const{debts}=calcBalances(expenses);
+  renderDebtDetail(debts,expenses);
+  openModal('debtModal');
+}
+
+async function quickSettle(fromUid,toUid,amount,fromName,toName){
+  if(!confirm(t('confirmSettle',fromName,toName,parseFloat(amount).toFixed(2))))return;
+  try{
+    await window._addDoc(window._col(window._db,`groups/${currentGroup.id}/expenses`),{
+      amount:parseFloat(amount),
+      description:t('settleDesc',fromName,toName),
+      paidBy:fromName,paidByUid:fromUid,
+      settledTo:toName,settledToUid:toUid,
+      createdAt:window._srvTs(),type:'settle',createdByUid:window._curUser?.uid
+    });
+    showToast(t('toastSettledZero'));
+    closeModal('debtModal');
+  }catch(e){showToast(t('errRegister'));}
+}
+
+async function addExpense(){
+  const amount=parseFloat(document.getElementById('inputAmount').value);
+  const desc=document.getElementById('inputDesc').value.trim();
+  if(!amount||amount<=0){showToast(t('errAmount'));return;}
+  if(!desc){showToast(t('errDesc'));return;}
+  if(!selectedPaidBy){showToast(t('errPaidBy'));return;}
+  if(selectedSplit==='two'&&!selectedWithWhom){showToast(t('errWithWhom'));return;}
+  const btn=document.getElementById('submitBtn');
+  btn.disabled=true;btn.textContent=t('saving');
+  const members=window._groupMembers||[];
+  const paidByMember=members.find(m=>m.uid===selectedPaidBy);
+  try{
+    await window._addDoc(window._col(window._db,`groups/${currentGroup.id}/expenses`),{
+      amount,description:desc,category:selectedCat,
+      paidBy:paidByMember?.name||'?',paidByUid:selectedPaidBy,
+      split:selectedSplit,
+      splitWith:selectedSplit==='two'?(members.find(m=>m.uid===selectedWithWhom)?.name||null):null,
+      splitWithUid:selectedSplit==='two'?selectedWithWhom:null,
+      createdByUid:window._curUser?.uid,createdAt:window._srvTs(),type:'expense'
+    });
+    closeModal('addModal');showToast(t('toastAdded'));resetForm();
+  }catch(e){showToast(t('errSave'));}
+  btn.disabled=false;btn.textContent=t('addBtn');
+}
+
+async function addSettle(){
+  const amount=parseFloat(document.getElementById('settleAmount').value);
+  const members=window._groupMembers||[];
+  const fromMember=members.find(m=>m.uid===settleFrom);
+  const toMember=members.find(m=>m.uid===settleTo);
+  if(!amount||amount<=0){showToast(t('errAmount'));return;}
+  if(!settleFrom){showToast(t('errFrom'));return;}
+  if(!settleTo){showToast(t('errTo'));return;}
+  if(settleFrom===settleTo){showToast(t('errDiff'));return;}
+  try{
+    await window._addDoc(window._col(window._db,`groups/${currentGroup.id}/expenses`),{
+      amount,description:t('settlePayDesc',fromMember?.name||'?',toMember?.name||'?'),
+      paidBy:fromMember?.name||'?',paidByUid:settleFrom,
+      settledTo:toMember?.name||'?',settledToUid:settleTo,
+      createdAt:window._srvTs(),type:'settle',createdByUid:window._curUser?.uid
+    });
+    closeModal('settleModal');showToast(t('toastSettle'));
+    document.getElementById('settleAmount').value='';
+    settleFrom=null;settleTo=null;
+    document.querySelectorAll('#settleFromGrid .paid-btn,#settleToGrid .paid-btn').forEach(b=>b.classList.remove('selected'));
+  }catch(e){showToast(t('errSave'));}
+}
+
+async function deleteExpensePrompt(id){
+  if(!confirm(t('confirmDelete')))return;
+  try{await window._delDoc(window._docRef(window._db,`groups/${currentGroup.id}/expenses`,id));showToast(t('toastDeleted'));}
+  catch(e){showToast(t('errDelete'));}
+}
+
+async function openMembersModal(){
+  // Reload fresh from Firestore
+  if(currentGroup){
+    try{
+      const uids = currentGroup.memberUids||[];
+      const emails = currentGroup.memberEmails||[];
+      const docs = await Promise.all(uids.map(uid=>window._getDoc(window._docRef(window._db,'users',uid))));
+      window._groupMembers = [];
+      docs.forEach((d,i)=>{
+        if(d.exists()){
+          const data = d.data();
+          data.uid = d.id;
+          window._groupMembers.push(data);
+        } else {
+          const email = emails[i]||'';
+          window._groupMembers.push({uid:uids[i], name:email?email.split('@')[0]:'Member', email});
+        }
+      });
+      console.log('Members modal:', window._groupMembers.map(m=>m.name));
+    }catch(e){ console.error('membersModal',e); }
+  }
+  const members=window._groupMembers||[];
+  const expenses=window._expenses||[];
+  const{debts}=calcBalances(expenses);
+  const netPos={};members.forEach(m=>netPos[m.uid]=0);
+  debts.forEach(d=>{netPos[d.from.uid]-=d.amount;netPos[d.to.uid]+=d.amount;});
+  const isMe = uid => uid === window._curUser?.uid;
+  const youLabel = lang==='es'?'tú':'you';
+  document.getElementById('membersList').innerHTML = members.length === 0
+    ? `<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">${lang==='es'?'Sin miembros aún':'No members yet'}</div>`
+    : members.map(m=>{
+      const net = netPos[m.uid]||0;
+      const netColor = Math.abs(net)<0.01?'var(--muted)':net>0?'var(--green)':'var(--red)';
+      const netText = Math.abs(net)<0.01?'✓ ok':net>0?'▲ +$'+net.toFixed(2):'▼ -$'+Math.abs(net).toFixed(2);
+      const avatar = getAvatar(m.name, m.uid);
+      const isEmoji = avatar && !avatar.startsWith('data:');
+      const avatarEl = isEmoji
+        ? `<div style="width:44px;height:44px;border-radius:50%;background:var(--cream);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">${avatar}</div>`
+        : avatar.startsWith('data:')
+          ? `<img src="${avatar}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0">`
+          : `<div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--orange),var(--green));display:flex;align-items:center;justify-content:center;font-family:'Nunito',sans-serif;font-size:18px;font-weight:900;color:white;flex-shrink:0">${(m.name||'?')[0].toUpperCase()}</div>`;
+      return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
+        ${avatarEl}
+        <div style="flex:1;min-width:0">
+          <div style="font-family:'Nunito',sans-serif;font-size:14px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:6px">
+            ${m.name||'?'}
+            ${isMe(m.uid)?`<span style="font-size:10px;background:var(--orange-light);color:var(--orange);border-radius:20px;padding:2px 8px;font-weight:700">${youLabel}</span>`:''}
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.email||''}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-family:'Nunito',sans-serif;font-size:14px;font-weight:900;color:${netColor}">${netText}</div>
+        </div>
+      </div>`;
+    }).join('');
+
+  // Update modal title with group name
+  document.querySelector('#membersModal .modal-title').textContent =
+    (currentGroup ? `👥 ${currentGroup.name}` : t('membersModalTitle'));
+
+  openModal('membersModal');
+}
+
+async function sendInviteEmail(){
+  const email=document.getElementById('inviteMoreEmail').value.trim();
+  if(!email.includes('@')){showToast(t('errEmail'));return;}
+  showToast(t('toastInviteSent'));
+  document.getElementById('inviteMoreEmail').value='';
+}
+
+function openStatsModal(){
+  const expenses=window._expenses||[];
+  const now=new Date();
+  const mn=lang==='es'?months_es:months_en;
+  document.getElementById('statsMonthLabel').textContent=mn[now.getMonth()];
+  const monthly=expenses.filter(e=>{
+    if(e.type==='settle')return false;
+    if(!e.createdAt?.toDate)return true;
+    const d=e.createdAt.toDate();
+    return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
+  });
+  const total=monthly.reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
+  document.getElementById('statsTotalAmt').textContent='$'+total.toFixed(2);
+  const members=window._groupMembers||[];
+  const memberTotals={};members.forEach(m=>memberTotals[m.uid]=0);
+  monthly.forEach(e=>{if(memberTotals[e.paidByUid]!==undefined)memberTotals[e.paidByUid]+=parseFloat(e.amount)||0;});
+  const maxMember=Math.max(...Object.values(memberTotals),1);
+  document.getElementById('memberBars').innerHTML=members.map((m,i)=>{
+    const amt=memberTotals[m.uid]||0;const pct=total>0?Math.round(amt/total*100):0;const bw=Math.round(amt/maxMember*100);
+    return `<div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="font-family:'Nunito',sans-serif;font-size:13px;font-weight:700">${getAvatar(m.name)} ${(m.name||'').split(' ')[0]}</div>
+        <div style="display:flex;gap:8px;align-items:center"><span style="font-size:11px;color:var(--muted)">${pct}%</span><span style="font-family:'Nunito',sans-serif;font-size:14px;font-weight:900">$${amt.toFixed(2)}</span></div>
+      </div>
+      <div class="bar-track"><div class="bar-fill c${i%5}" style="width:0" data-w="${bw}"></div></div>
+    </div>`;
+  }).join('');
+  const catTotals={};monthly.forEach(e=>{const c=e.category||'other';catTotals[c]=(catTotals[c]||0)+(parseFloat(e.amount)||0);});
+  const sortedCats=Object.entries(catTotals).sort((a,b)=>b[1]-a[1]);
+  const maxCat=sortedCats[0]?.[1]||1;
+  document.getElementById('categoryBars').innerHTML=sortedCats.length===0
+    ?`<div style="text-align:center;color:var(--muted);font-size:13px;padding:10px">${lang==='es'?'Sin datos':'No data'}</div>`
+    :sortedCats.map(([cat,amt])=>{
+      const pct=total>0?Math.round(amt/total*100):0;const bw=Math.round(amt/maxCat*100);
+      return `<div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+          <div style="font-size:12px;color:var(--text2)">${catEmojis[cat]||'📦'} ${t('cat'+cat.charAt(0).toUpperCase()+cat.slice(1))||cat}</div>
+          <div style="display:flex;gap:8px"><span style="font-size:11px;color:var(--muted)">${pct}%</span><span style="font-family:'Nunito',sans-serif;font-size:12px;font-weight:700">$${amt.toFixed(2)}</span></div>
+        </div>
+        <div class="bar-track"><div class="bar-fill cat" style="width:0" data-w="${bw}"></div></div>
+      </div>`;
+    }).join('');
+  const top5=[...monthly].sort((a,b)=>(parseFloat(b.amount)||0)-(parseFloat(a.amount)||0)).slice(0,5);
+  const rankCls=['gold','silver','bronze','',''];const rankEmoji=['🥇','🥈','🥉','4','5'];
+  document.getElementById('topExpenses').innerHTML=top5.length===0
+    ?`<div style="text-align:center;color:var(--muted);font-size:13px;padding:10px">${lang==='es'?'Sin gastos este mes':'No expenses this month'}</div>`
+    :top5.map((e,i)=>{
+      const paidName=(window._groupMembers||[]).find(m=>m.uid===e.paidByUid)?.name||e.paidBy||'?';
+      return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
+        <div style="font-family:'Nunito',sans-serif;font-size:18px;font-weight:900;color:var(--border);width:24px;text-align:center;flex-shrink:0" class="${rankCls[i]}">${rankEmoji[i]}</div>
+        <div style="flex:1"><div style="font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">${e.description}</div><div style="font-size:11px;color:var(--muted)">${(paidName).split(' ')[0]} · ${catEmojis[e.category]||'📦'}</div></div>
+        <div style="font-family:'Nunito',sans-serif;font-size:15px;font-weight:900;flex-shrink:0">$${parseFloat(e.amount).toFixed(2)}</div>
+      </div>`;
+    }).join('');
+  openModal('statsModal');
+  setTimeout(()=>document.querySelectorAll('.bar-fill').forEach(b=>b.style.width=b.dataset.w+'%'),100);
+}
+
+// ── AVATAR ──
+let userAvatar = null; // emoji string or base64 image
+
+function loadAvatar(){
+  const uid = window._curUser?.uid;
+  if(!uid) return;
+  const saved = localStorage.getItem('avatar_'+uid);
+  if(saved){ userAvatar = saved; applyAvatarEverywhere(saved); }
+}
+
+function saveAvatar(val){
+  const uid = window._curUser?.uid;
+  if(!uid) return;
+  userAvatar = val;
+  localStorage.setItem('avatar_'+uid, val);
+  applyAvatarEverywhere(val);
+  showToast(lang==='es'?'✅ Avatar guardado':'✅ Avatar saved');
+}
+
+function applyAvatarEverywhere(val){
+  const isEmoji = val && !val.startsWith('data:');
+  // header button
+  const circle = document.getElementById('userInitialCircle');
+  if(circle){
+    if(isEmoji){ circle.classList.remove('initials'); circle.textContent=val; circle.style.background='transparent'; circle.style.fontSize='22px'; }
+    else if(val){ circle.classList.remove('initials'); circle.innerHTML=`<img src="${val}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`; }
+    else{ circle.classList.add('initials'); circle.textContent=(window._curUser?.displayName||window._curUser?.email||'?')[0].toUpperCase(); circle.style.background=''; }
+  }
+  // profile big avatar
+  const big = document.getElementById('profileAvatarBig');
+  if(big){
+    if(isEmoji){ big.classList.remove('initials'); big.textContent=val; big.style.background='transparent'; big.style.fontSize='42px'; }
+    else if(val){ big.classList.remove('initials'); big.innerHTML=`<img src="${val}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`; }
+    else{ big.classList.add('initials'); big.textContent=(window._curUser?.displayName||window._curUser?.email||'?')[0].toUpperCase(); big.style.background=''; }
+  }
+  // update members avatars in balance card & expenses
+  renderAllAvatars();
+}
+
+function renderAllAvatars(){
+  // Re-render expenses and balances with updated avatars
+  if(window._expenses){ renderExpenses(window._expenses); updateBalances(window._expenses); }
+}
+
+function getAvatarForMember(uid, name){
+  const savedUid = uid === window._curUser?.uid ? window._curUser?.uid : null;
+  if(savedUid){
+    const saved = localStorage.getItem('avatar_'+savedUid);
+    if(saved) return saved;
+  }
+  // fallback to emoji based on name
+  const av=['👤','👩','👨','🧑','👦','👧'];
+  return av[(name||'?').charCodeAt(0)%av.length];
+}
+
+function renderAvatarEl(uid, name, size=28){
+  const val = getAvatarForMember(uid, name);
+  const isEmoji = val && !val.startsWith('data:');
+  if(isEmoji) return `<span style="font-size:${size}px;line-height:1">${val}</span>`;
+  if(val && val.startsWith('data:')) return `<img src="${val}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover">`;
+  const initial = (name||'?')[0].toUpperCase();
+  return `<span style="width:${size}px;height:${size}px;border-radius:50%;background:linear-gradient(135deg,var(--orange),var(--green));display:inline-flex;align-items:center;justify-content:center;font-family:'Nunito',sans-serif;font-size:${Math.round(size*0.45)}px;font-weight:900;color:white;flex-shrink:0">${initial}</span>`;
+}
+
+function selectAvatarEmoji(emoji){
+  document.querySelectorAll('.avatar-emoji-btn').forEach(b=>b.classList.toggle('selected', b.textContent===emoji));
+  saveAvatar(emoji);
+}
+
+function handleAvatarUpload(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  if(file.size > 500000){ showToast(lang==='es'?'⚠️ Imagen muy grande (max 500KB)':'⚠️ Image too large (max 500KB)'); return; }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    saveAvatar(ev.target.result);
+    document.querySelectorAll('.avatar-emoji-btn').forEach(b=>b.classList.remove('selected'));
+  };
+  reader.readAsDataURL(file);
+}
+
+
+// ── UI HELPERS ──
+function selectCat(el){document.querySelectorAll('.cat-pill').forEach(b=>b.classList.remove('selected'));el.classList.add('selected');selectedCat=el.dataset.cat;}
+function selectPaidBy(el){el.closest('.paid-grid').querySelectorAll('.paid-btn').forEach(b=>b.classList.remove('selected'));el.classList.add('selected');selectedPaidBy=el.dataset.uid;if(selectedSplit==='two')updateWithWhomGrid();}
+function selectSplit(el){
+  document.querySelectorAll('.split-btn').forEach(b=>b.classList.remove('selected'));
+  el.classList.add('selected');selectedSplit=el.dataset.split;
+  const g=document.getElementById('withWhomGroup');
+  if(selectedSplit==='two'){
+    g.style.display='block';
+    updateWithWhomGrid();
+    // If only 2 members total, auto-select the other person
+    const members=window._groupMembers||[];
+    const others=members.filter(m=>m.uid!==selectedPaidBy);
+    if(others.length===1){
+      selectedWithWhom=others[0].uid;
+      setTimeout(()=>{
+        const btn=document.querySelector('#withWhomGrid .paid-btn[data-uid="'+others[0].uid+'"]');
+        if(btn){btn.classList.add('selected');}
+      },50);
+    }
+  }else{g.style.display='none';selectedWithWhom=null;}
+}
+function selectWithWhom(el){document.getElementById('withWhomGrid').querySelectorAll('.paid-btn').forEach(b=>b.classList.remove('selected'));el.classList.add('selected');selectedWithWhom=el.dataset.uid;}
+function updateWithWhomGrid(){document.getElementById('withWhomGrid').querySelectorAll('.paid-btn').forEach(b=>{b.style.display=b.dataset.uid===selectedPaidBy?'none':'flex';b.classList.remove('selected');});selectedWithWhom=null;}
+function selectSettleFrom(el){el.closest('.paid-grid').querySelectorAll('.paid-btn').forEach(b=>b.classList.remove('selected'));el.classList.add('selected');settleFrom=el.dataset.uid;}
+function selectSettleTo(el){el.closest('.paid-grid').querySelectorAll('.paid-btn').forEach(b=>b.classList.remove('selected'));el.classList.add('selected');settleTo=el.dataset.uid;}
+
+function resetForm(){
+  document.getElementById('inputAmount').value='';document.getElementById('inputDesc').value='';
+  selectedCat='food';selectedSplit='all';selectedWithWhom=null;
+  const me=window._curUser?.uid;
+  document.querySelectorAll('.cat-pill').forEach((b,i)=>b.classList.toggle('selected',i===0));
+  document.querySelectorAll('#paidByGrid .paid-btn').forEach(b=>b.classList.toggle('selected',b.dataset.uid===me));
+  document.querySelectorAll('.split-btn').forEach((b,i)=>b.classList.toggle('selected',i===0));
+  document.getElementById('withWhomGroup').style.display='none';
+  selectedPaidBy=me;
+}
+
+function openModal(id='addModal'){document.getElementById(id).classList.add('show');}
+function closeModal(id){document.getElementById(id).classList.remove('show');}
+function closeOnOverlay(e,id){if(e.target===document.getElementById(id))closeModal(id);}
+function setTab(el){document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));el.classList.add('active');}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closeProfile(); });
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('/Spentshare/sw.js').catch(()=>{});
+  });
+}
+
+
+function openProfile(){
+  const user = window._curUser;
+  if(!user) return;
+  const name = user.displayName || user.email.split('@')[0];
+  document.getElementById('profileName').textContent = name;
+  document.getElementById('profileEmail').textContent = user.email;
+  document.getElementById('profileBtnEn').classList.toggle('active', lang==='en');
+  document.getElementById('profileBtnEs').classList.toggle('active', lang==='es');
+  // apply current avatar
+  applyAvatarEverywhere(userAvatar);
+  // highlight selected emoji
+  if(userAvatar && !userAvatar.startsWith('data:')){
+    document.querySelectorAll('.avatar-emoji-btn').forEach(b=>b.classList.toggle('selected', b.textContent===userAvatar));
+  }
+  // Show group code if inside a group
+  const groupSection = document.getElementById('profileGroupSection');
+  if(currentGroup){
+    groupSection.style.display = 'block';
+    document.getElementById('profileGroupCode').textContent = currentGroup.inviteCode || '--';
+    document.getElementById('profileGroupName').textContent = currentGroup.name || '—';
+  } else {
+    groupSection.style.display = 'none';
+  }
+  document.getElementById('profileModal').classList.add('show');
+}
+
+function closeProfile(){
+  document.getElementById('profileModal').classList.remove('show');
+}
+
+function setLangProfile(l){
+  setLang(l);
+  document.getElementById('profileBtnEn').classList.toggle('active', l==='en');
+  document.getElementById('profileBtnEs').classList.toggle('active', l==='es');
+}
+
+window.setLang=setLang;window.openProfile=openProfile;window.closeProfile=closeProfile;window.setLangProfile=setLangProfile;window.selectAvatarEmoji=selectAvatarEmoji;window.handleAvatarUpload=handleAvatarUpload;window.switchTab=switchTab;window.doLogin=doLogin;window.doRegister=doRegister;
+window.googleAuth=googleAuth;window.logoutUser=logoutUser;
+window.openCreateGroupModal=openCreateGroupModal;window.deleteGroup=deleteGroup;window.selEmoji=selEmoji;window.addChip=addChip;
+window.removeChip=removeChip;window.createGroup=createGroup;window.goToNewGroup=goToNewGroup;
+window.joinGroup=joinGroup;window.selectGroup=selectGroup;window.goToGroupPicker=goToGroupPicker;
+window.copyInviteCode=copyInviteCode;window.openModal=openModal;window.closeModal=closeModal;
+window.closeOnOverlay=closeOnOverlay;window.selectCat=selectCat;window.selectPaidBy=selectPaidBy;
+window.selectSplit=selectSplit;window.selectWithWhom=selectWithWhom;window.selectSettleFrom=selectSettleFrom;
+window.selectSettleTo=selectSettleTo;window.addExpense=addExpense;window.addSettle=addSettle;
+window.deleteExpensePrompt=deleteExpensePrompt;window.openDebtDetail=openDebtDetail;
+window.quickSettle=quickSettle;window.openStatsModal=openStatsModal;window.openMembersModal=openMembersModal;
+window.sendInviteEmail=sendInviteEmail;window.setTab=setTab;
+</script>
+
+<!-- PROFILE MODAL -->
+<div class="profile-overlay" id="profileModal">
+  <div class="profile-backdrop-click" onclick="closeProfile()"></div>
+  <div class="profile-dropdown">
+    <div class="profile-header">
+      <div class="avatar-preview-big initials" id="profileAvatarBig">?</div>
+      <div class="profile-name" id="profileName">—</div>
+      <div class="profile-email" id="profileEmail">—</div>
+    </div>
+    <div style="padding:4px 8px 4px">
+      <!-- Avatar picker -->
+      <div class="avatar-section-title" data-i18n="chooseAvatarLabel">Choose avatar</div>
+      <div class="avatar-picker-grid" id="avatarEmojiGrid">
+        <button class="avatar-emoji-btn" onclick="selectAvatarEmoji('😀')">😀</button>
+        <button class="avatar-emoji-btn" onclick="selectAvatarEmoji('😎')">😎</button>
+        <button class="avatar-emoji-btn" onclick="selectAvatarEmoji('🤩')">🤩</button>
+        <button class="avatar-emoji-btn" onclick="selectAvatarEmoji('🥸')">🥸</button>
+        <button class="avatar-emoji-btn" onclick="selectAvatarEmoji('🧑')">🧑</button>
+        <button class="avatar-emoji-btn" onclick="selectAvatarEmoji('👨')">👨</button>
+        <button class="avatar-emoji-btn" onclick="selectAvatarEmoji('👩')">👩</button>
+        <button class="avatar-emoji-btn" onclick="selectAvatarEmoji('🧔')">🧔</button>
+        <button class="avatar-emoji-btn" onclick="selectAvatarEmoji('👴')">👴</button>
+        <button class="avatar-emoji-btn" onclick="selectAvatarEmoji('👵')">👵</button>
+        <button class="avatar-emoji-btn" onclick="selectAvatarEmoji('🦸')">🦸</button>
+        <button class="avatar-emoji-btn" onclick="selectAvatarEmoji('🧙')">🧙</button>
+        <button class="avatar-emoji-btn" onclick="selectAvatarEmoji('🐱')">🐱</button>
+        <button class="avatar-emoji-btn" onclick="selectAvatarEmoji('🐶')">🐶</button>
+        <button class="avatar-emoji-btn" onclick="selectAvatarEmoji('🦊')">🦊</button>
+        <button class="avatar-emoji-btn" onclick="selectAvatarEmoji('🐻')">🐻</button>
+        <button class="avatar-emoji-btn" onclick="selectAvatarEmoji('🐼')">🐼</button>
+        <button class="avatar-emoji-btn" onclick="selectAvatarEmoji('🦁')">🦁</button>
+      </div>
+      <label class="avatar-upload-btn" for="avatarFileInput">
+        📷 <span data-i18n="uploadPhotoLabel">Upload photo</span>
+      </label>
+      <input type="file" id="avatarFileInput" accept="image/*" style="display:none" onchange="handleAvatarUpload(event)">
+      <div style="height:1px;background:var(--border);margin:12px 0"></div>
+      <!-- Language -->
+      <div class="avatar-section-title" data-i18n="languageLabel">Language</div>
+      <div class="profile-lang-row" style="margin-bottom:8px">
+        <button class="profile-lang-btn active" id="profileBtnEn" onclick="setLangProfile('en')">🇺🇸 English</button>
+        <button class="profile-lang-btn" id="profileBtnEs" onclick="setLangProfile('es')">🇲🇽 Español</button>
+      </div>
+      <div style="height:1px;background:var(--border);margin:10px 0"></div>
+      <!-- Group code -->
+      <div id="profileGroupSection" style="display:none;padding:0 2px 4px">
+        <div class="avatar-section-title" data-i18n="groupCodeLabel">Invite code</div>
+        <div style="background:var(--green-light);border:1px solid rgba(62,207,142,0.3);border-radius:14px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-family:'Nunito',sans-serif;font-size:22px;font-weight:900;color:var(--green);letter-spacing:5px" id="profileGroupCode">--</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px" id="profileGroupName">—</div>
+          </div>
+          <button onclick="copyInviteCode();showToast(t('toastCopied'))" style="background:var(--green);border:none;border-radius:10px;padding:8px 14px;color:white;font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;cursor:pointer;">📋</button>
+        </div>
+      </div>
+      <div style="height:1px;background:var(--border);margin:10px 0"></div>
+      <button class="profile-item danger" onclick="logoutUser();closeProfile()">
+        <div class="profile-item-icon" style="background:var(--red-light)">🚪</div>
+        <div class="profile-item-label" data-i18n="logoutBtn">Log out</div>
+      </button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
