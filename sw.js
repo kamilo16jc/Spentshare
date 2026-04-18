@@ -1,8 +1,30 @@
-const CACHE_NAME = 'spentshare-v1';
+const CACHE_NAME = 'spentshare-v2';
 const ASSETS = [
   '/Spentshare/',
   '/Spentshare/index.html',
   '/Spentshare/manifest.json',
+  '/Spentshare/css/base.css',
+  '/Spentshare/css/splash.css',
+  '/Spentshare/css/auth.css',
+  '/Spentshare/css/groups.css',
+  '/Spentshare/css/modals.css',
+  '/Spentshare/css/dashboard.css',
+  '/Spentshare/css/forms.css',
+  '/Spentshare/css/stats.css',
+  '/Spentshare/css/profile.css',
+  '/Spentshare/js/firebase.js',
+  '/Spentshare/js/state.js',
+  '/Spentshare/js/i18n.js',
+  '/Spentshare/js/ui.js',
+  '/Spentshare/js/auth.js',
+  '/Spentshare/js/avatar.js',
+  '/Spentshare/js/members.js',
+  '/Spentshare/js/groups.js',
+  '/Spentshare/js/expenses.js',
+  '/Spentshare/js/balances.js',
+  '/Spentshare/js/stats.js',
+  '/Spentshare/js/profile.js',
+  '/Spentshare/js/app.js',
   'https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;900&family=Nunito+Sans:wght@300;400;600&display=swap'
 ];
 

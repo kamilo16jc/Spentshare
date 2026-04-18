@@ -1,0 +1,35 @@
+#authScreen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:900;opacity:0;transform:translateY(20px);transition:opacity 0.7s ease 0.2s,transform 0.7s ease 0.2s;pointer-events:none;background:var(--cream);}
+#authScreen.show{opacity:1;transform:translateY(0);pointer-events:all;}
+#authScreen.hide{opacity:0;transform:scale(0.97);pointer-events:none;}
+.auth-card{background:white;border-radius:28px;padding:40px 36px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.08);position:relative;overflow:hidden;margin:20px;max-height:92vh;overflow-y:auto;}
+.card-accent{position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,var(--orange),var(--green),var(--blue));}
+.card-logo{display:flex;align-items:center;gap:10px;margin-bottom:24px;}
+.mini-coin{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--orange),#f7931e);display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 4px 12px rgba(255,107,53,0.3);flex-shrink:0;}
+.mini-name{font-family:'Nunito',sans-serif;font-size:22px;font-weight:900;color:var(--text);}
+.mini-name span{color:var(--orange);}
+.auth-tabs{display:flex;background:var(--cream);border-radius:14px;padding:4px;margin-bottom:24px;gap:4px;}
+.auth-tab{flex:1;padding:10px;border:none;background:transparent;border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;transition:all 0.2s;}
+.auth-tab.active{background:white;color:var(--orange);box-shadow:0 2px 8px rgba(0,0,0,0.08);}
+.lang-toggle{display:flex;background:var(--cream);border-radius:12px;padding:4px;margin-bottom:20px;width:fit-content;gap:2px;}
+.lang-btn{padding:6px 16px;border:none;background:transparent;border-radius:9px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;transition:all 0.2s;letter-spacing:0.5px;}
+.lang-btn.active{background:white;color:var(--orange);box-shadow:0 2px 8px rgba(0,0,0,0.08);}
+.welcome-title{font-family:'Nunito',sans-serif;font-size:22px;font-weight:900;color:var(--text);margin-bottom:4px;}
+.welcome-sub{font-size:13px;color:var(--muted);margin-bottom:20px;}
+.google-btn{width:100%;padding:13px;border:2px solid var(--border);border-radius:14px;background:white;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;color:var(--text);transition:all 0.2s;margin-bottom:14px;}
+.google-btn:hover{border-color:var(--blue);background:var(--blue-light);}
+.divider{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border);}
+.divider span{font-size:12px;color:var(--muted);}
+.form-group{margin-bottom:14px;}
+.form-label{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;display:block;}
+.form-input{width:100%;padding:12px 14px;border:2px solid var(--border);border-radius:14px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:600;color:var(--text);background:white;outline:none;transition:border-color 0.2s;}
+.form-input:focus{border-color:var(--orange);box-shadow:0 0 0 4px rgba(255,107,53,0.08);}
+.form-input::placeholder{color:#ccc;font-weight:400;}
+.auth-btn{width:100%;padding:15px;background:linear-gradient(135deg,var(--orange),#f7931e);border:none;border-radius:16px;font-family:'Nunito',sans-serif;font-size:16px;font-weight:900;color:white;cursor:pointer;box-shadow:0 8px 24px rgba(255,107,53,0.35);transition:all 0.2s;margin-top:6px;}
+.auth-btn:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(255,107,53,0.45);}
+.auth-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none;}
+.success-overlay{position:absolute;inset:0;background:linear-gradient(135deg,var(--orange),var(--green));border-radius:28px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;opacity:0;pointer-events:none;transition:opacity 0.4s;}
+.success-overlay.show{opacity:1;pointer-events:all;}
+@keyframes popBig{from{transform:scale(0);}to{transform:scale(1);}}
+@keyframes shake{0%,100%{transform:translateX(0);}20%{transform:translateX(-8px);}40%{transform:translateX(8px);}60%{transform:translateX(-6px);}80%{transform:translateX(6px);}}
+.shake{animation:shake 0.4s ease;}

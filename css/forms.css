@@ -1,0 +1,25 @@
+.cat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.cat-pill{padding:10px 6px;border:2px solid var(--border);border-radius:12px;background:white;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all 0.15s;}
+.cat-pill:hover,.cat-pill.selected{border-color:var(--orange);background:var(--orange-light);}
+.cat-emoji{font-size:22px;}
+.cat-name{font-size:10px;font-weight:700;color:var(--text2);}
+.paid-grid{display:flex;gap:8px;flex-wrap:wrap;}
+.paid-btn{flex:1;min-width:60px;padding:10px 6px;border:2px solid var(--border);border-radius:14px;background:white;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all 0.15s;}
+.paid-btn:hover,.paid-btn.selected{border-color:var(--blue);background:var(--blue-light);}
+.paid-btn .paid-avatar{font-size:20px;}
+.paid-btn .paid-name{font-size:11px;font-weight:700;color:var(--text);text-align:center;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.split-grid{display:flex;gap:8px;}
+.split-btn{flex:1;padding:10px;border:2px solid var(--border);border-radius:12px;background:white;cursor:pointer;font-size:11px;font-weight:700;color:var(--text2);font-family:'Nunito',sans-serif;transition:all 0.15s;display:flex;flex-direction:column;align-items:center;gap:2px;}
+.split-btn .split-emoji{font-size:18px;}
+.split-btn:hover,.split-btn.selected{border-color:var(--green);background:var(--green-light);color:#1a7a52;}
+.submit-btn-form{width:100%;padding:15px;background:linear-gradient(135deg,var(--orange),#f7931e);border:none;border-radius:16px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:900;color:white;cursor:pointer;box-shadow:0 8px 24px rgba(255,107,53,0.35);transition:all 0.2s;margin-top:8px;}
+.submit-btn-form:hover{transform:translateY(-2px);}
+.submit-btn-form:disabled{opacity:0.5;cursor:not-allowed;transform:none;}
+.detail-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);}
+.detail-row:last-child{border-bottom:none;}
+.detail-label{font-size:13px;color:var(--text2);}
+.detail-value{font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;color:var(--text);}
+.detail-value.pos{color:var(--green);}
+.detail-value.neg{color:var(--red);}
+.member-row-m{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+.member-row-m:last-child{border:none;}

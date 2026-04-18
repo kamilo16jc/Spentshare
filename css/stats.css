@@ -1,0 +1,8 @@
+.bar-track{background:var(--border);border-radius:50px;height:12px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:50px;transition:width 0.8s cubic-bezier(0.34,1.2,0.64,1);width:0;}
+.bar-fill.c0{background:linear-gradient(90deg,var(--orange),#f7931e);}
+.bar-fill.c1{background:linear-gradient(90deg,var(--blue),#60a5fa);}
+.bar-fill.c2{background:linear-gradient(90deg,var(--green),#34d399);}
+.bar-fill.c3{background:linear-gradient(90deg,#a78bfa,#818cf8);}
+.bar-fill.c4{background:linear-gradient(90deg,#f59e0b,#fbbf24);}
+.bar-fill.cat{background:linear-gradient(90deg,#a78bfa,#818cf8);}
