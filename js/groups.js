@@ -151,6 +151,15 @@ async function createGroup(){
     document.getElementById('groupInviteCode').textContent=code;
     document.getElementById('newGroupCodeBox').style.display='block';
     showToast(t('toastGroupCreated'));
+    // Fire-and-forget invitations to chip emails
+    if(inviteEmails.length>0 && window._callFn){
+      Promise.allSettled(inviteEmails.map(em =>
+        window._callFn('sendGroupInvite', { groupId: ref.id, toEmail: em })
+      )).then(results => {
+        const sent = results.filter(r => r.status==='fulfilled' && r.value?.data?.ok).length;
+        if(sent>0) showToast(lang==='es'?`📧 ${sent} invitación(es) enviada(s)`:`📧 ${sent} invite(s) sent`);
+      });
+    }
   }catch(e){showToast(t('errSave'));}
   btn.disabled=false;btn.textContent=t('createGroupBtn');
 }

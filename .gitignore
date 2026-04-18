@@ -1,1 +1,5 @@
 .claude/
+functions/node_modules/
+functions/package-lock.json
+*.log
+.firebase/

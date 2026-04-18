@@ -1,6 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, doc, deleteDoc, getDocs, setDoc, getDoc, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, updateProfile } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js";
 
 const app = initializeApp({
   apiKey:"AIzaSyB-KQnjwvoRvUciDDFR5eHOjwGZbh8DBZI",
@@ -13,7 +14,10 @@ const app = initializeApp({
 
 const db = getFirestore(app);
 const auth = getAuth(app);
+const functions = getFunctions(app, 'us-east1');
 const gProvider = new GoogleAuthProvider();
+
+window._callFn = (name, data) => httpsCallable(functions, name)(data);
 
 window._db=db; window._auth=auth;
 window._addDoc=addDoc; window._col=collection; window._srvTs=serverTimestamp;

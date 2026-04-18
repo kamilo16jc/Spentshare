@@ -1,4 +1,4 @@
-const CACHE_NAME = 'spentshare-v2';
+const CACHE_NAME = 'spentshare-v3';
 const ASSETS = [
   '/Spentshare/',
   '/Spentshare/index.html',

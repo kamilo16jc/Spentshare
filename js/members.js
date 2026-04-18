@@ -76,4 +76,33 @@ async function openMembersModal(){
   openModal('membersModal');
 }
 
-function sendInviteEmail(){ showToast(lang==='es'?'📧 Comparte el código manualmente':'📧 Share the code manually'); }
+async function sendInviteEmail(){
+  const inp = document.getElementById('inviteMoreEmail');
+  const email = (inp?.value || '').trim();
+  if(!email.includes('@')){
+    showToast(lang==='es'?'⚠️ Email inválido':'⚠️ Invalid email');
+    return;
+  }
+  if(!currentGroup?.id){
+    showToast(lang==='es'?'⚠️ Abre un grupo primero':'⚠️ Open a group first');
+    return;
+  }
+  const btn = document.querySelector('#membersModal button[onclick*="sendInviteEmail"]');
+  if(btn){ btn.disabled=true; btn.textContent=lang==='es'?'Enviando...':'Sending...'; }
+  try{
+    const res = await window._callFn('sendGroupInvite', { groupId: currentGroup.id, toEmail: email });
+    if(res?.data?.ok){
+      showToast(t('toastInviteSent'));
+      inp.value='';
+    } else if(res?.data?.reason === 'already-member'){
+      showToast(lang==='es'?'✅ Ya es miembro del grupo':'✅ Already a member');
+      inp.value='';
+    } else {
+      showToast(lang==='es'?'❌ No se pudo enviar':'❌ Could not send');
+    }
+  }catch(e){
+    console.error('sendInviteEmail', e);
+    showToast(lang==='es'?'❌ Error enviando invitación':'❌ Error sending invite');
+  }
+  if(btn){ btn.disabled=false; btn.textContent=t('sendInviteBtn'); }
+}
