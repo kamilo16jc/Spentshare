@@ -45,9 +45,9 @@ function renderExpenses(expenses){
         </div>
       </div>
       <div>
-        <div class="expense-amount">$${parseFloat(e.amount).toFixed(2)}</div>
+        <div class="expense-amount">${fmt(e.amount)}</div>
         ${isSettle?`<div class="expense-split green">${t('paidLabel')} ✓</div>`:
-          `<div class="expense-split">${e.split==='all'?'$'+(e.amount/n).toFixed(2)+t('perPerson'):e.split==='two'?'$'+(e.amount/2).toFixed(2)+t('perPerson'):e.split==='full'?'$'+parseFloat(e.amount).toFixed(2)+t('perPerson'):t('solo')}</div>`}
+          `<div class="expense-split">${e.split==='all'?fmt(e.amount/n)+t('perPerson'):e.split==='two'?fmt(e.amount/2)+t('perPerson'):e.split==='full'?fmt(e.amount)+t('perPerson'):t('solo')}</div>`}
       </div></div>`;
   }).join('');
 }

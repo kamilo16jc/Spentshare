@@ -34,6 +34,20 @@ const CAT_EMOJI = {
 
 const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
+const CURRENCIES = {
+  USD: { symbol: '$', decimals: 2, thousandsSep: ',', decimalSep: '.' },
+  COP: { symbol: '$', decimals: 0, thousandsSep: '.', decimalSep: ',' },
+};
+
+function fmtMoney(amount, code) {
+  const c = CURRENCIES[code] || CURRENCIES.USD;
+  const n = Math.abs(Number(amount) || 0);
+  const fixed = n.toFixed(c.decimals);
+  const [intPart, decPart] = fixed.split('.');
+  const intFmt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, c.thousandsSep);
+  return c.symbol + intFmt + (decPart ? c.decimalSep + decPart : '');
+}
+
 async function getGroupRecipients(groupId, excludeUid) {
   const groupSnap = await db.doc(`groups/${groupId}`).get();
   if (!groupSnap.exists) return { group: null, recipients: [] };
@@ -49,11 +63,11 @@ async function getGroupRecipients(groupId, excludeUid) {
   return { group, recipients };
 }
 
-function splitLabel(split, amount, memberCount) {
+function splitLabel(split, amount, memberCount, currency) {
   const n = Math.max(memberCount, 1);
-  if (split === 'all')   return `$${(amount/n).toFixed(2)} por persona`;
-  if (split === 'two')   return `$${(amount/2).toFixed(2)} entre dos`;
-  if (split === 'full')  return `$${amount.toFixed(2)} — me deben el total`;
+  if (split === 'all')   return `${fmtMoney(amount/n, currency)} por persona`;
+  if (split === 'two')   return `${fmtMoney(amount/2, currency)} entre dos`;
+  if (split === 'full')  return `${fmtMoney(amount, currency)} — me deben el total`;
   if (split === 'solo')  return 'Solo yo';
   return '';
 }
@@ -102,9 +116,11 @@ exports.onExpenseCreate = onDocumentCreated(
       : `${catEmoji} ${paidBy} agregó un gasto en ${group.name}`;
 
     const memberCount = (group.memberUids || []).length;
+    const currency = group.currency || 'USD';
+    const amtFmt = fmtMoney(amount, currency);
     const splitTxt = isSettle
       ? `Pago saldando deuda con ${data.settledTo || ''}`
-      : splitLabel(data.split, amount, memberCount);
+      : splitLabel(data.split, amount, memberCount, currency);
 
     const html = baseEmailShell(`
       <div style="font-size:13px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">
@@ -112,7 +128,7 @@ exports.onExpenseCreate = onDocumentCreated(
       </div>
       <div style="font-size:22px;font-weight:900;margin-bottom:18px">${group.emoji || '🏠'} ${group.name}</div>
       <div style="background:#fff5f0;border-radius:14px;padding:20px;margin-bottom:18px;border-left:4px solid #ff6b35">
-        <div style="font-size:30px;font-weight:900;color:#ff6b35">$${amount.toFixed(2)}</div>
+        <div style="font-size:30px;font-weight:900;color:#ff6b35">${amtFmt} <span style="font-size:13px;color:#888;font-weight:600">${currency}</span></div>
         <div style="font-size:15px;margin-top:6px">${catEmoji} ${data.description || ''}</div>
         <div style="font-size:13px;color:#555;margin-top:10px">
           <strong>Pagó:</strong> ${paidBy}<br>
@@ -125,8 +141,8 @@ exports.onExpenseCreate = onDocumentCreated(
     `);
 
     const text = isSettle
-      ? `${paidBy} registró un pago de $${amount.toFixed(2)} en ${group.name}. Abre https://spentshare.com`
-      : `${paidBy} agregó "${data.description}" ($${amount.toFixed(2)}) en ${group.name}. ${splitTxt}. Abre https://spentshare.com`;
+      ? `${paidBy} registró un pago de ${amtFmt} ${currency} en ${group.name}. Abre https://spentshare.com`
+      : `${paidBy} agregó "${data.description}" (${amtFmt} ${currency}) en ${group.name}. ${splitTxt}. Abre https://spentshare.com`;
 
     try {
       await resend.emails.send({
@@ -161,6 +177,8 @@ exports.onExpenseDelete = onDocumentDeleted(
     const catEmoji = CAT_EMOJI[data.category] || '📦';
     const paidBy = data.paidBy || 'Alguien';
     const isSettle = data.type === 'settle';
+    const currency = group.currency || 'USD';
+    const amtFmt = fmtMoney(amount, currency);
 
     const subject = `🗑️ Se eliminó un ${isSettle ? 'pago' : 'gasto'} en ${group.name}`;
 
@@ -170,7 +188,7 @@ exports.onExpenseDelete = onDocumentDeleted(
       </div>
       <div style="font-size:22px;font-weight:900;margin-bottom:18px">${group.emoji || '🏠'} ${group.name}</div>
       <div style="background:#fff5f5;border-radius:14px;padding:20px;margin-bottom:18px;border-left:4px solid #f56565">
-        <div style="font-size:24px;font-weight:900;color:#f56565;text-decoration:line-through">$${amount.toFixed(2)}</div>
+        <div style="font-size:24px;font-weight:900;color:#f56565;text-decoration:line-through">${amtFmt} <span style="font-size:12px;color:#888;font-weight:600">${currency}</span></div>
         <div style="font-size:14px;margin-top:6px">${catEmoji} ${data.description || ''}</div>
         <div style="font-size:13px;color:#555;margin-top:10px">
           <strong>Había pagado:</strong> ${paidBy}
@@ -185,7 +203,7 @@ exports.onExpenseDelete = onDocumentDeleted(
       </a>
     `);
 
-    const text = `Se eliminó "${data.description}" ($${amount.toFixed(2)}) de ${group.name}. Las deudas se recalcularon.`;
+    const text = `Se eliminó "${data.description}" (${amtFmt} ${currency}) de ${group.name}. Las deudas se recalcularon.`;
 
     try {
       await resend.emails.send({
@@ -206,6 +224,8 @@ exports.onExpenseDelete = onDocumentDeleted(
 // PDF generation (in-memory buffer)
 // ───────────────────────────────────────────────────────────
 function buildMonthlyPdf({ group, members, expenses, monthLabel, totals, catTotals, debts }) {
+  const currency = group.currency || 'USD';
+  const fm = (n) => fmtMoney(n, currency);
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'LETTER', margin: 50 });
     const chunks = [];
@@ -216,13 +236,13 @@ function buildMonthlyPdf({ group, members, expenses, monthLabel, totals, catTota
     // Header
     doc.fillColor('#ff6b35').fontSize(28).text('SpentShare', { continued: false });
     doc.fillColor('#1a1a2e').fontSize(14).text(`${group.emoji || '🏠'} ${group.name}`);
-    doc.fontSize(11).fillColor('#888').text(`Resumen mensual — ${monthLabel}`);
+    doc.fontSize(11).fillColor('#888').text(`Resumen mensual — ${monthLabel} · Moneda: ${currency}`);
     doc.moveDown(1);
 
     // Total
     const total = expenses.filter(e => e.type !== 'settle').reduce((s, e) => s + Number(e.amount || 0), 0);
     doc.fillColor('#1a1a2e').fontSize(12).text('Total del mes', { continued: false });
-    doc.fillColor('#ff6b35').fontSize(24).text(`$${total.toFixed(2)}`);
+    doc.fillColor('#ff6b35').fontSize(24).text(`${fm(total)} ${currency}`);
     doc.moveDown(0.5);
     doc.fillColor('#555').fontSize(10).text(`${expenses.length} movimientos registrados`);
     doc.moveDown(1);
@@ -234,7 +254,7 @@ function buildMonthlyPdf({ group, members, expenses, monthLabel, totals, catTota
     members.forEach(m => {
       const paid = totals[m.uid] || 0;
       doc.fillColor('#1a1a2e').text(`${m.name || '?'}`, { continued: true });
-      doc.fillColor('#555').text(`    $${paid.toFixed(2)}`, { align: 'left' });
+      doc.fillColor('#555').text(`    ${fm(paid)}`, { align: 'left' });
     });
     doc.moveDown(1);
 
@@ -249,7 +269,7 @@ function buildMonthlyPdf({ group, members, expenses, monthLabel, totals, catTota
       sortedCats.forEach(([cat, amt]) => {
         const pct = total > 0 ? Math.round((amt / total) * 100) : 0;
         doc.fillColor('#1a1a2e').text(`${CAT_EMOJI[cat] || '📦'}  ${cat}`, { continued: true });
-        doc.fillColor('#555').text(`    $${amt.toFixed(2)} (${pct}%)`);
+        doc.fillColor('#555').text(`    ${fm(amt)} (${pct}%)`);
       });
     }
     doc.moveDown(1);
@@ -266,7 +286,7 @@ function buildMonthlyPdf({ group, members, expenses, monthLabel, totals, catTota
           `${d.from.name || '?'}  →  ${d.to.name || '?'}`,
           { continued: true }
         );
-        doc.fillColor('#f56565').text(`    $${d.amount.toFixed(2)}`);
+        doc.fillColor('#f56565').text(`    ${fm(d.amount)}`);
       });
     }
     doc.moveDown(1);
@@ -285,7 +305,7 @@ function buildMonthlyPdf({ group, members, expenses, monthLabel, totals, catTota
           `${i + 1}. ${e.description || ''}`,
           { continued: true }
         );
-        doc.fillColor('#555').text(`    $${Number(e.amount || 0).toFixed(2)}`);
+        doc.fillColor('#555').text(`    ${fm(Number(e.amount || 0))}`);
       });
     }
 
@@ -495,6 +515,8 @@ exports.monthlySummary = onSchedule(
         if (recipients.length === 0) continue;
 
         const total = expenses.filter(e => e.type !== 'settle').reduce((s, e) => s + Number(e.amount || 0), 0);
+        const currency = group.currency || 'USD';
+        const totalFmt = fmtMoney(total, currency);
 
         const html = baseEmailShell(`
           <div style="font-size:13px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">
@@ -504,7 +526,7 @@ exports.monthlySummary = onSchedule(
           <div style="font-size:14px;color:#555;margin-bottom:20px">${monthLabel}</div>
           <div style="background:#f0fdf8;border-radius:14px;padding:20px;margin-bottom:18px;border-left:4px solid #3ecf8e">
             <div style="font-size:13px;color:#555">Total del mes</div>
-            <div style="font-size:30px;font-weight:900;color:#1a1a2e">$${total.toFixed(2)}</div>
+            <div style="font-size:30px;font-weight:900;color:#1a1a2e">${totalFmt} <span style="font-size:13px;color:#888;font-weight:600">${currency}</span></div>
             <div style="font-size:13px;color:#555;margin-top:6px">${expenses.length} movimientos</div>
           </div>
           <div style="font-size:13px;color:#555;line-height:1.6">
@@ -521,7 +543,7 @@ exports.monthlySummary = onSchedule(
           to: recipients,
           subject: `📈 Resumen de ${group.name} — ${monthLabel}`,
           html,
-          text: `Resumen mensual de ${group.name} (${monthLabel}). Total: $${total.toFixed(2)}. PDF adjunto.`,
+          text: `Resumen mensual de ${group.name} (${monthLabel}). Total: ${totalFmt} ${currency}. PDF adjunto.`,
           reply_to: 'noreply@spentshare.com',
           attachments: [
             {

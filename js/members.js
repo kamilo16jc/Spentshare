@@ -47,7 +47,7 @@ async function openMembersModal(){
     : members.map(m=>{
       const net = netPos[m.uid]||0;
       const netColor = Math.abs(net)<0.01?'var(--muted)':net>0?'var(--green)':'var(--red)';
-      const netText = Math.abs(net)<0.01?'✓ ok':net>0?'▲ +$'+net.toFixed(2):'▼ -$'+Math.abs(net).toFixed(2);
+      const netText = Math.abs(net)<0.01?'✓ ok':net>0?'▲ +'+fmt(net):'▼ -'+fmt(Math.abs(net));
       const avatar = getAvatar(m.name, m.uid);
       const isEmoji = avatar && !avatar.startsWith('data:');
       const avatarEl = isEmoji

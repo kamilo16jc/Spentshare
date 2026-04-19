@@ -86,6 +86,10 @@ async function selectGroup(gid){
   document.getElementById('headerGroupEmoji').textContent=grp.emoji||'🏠';
   document.getElementById('headerGroupName').textContent=grp.name;
   document.getElementById('groupInviteCode').textContent=grp.inviteCode||'--';
+  // Legacy group without currency → ask once
+  if(!currentGroup.currency && typeof promptGroupCurrency==='function'){
+    await promptGroupCurrency(gid);
+  }
   const gs=document.getElementById('groupScreen');
   gs.classList.add('hide');
   setTimeout(()=>{gs.style.display='none';gs.classList.remove('show','hide');finalizeDashboard(); initSwipeModals(); loadGroupMemberAvatars();},400);
@@ -109,6 +113,7 @@ function openCreateGroupModal(){
   document.getElementById('inviteChips').innerHTML='';
   inviteEmails=[];selEmoji_='🏠';
   document.querySelectorAll('.emoji-btn').forEach((b,i)=>b.classList.toggle('selected',i===0));
+  if(typeof resetNewGroupCurrency==='function') resetNewGroupCurrency();
   openModal('createGroupModal');
 }
 
@@ -139,13 +144,14 @@ async function createGroup(){
   try{
     const uid=window._curUser.uid;
     const code=generateCode();
+    const currency = (typeof getNewGroupCurrency==='function') ? getNewGroupCurrency() : 'USD';
     const ref=await window._addDoc(window._col(window._db,'groups'),{
       name,emoji:selEmoji_,memberUids:[uid],
       memberEmails:[window._curUser.email],
-      inviteCode:code,createdBy:uid,createdAt:window._srvTs()
+      inviteCode:code,currency,createdBy:uid,createdAt:window._srvTs()
     });
     newlyCreatedGroupId=ref.id;
-    userGroups.push({id:ref.id,name,emoji:selEmoji_,memberUids:[uid],memberEmails:[window._curUser.email],inviteCode:code});
+    userGroups.push({id:ref.id,name,emoji:selEmoji_,memberUids:[uid],memberEmails:[window._curUser.email],inviteCode:code,currency});
     renderGroupList();
     document.getElementById('newGroupCode').textContent=code;
     document.getElementById('groupInviteCode').textContent=code;

@@ -11,6 +11,9 @@ setTimeout(()=>{
 Object.assign(window,{
   // i18n / ui
   setLang, t, openModal, closeModal, closeOnOverlay, showToast, setTab, initSwipeModals,
+  // currency
+  fmt, gCur, getCurrency, selectNewGroupCurrency, getNewGroupCurrency,
+  resetNewGroupCurrency, promptGroupCurrency,
   // auth
   switchTab, doLogin, doRegister, googleAuth, logoutUser,
   // groups

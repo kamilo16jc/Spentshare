@@ -1,5 +1,7 @@
 .claude/
 functions/node_modules/
 functions/package-lock.json
+functions/preview-pdf.js
+functions/preview-sample.pdf
 *.log
 .firebase/

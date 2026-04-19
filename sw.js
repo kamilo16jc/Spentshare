@@ -1,4 +1,4 @@
-const CACHE_NAME = 'spentshare-v3';
+const CACHE_NAME = 'spentshare-v4';
 const ASSETS = [
   '/Spentshare/',
   '/Spentshare/index.html',
@@ -16,6 +16,7 @@ const ASSETS = [
   '/Spentshare/js/state.js',
   '/Spentshare/js/i18n.js',
   '/Spentshare/js/ui.js',
+  '/Spentshare/js/currency.js',
   '/Spentshare/js/auth.js',
   '/Spentshare/js/avatar.js',
   '/Spentshare/js/members.js',

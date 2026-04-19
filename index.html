@@ -126,6 +126,19 @@
       </div>
     </div>
     <div class="form-group">
+      <label class="form-label" data-i18n="currencyLabel">Currency</label>
+      <div class="currency-grid">
+        <button class="currency-pick-btn selected" data-cur="USD" onclick="selectNewGroupCurrency('USD')">
+          <span class="currency-flag">🇺🇸</span>
+          <span class="currency-txt">USD<br><small>Dólar</small></span>
+        </button>
+        <button class="currency-pick-btn" data-cur="COP" onclick="selectNewGroupCurrency('COP')">
+          <span class="currency-flag">🇨🇴</span>
+          <span class="currency-txt">COP<br><small>Peso colombiano</small></span>
+        </button>
+      </div>
+    </div>
+    <div class="form-group">
       <label class="form-label" data-i18n="inviteEmailsLabel">Invite members (optional)</label>
       <input class="form-input" type="email" id="inviteEmailInput" placeholder="friend@email.com" onkeydown="if(event.key==='Enter'||event.key===','){event.preventDefault();addChip();}">
       <div class="chips-area" id="inviteChips"></div>
@@ -299,6 +312,24 @@
   </div>
 </div>
 
+<!-- CURRENCY PICKER MODAL (for legacy groups without currency) -->
+<div class="modal-overlay" id="currencyPickerModal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-title" data-i18n="currencyPickerTitle">💱 Choose group currency</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:18px" data-i18n="currencyPickerSub">This group doesn't have a currency set yet. Pick one — all amounts will be displayed in this currency.</div>
+    <div class="currency-grid" style="margin-bottom:10px">
+      <button class="currency-pick-btn" id="currencyPickerUsd" style="padding:16px">
+        <span class="currency-flag" style="font-size:32px">🇺🇸</span>
+        <span class="currency-txt"><strong>USD</strong><br><small>Dólar americano</small></span>
+      </button>
+      <button class="currency-pick-btn" id="currencyPickerCop" style="padding:16px">
+        <span class="currency-flag" style="font-size:32px">🇨🇴</span>
+        <span class="currency-txt"><strong>COP</strong><br><small>Peso colombiano</small></span>
+      </button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <!-- PROFILE MODAL -->
@@ -382,6 +413,7 @@
 <script src="js/state.js"></script>
 <script src="js/i18n.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/currency.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/avatar.js"></script>
 <script src="js/members.js"></script>

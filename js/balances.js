@@ -55,12 +55,12 @@ function updateBalances(expenses){
     const net=netPos[m.uid]||0;
     return `<div class="balance-member">
       <div class="bm-name">${(m.name||'').split(' ')[0]}</div>
-      <div class="bm-amount ${net>=0?'positive':'negative'}">$${Math.abs(net).toFixed(2)}</div>
+      <div class="bm-amount ${net>=0?'positive':'negative'}">${fmt(Math.abs(net))}</div>
       <div class="bm-status">${Math.abs(net)<0.01?'✓'+t('statusOk'):net>0?'▲'+t('statusOwedTo'):'▼'+t('statusOwes')}</div>
     </div>`;
   }).join('');
   const total=monthly.filter(e=>e.type!=='settle').reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
-  document.getElementById('totalMonth').textContent='$'+total.toFixed(2);
+  document.getElementById('totalMonth').textContent=fmt(total);
   const mn=lang==='es'?months_es:months_en;
   document.getElementById('balanceMonth').textContent=`${mn[now.getMonth()]} ${now.getFullYear()}`;
   renderDebtSummary(debts);
@@ -79,7 +79,7 @@ function renderDebtSummary(debts){
         <div class="debt-sub">${t('tapSettle')||'Tap Settle to clear'}</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
-        <div class="debt-amount">$${d.amount.toFixed(2)}</div>
+        <div class="debt-amount">${fmt(d.amount)}</div>
         <button class="settle-quick-btn" onclick="quickSettle('${d.from.uid}','${d.to.uid}',${d.amount.toFixed(2)},'${(d.from.name||'').replace(/'/g,'')}',' ${(d.to.name||'').replace(/'/g,'')}')">${t('settleBtn')||'Settle'}</button>
       </div>
     </div>`).join('');
@@ -111,9 +111,9 @@ function renderDebtDetail(debts,expenses){
     return `<div class="detail-row">
       <div class="detail-label">${getAvatar(m.name)} ${(m.name||'').split(' ')[0]}</div>
       <div>
-        <div class="detail-value">${t('paidLabel')} $${(paid[m.uid]||0).toFixed(2)}</div>
-        <div class="detail-value" style="font-size:11px;color:var(--muted)">${t('owesLabel')} $${(owedTotal[m.uid]||0).toFixed(2)}</div>
-        <div class="detail-value ${net>=0?'pos':'neg'}">${net>=0?'▲':'▼'} $${Math.abs(net).toFixed(2)}</div>
+        <div class="detail-value">${t('paidLabel')} ${fmt(paid[m.uid]||0)}</div>
+        <div class="detail-value" style="font-size:11px;color:var(--muted)">${t('owesLabel')} ${fmt(owedTotal[m.uid]||0)}</div>
+        <div class="detail-value ${net>=0?'pos':'neg'}">${net>=0?'▲':'▼'} ${fmt(Math.abs(net))}</div>
       </div></div>`;
   }).join('');
   const debtRows=debts.length===0
@@ -121,7 +121,7 @@ function renderDebtDetail(debts,expenses){
     :debts.map(d=>`<div class="detail-row">
       <div class="detail-label">${getAvatar(d.from.name)} <strong>${(d.from.name||'').split(' ')[0]}</strong> → ${getAvatar(d.to.name)} ${(d.to.name||'').split(' ')[0]}</div>
       <div style="display:flex;align-items:center;gap:8px">
-        <div class="detail-value neg">$${d.amount.toFixed(2)}</div>
+        <div class="detail-value neg">${fmt(d.amount)}</div>
         <button class="settle-quick-btn" onclick="quickSettle('${d.from.uid}','${d.to.uid}',${d.amount.toFixed(2)},'${(d.from.name||'').replace(/'/g,'')}','${(d.to.name||'').replace(/'/g,'')}');closeModal('debtModal')">${t('settleBtn')||'Settle'}</button>
       </div></div>`).join('');
   el.innerHTML=`
@@ -141,7 +141,7 @@ function openDebtDetail(){
 }
 
 async function quickSettle(fromUid,toUid,amount,fromName,toName){
-  if(!confirm(t('confirmSettle',fromName,toName,parseFloat(amount).toFixed(2))))return;
+  if(!confirm(t('confirmSettle',fromName,toName,fmt(parseFloat(amount)))))return;
   try{
     await window._addDoc(window._col(window._db,`groups/${currentGroup.id}/expenses`),{
       amount:parseFloat(amount),
