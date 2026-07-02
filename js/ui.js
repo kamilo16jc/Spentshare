@@ -38,6 +38,9 @@ function setTab(btn){
     if(!modal) return;
     const overlay = modal.closest('.modal-overlay');
     if(!overlay || !overlay.classList.contains('show')) return;
+    // The currency picker awaits the user's choice — swiping it away
+    // would leave selectGroup's promise pending forever
+    if(overlay.id === 'currencyPickerModal') return;
     // Don't hijack the gesture while the modal content is scrolled —
     // otherwise scrolling back up drags the whole modal closed
     if(modal.scrollTop > 2) return;

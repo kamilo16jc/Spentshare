@@ -60,6 +60,17 @@ async function selectGroup(gid){
   const grp=userGroups.find(g=>g.id===gid);
   if(!grp)return;
   currentGroup=grp;
+  // Clear the previous group's data so it never leaks into the new one
+  window._expenses=null;
+  window._groupMembers=[];
+  document.getElementById('headerGroupEmoji').textContent=grp.emoji||'🏠';
+  document.getElementById('headerGroupName').textContent=grp.name;
+  document.getElementById('groupInviteCode').textContent=grp.inviteCode||'--';
+  // Switch screens right away — data loads below and fills in as it arrives.
+  // Blocking here on network fetches is what froze the app when switching groups.
+  const gs=document.getElementById('groupScreen');
+  gs.classList.add('hide');
+  setTimeout(()=>{gs.style.display='none';gs.classList.remove('show','hide');finalizeDashboard(); initSwipeModals();},400);
   try{
     const grpDoc = await window._getDoc(window._docRef(window._db,'groups',gid));
     if(grpDoc.exists()){
@@ -67,44 +78,41 @@ async function selectGroup(gid){
       currentGroup = {...grp, ...gdata, id:gid};
       grp.memberUids = gdata.memberUids||[];
       grp.memberEmails = gdata.memberEmails||[];
+      document.getElementById('groupInviteCode').textContent=currentGroup.inviteCode||'--';
     }
     const uids = currentGroup.memberUids||[];
     const emails = currentGroup.memberEmails||[];
     const docs = await Promise.all(uids.map(uid=>window._getDoc(window._docRef(window._db,'users',uid))));
-    window._groupMembers = [];
-    docs.forEach((d,i)=>{
-      if(d.exists()){
-        const data = d.data();
-        data.uid = d.id;
-        window._groupMembers.push(data);
-      } else {
-        const email = emails[i]||'';
-        window._groupMembers.push({uid:uids[i], name:email?email.split('@')[0]:'Member', email});
-      }
+    window._groupMembers = docs.map((d,i)=>{
+      if(d.exists()){ const data=d.data(); data.uid=d.id; return data; }
+      const email = emails[i]||'';
+      return {uid:uids[i], name:email?email.split('@')[0]:'Member', email};
     });
-    console.log('Members loaded:', window._groupMembers.map(m=>m.name+'/'+m.uid));
-  }catch(e){ console.error('loadMembers',e); window._groupMembers=[]; }
-  document.getElementById('headerGroupEmoji').textContent=grp.emoji||'🏠';
-  document.getElementById('headerGroupName').textContent=grp.name;
-  document.getElementById('groupInviteCode').textContent=grp.inviteCode||'--';
-  // Legacy group without currency → ask once
+  }catch(e){ console.error('loadMembers',e); }
+  // Members arrived (maybe after the dashboard is already visible) — refresh UI
+  renderMemberGrids();
+  if(window._expenses){ renderExpenses(window._expenses); updateBalances(window._expenses); }
+  loadGroupMemberAvatars();
+  // Legacy group without currency → ask once (non-blocking)
   if(!currentGroup.currency && typeof promptGroupCurrency==='function'){
-    await promptGroupCurrency(gid);
+    promptGroupCurrency(gid).then(()=>{
+      if(window._expenses){ renderExpenses(window._expenses); updateBalances(window._expenses); }
+    });
   }
-  const gs=document.getElementById('groupScreen');
-  gs.classList.add('hide');
-  setTimeout(()=>{gs.style.display='none';gs.classList.remove('show','hide');finalizeDashboard(); initSwipeModals(); loadGroupMemberAvatars();},400);
 }
 
 function goToGroupPicker(){
   if(groupUnsub){groupUnsub();groupUnsub=null;}
   const dash=document.getElementById('dashboard');
   dash.classList.remove('show');
-  setTimeout(async()=>{
+  setTimeout(()=>{
     dash.style.display='none';
     closeModal('addModal');closeModal('settleModal');closeModal('statsModal');
     closeModal('debtModal');closeModal('membersModal');
-    await loadUserGroups();showGroupScreen();
+    // Show the list immediately with what we already have; refresh in background
+    // (blocking on the network here left the user on a blank screen)
+    showGroupScreen();
+    loadUserGroups().then(renderGroupList).catch(()=>{});
   },400);
 }
 

@@ -4,6 +4,17 @@ let expUnsub=null;
 function subscribeExpenses(){
   if(expUnsub){expUnsub();expUnsub=null;}
   if(!currentGroup)return;
+  // Reset the view for the new group — otherwise the previous group's
+  // expenses and balances stay on screen until the first snapshot arrives
+  showAllExpenses=false;
+  const seeAllBtn=document.getElementById('t-seeAll');
+  if(seeAllBtn) seeAllBtn.textContent=t('seeAll');
+  document.getElementById('loadingSkeletons').style.display='block';
+  document.getElementById('expensesList').innerHTML='';
+  document.getElementById('debtSummary').innerHTML='';
+  document.getElementById('balanceMembers').innerHTML='';
+  document.getElementById('totalMonth').textContent=fmt(0);
+  document.getElementById('syncLabel').textContent=t('syncLoad');
   const q=window._query(window._col(window._db,`groups/${currentGroup.id}/expenses`),window._orderBy('createdAt','desc'));
   expUnsub=window._onSnap(q,snap=>{
     document.getElementById('syncDot').classList.remove('offline');
