@@ -1,4 +1,4 @@
-const CACHE_NAME = 'spentshare-v4';
+const CACHE_NAME = 'spentshare-v5';
 const ASSETS = [
   '/Spentshare/',
   '/Spentshare/index.html',
@@ -47,22 +47,48 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
-// Fetch — network first, fallback to cache
+// Fetch strategy:
+//  - Only GET requests (POST to Cloud Functions etc. must never be cached)
+//  - Firebase/Firestore → always network
+//  - HTML navigations → network first (so deploys arrive), cache fallback offline
+//  - Static assets (css/js/img/fonts) → cache first (instant loads), refresh in background
 self.addEventListener('fetch', e => {
-  // Skip Firebase requests — always need network
-  if (e.request.url.includes('firestore.googleapis.com') ||
-      e.request.url.includes('firebase') ||
-      e.request.url.includes('gstatic.com/firebasejs')) {
+  if (e.request.method !== 'GET') return;
+  const url = e.request.url;
+  if (url.includes('firestore.googleapis.com') ||
+      url.includes('firebase') ||
+      url.includes('cloudfunctions.net') ||
+      url.includes('gstatic.com/firebasejs')) {
     return;
   }
 
+  // HTML: network first
+  if (e.request.mode === 'navigate' || url.endsWith('.html')) {
+    e.respondWith(
+      fetch(e.request)
+        .then(res => {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
+          return res;
+        })
+        .catch(() => caches.match(e.request))
+    );
+    return;
+  }
+
+  // Static assets: cache first + background refresh (stale-while-revalidate)
   e.respondWith(
-    fetch(e.request)
-      .then(res => {
-        const clone = res.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
-        return res;
-      })
-      .catch(() => caches.match(e.request))
+    caches.match(e.request).then(cached => {
+      const network = fetch(e.request)
+        .then(res => {
+          if (res && res.ok) {
+            const clone = res.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
+          }
+          return res;
+        })
+        .catch(() => cached);
+      return cached || network;
+    })
   );
 });

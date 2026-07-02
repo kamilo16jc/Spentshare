@@ -3,7 +3,11 @@ let userAvatar = null; // emoji string or base64 image
 const avatarCache = {}; // in-memory cache for all group members
 
 function getAvatar(name, uid){
-  if(uid){ const saved=localStorage.getItem('avatar_'+uid); if(saved) return saved; }
+  if(uid){
+    if(avatarCache[uid]) return avatarCache[uid];
+    const saved=localStorage.getItem('avatar_'+uid);
+    if(saved){ avatarCache[uid]=saved; return saved; }
+  }
   const av=['👤','👩','👨','🧑','👦','👧'];
   return av[(name||'?').charCodeAt(0)%av.length];
 }

@@ -32,17 +32,18 @@ function renderGroupList(){
     <div class="group-item">
       <div class="group-emoji" style="cursor:pointer" onclick="selectGroup('${g.id}')">${g.emoji||'🏠'}</div>
       <div class="group-info" style="cursor:pointer" onclick="selectGroup('${g.id}')">
-        <div class="group-name-txt">${g.name}</div>
+        <div class="group-name-txt">${esc(g.name)}</div>
         <div class="group-members-txt">${(g.memberUids||[]).length} ${lang==='es'?'miembros':'members'}</div>
       </div>
       <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
         <button class="group-open-btn" onclick="selectGroup('${g.id}')">${t('openGroupBtn')}</button>
-        <button onclick="deleteGroup('${g.id}','${g.name.replace(/'/g,"\'")}')" style="background:var(--red-light);border:1px solid rgba(245,101,101,0.2);color:var(--red);border-radius:50px;padding:6px 12px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='var(--red)';this.style.color='white'" onmouseout="this.style.background='var(--red-light)';this.style.color='var(--red)'">🗑️</button>
+        <button onclick="deleteGroup('${g.id}')" style="background:var(--red-light);border:1px solid rgba(245,101,101,0.2);color:var(--red);border-radius:50px;padding:6px 12px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='var(--red)';this.style.color='white'" onmouseout="this.style.background='var(--red-light)';this.style.color='var(--red)'">🗑️</button>
       </div>
     </div>`).join('');
 }
 
-async function deleteGroup(gid, gname){
+async function deleteGroup(gid){
+  const gname = userGroups.find(g=>g.id===gid)?.name || '';
   const msg = lang==='es' ? `¿Eliminar el grupo "${gname}"? Esto borrará todos los gastos.` : `Delete group "${gname}"? This will delete all expenses.`;
   if(!confirm(msg)) return;
   try {
@@ -187,12 +188,17 @@ async function joinGroup(){
     const uid=window._curUser.uid;
     const data=gDoc.data();
     if(!(data.memberUids||[]).includes(uid)){
+      // arrayUnion avoids clobbering members added concurrently by someone else
       await window._setDoc(window._docRef(window._db,'groups',gDoc.id),{
-        memberUids:[...(data.memberUids||[]),uid],
-        memberEmails:[...(data.memberEmails||[]),window._curUser.email]
+        memberUids:window._arrayUnion(uid),
+        memberEmails:window._arrayUnion(window._curUser.email)
       },{merge:true});
     }
-    if(!userGroups.find(g=>g.id===gDoc.id)) userGroups.push({id:gDoc.id,...data});
+    if(!userGroups.find(g=>g.id===gDoc.id)) userGroups.push({
+      id:gDoc.id,...data,
+      memberUids:[...new Set([...(data.memberUids||[]),uid])],
+      memberEmails:[...new Set([...(data.memberEmails||[]),window._curUser.email])]
+    });
     renderGroupList();
     showToast(t('toastJoined'));
     document.getElementById('joinCodeInput').value='';

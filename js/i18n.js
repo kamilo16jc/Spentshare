@@ -28,7 +28,8 @@ const TX = {
     balanceLabel:'MONTHLY EXPENSES',quickActions:'Quick actions',
     addExpense:'Add expense',settle:'Settle debt',members:'Members',stats:'Statistics',
     whoOwes:'💸 Who owes who',detail:'Detail →',
-    recentExpenses:'Recent expenses',seeAll:'See all →',
+    settleBtn:'Settle',tapSettle:'Tap Settle to clear',
+    recentExpenses:'Recent expenses',seeAll:'See all →',seeLess:'See less ↑',
     nav2:'Stats',nav3:'Members',nav4:'Groups',
     syncOk:'Synced ✓',syncOff:'Offline',syncLoad:'Connecting...',
     allClear:'All settled! 🎉',allClearSub:'No pending debts this month',
@@ -52,6 +53,8 @@ const TX = {
     catFood:'Food',catTransport:'Transport',catUtilities:'Utilities',
     catHealth:'Health',catEntertainment:'Entertainment',catHome:'Home',
     catEducation:'Education',catOther:'Other',
+    catTravel:'Travel',catShopping:'Shopping',catPets:'Pets',catDrinks:'Drinks',
+    catPersonalcare:'Personal care',catKids:'Kids',catGifts:'Gifts',
     debtByPerson:'By person',debtPending:'Pending debts',
     membersOf:(n)=>`Members of ${n}`,noGroups:'No groups yet. Create one!',languageLabel:'Language',chooseAvatarLabel:'Choose avatar',uploadPhotoLabel:'Upload photo',editNameLabel:'Edit name'
   },
@@ -83,7 +86,8 @@ const TX = {
     balanceLabel:'GASTOS DEL MES',quickActions:'Acciones rápidas',
     addExpense:'Agregar gasto',settle:'Liquidar deuda',members:'Miembros',stats:'Estadísticas',
     whoOwes:'💸 Quién debe a quién',detail:'Detalle →',
-    recentExpenses:'Gastos recientes',seeAll:'Ver todos →',
+    settleBtn:'Liquidar',tapSettle:'Toca Liquidar para saldar',
+    recentExpenses:'Gastos recientes',seeAll:'Ver todos →',seeLess:'Ver menos ↑',
     nav2:'Stats',nav3:'Miembros',nav4:'Grupos',
     syncOk:'Sincronizado ✓',syncOff:'Sin conexión',syncLoad:'Conectando...',
     allClear:'¡Todo al día! 🎉',allClearSub:'No hay deudas pendientes',
@@ -107,6 +111,8 @@ const TX = {
     catFood:'Comida',catTransport:'Transporte',catUtilities:'Servicios',
     catHealth:'Salud',catEntertainment:'Ocio',catHome:'Casa',
     catEducation:'Educación',catOther:'Otro',
+    catTravel:'Viajes',catShopping:'Compras',catPets:'Mascotas',catDrinks:'Bebidas',
+    catPersonalcare:'Cuidado personal',catKids:'Niños',catGifts:'Regalos',
     debtByPerson:'Por persona',debtPending:'Deudas pendientes',
     membersOf:(n)=>`Miembros de ${n}`,noGroups:'Sin grupos. ¡Crea uno!',languageLabel:'Idioma',chooseAvatarLabel:'Elegir avatar',uploadPhotoLabel:'Subir foto',editNameLabel:'Editar nombre'
   }
@@ -135,4 +141,6 @@ function updateDashboardLabels(){
     't-nav2':'nav2','t-nav3':'nav3','t-nav4':'nav4',
   };
   Object.entries(ids).forEach(([id,k])=>{const el=document.getElementById(id);if(el)el.textContent=t(k);});
+  const sa=document.getElementById('t-seeAll');
+  if(sa) sa.textContent=t(showAllExpenses?'seeLess':'seeAll');
 }

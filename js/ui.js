@@ -38,6 +38,9 @@ function setTab(btn){
     if(!modal) return;
     const overlay = modal.closest('.modal-overlay');
     if(!overlay || !overlay.classList.contains('show')) return;
+    // Don't hijack the gesture while the modal content is scrolled —
+    // otherwise scrolling back up drags the whole modal closed
+    if(modal.scrollTop > 2) return;
     startY = e.touches[0].clientY;
     lastY = startY;
     activeModal = modal;

@@ -19,7 +19,7 @@ async function doLogin(){
   const email=document.getElementById('loginEmail').value.trim();
   const pass=document.getElementById('loginPassword').value;
   if(!email.includes('@')){showToast(t('errEmail'));return;}
-  if(pass.length<6){showToast(t('errPassword'));return;}
+  if(!pass){showToast(lang==='es'?'⚠️ Ingresa tu contraseña':'⚠️ Enter your password');return;}
   const btn=document.getElementById('loginBtn');
   btn.disabled=true;btn.textContent=t('loading');
   try{

@@ -5,10 +5,10 @@ function renderMemberGrids(){
   ['paidByGrid','settleFromGrid','settleToGrid','withWhomGrid'].forEach(id=>{
     document.getElementById(id).innerHTML=members.map(m=>`
       <button class="paid-btn ${id==='paidByGrid'&&m.uid===me?.uid?'selected':''}"
-        data-uid="${m.uid}" data-name="${m.name}"
+        data-uid="${m.uid}" data-name="${esc(m.name)}"
         onclick="${id==='paidByGrid'?'selectPaidBy':id==='settleFromGrid'?'selectSettleFrom':id==='settleToGrid'?'selectSettleTo':'selectWithWhom'}(this)">
-        <span class="paid-avatar">${getAvatarForMember(m.uid, m.name)}</span>
-        <span class="paid-name">${(m.name||'').split(' ')[0]}</span>
+        <span class="paid-avatar">${renderAvatarEl(m.uid, m.name, 24)}</span>
+        <span class="paid-name">${esc((m.name||'').split(' ')[0])}</span>
       </button>`).join('');
   });
   selectedPaidBy=me?.uid||(members[0]?.uid);
@@ -59,10 +59,10 @@ async function openMembersModal(){
         ${avatarEl}
         <div style="flex:1;min-width:0">
           <div style="font-family:'Nunito',sans-serif;font-size:14px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:6px">
-            ${m.name||'?'}
+            ${esc(m.name||'?')}
             ${isMe(m.uid)?`<span style="font-size:10px;background:var(--orange-light);color:var(--orange);border-radius:20px;padding:2px 8px;font-weight:700">${youLabel}</span>`:''}
           </div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.email||''}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.email||'')}</div>
         </div>
         <div style="text-align:right;flex-shrink:0">
           <div style="font-family:'Nunito',sans-serif;font-size:14px;font-weight:900;color:${netColor}">${netText}</div>

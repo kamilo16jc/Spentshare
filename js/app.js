@@ -3,9 +3,10 @@ setTimeout(()=>{
   document.getElementById('splash').classList.add('hide');
   setTimeout(()=>{
     document.getElementById('splash').style.display='none';
-    document.getElementById('authScreen').classList.add('show');
+    // If auth already restored the session, don't flash the login screen
+    if(!window._curUser) document.getElementById('authScreen').classList.add('show');
   },700);
-},4800);
+},1600);
 
 // Expose handlers used from inline onclick="" attributes
 Object.assign(window,{
@@ -26,7 +27,7 @@ Object.assign(window,{
   loadAvatar, saveAvatar, applyAvatarEverywhere, getAvatarForMember,
   loadGroupMemberAvatars, renderAvatarEl, selectAvatarEmoji, handleAvatarUpload,
   // expenses
-  subscribeExpenses, renderExpenses, addExpense, deleteExpensePrompt,
+  subscribeExpenses, renderExpenses, addExpense, deleteExpensePrompt, toggleSeeAll,
   autoDetectCategory, selectPaidBy, selectSplit, updateWithWhomGrid,
   selectWithWhom, selectCat, resetForm,
   // balances / settle

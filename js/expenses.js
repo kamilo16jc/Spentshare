@@ -26,7 +26,8 @@ function renderExpenses(expenses){
     list.innerHTML=`<div class="empty-state"><div class="empty-icon">💸</div><p>${lang==='es'?'No hay gastos aún':'No expenses yet'}</p><small style="font-size:12px;margin-top:4px;display:block">${lang==='es'?'Toca + para agregar el primero':'Tap + to add the first one'}</small></div>`;return;
   }
   const members=window._groupMembers||[];
-  list.innerHTML=expenses.slice(0,10).map(e=>{
+  const visible=showAllExpenses?expenses:expenses.slice(0,10);
+  list.innerHTML=visible.map(e=>{
     const locale=lang==='es'?'es-MX':'en-US';
     const date=e.createdAt?.toDate?e.createdAt.toDate().toLocaleDateString(locale,{day:'numeric',month:'short'}):t('today');
     const emoji=catEmojis[e.category]||'📦';
@@ -37,9 +38,9 @@ function renderExpenses(expenses){
     return `<div class="expense-item" onclick="deleteExpensePrompt('${e.id}')">
       <div class="expense-emoji">${isSettle?'🤝':emoji}</div>
       <div class="expense-info">
-        <div class="expense-desc">${e.description}</div>
+        <div class="expense-desc">${esc(e.description)}</div>
         <div class="expense-meta">
-          <span class="expense-who">${(paidByName).split(' ')[0]}</span>
+          <span class="expense-who">${esc((paidByName).split(' ')[0])}</span>
           <span>${date}</span>
           ${!isSettle?`<span>${splitLabel}</span>`:''}
         </div>
@@ -50,6 +51,13 @@ function renderExpenses(expenses){
           `<div class="expense-split">${e.split==='all'?fmt(e.amount/n)+t('perPerson'):e.split==='two'?fmt(e.amount/2)+t('perPerson'):e.split==='full'?fmt(e.amount)+t('perPerson'):t('solo')}</div>`}
       </div></div>`;
   }).join('');
+}
+
+function toggleSeeAll(){
+  showAllExpenses=!showAllExpenses;
+  const btn=document.getElementById('t-seeAll');
+  if(btn) btn.textContent=t(showAllExpenses?'seeLess':'seeAll');
+  renderExpenses(window._expenses||[]);
 }
 
 async function addExpense(){
@@ -263,8 +271,8 @@ function updateWithWhomGrid(){
   const others=(window._groupMembers||[]).filter(m=>m.uid!==selectedPaidBy);
   document.getElementById('withWhomGrid').innerHTML=others.map(m=>`
     <button class="paid-btn${selectedWithWhom===m.uid?' selected':''}" data-uid="${m.uid}" onclick="selectWithWhom(this)">
-      <div style="font-size:22px">${getAvatar(m.name,m.uid)}</div>
-      <div style="font-size:11px;font-weight:700;margin-top:4px">${(m.name||'?').split(' ')[0]}</div>
+      <div style="font-size:22px">${renderAvatarEl(m.uid,m.name,22)}</div>
+      <div style="font-size:11px;font-weight:700;margin-top:4px">${esc((m.name||'?').split(' ')[0])}</div>
     </button>`).join('');
 }
 

@@ -54,7 +54,7 @@ function updateBalances(expenses){
   bm.innerHTML=members.map((m,i)=>{
     const net=netPos[m.uid]||0;
     return `<div class="balance-member">
-      <div class="bm-name">${(m.name||'').split(' ')[0]}</div>
+      <div class="bm-name">${esc((m.name||'').split(' ')[0])}</div>
       <div class="bm-amount ${net>=0?'positive':'negative'}">${fmt(Math.abs(net))}</div>
       <div class="bm-status">${Math.abs(net)<0.01?'✓'+t('statusOk'):net>0?'▲'+t('statusOwedTo'):'▼'+t('statusOwes')}</div>
     </div>`;
@@ -73,14 +73,14 @@ function renderDebtSummary(debts){
   }
   el.innerHTML=debts.map(d=>`
     <div class="debt-card">
-      <div class="debt-avatar-row"><span class="debt-av">${getAvatar(d.from.name)}</span><span class="debt-arrow">→</span><span class="debt-av">${getAvatar(d.to.name)}</span></div>
+      <div class="debt-avatar-row"><span class="debt-av">${renderAvatarEl(d.from.uid,d.from.name,24)}</span><span class="debt-arrow">→</span><span class="debt-av">${renderAvatarEl(d.to.uid,d.to.name,24)}</span></div>
       <div class="debt-info">
-        <div class="debt-text"><strong>${(d.from.name||'').split(' ')[0]}</strong> ${lang==='es'?'le debe a':'owes'} <strong>${(d.to.name||'').split(' ')[0]}</strong></div>
+        <div class="debt-text"><strong>${esc((d.from.name||'').split(' ')[0])}</strong> ${lang==='es'?'le debe a':'owes'} <strong>${esc((d.to.name||'').split(' ')[0])}</strong></div>
         <div class="debt-sub">${t('tapSettle')||'Tap Settle to clear'}</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
         <div class="debt-amount">${fmt(d.amount)}</div>
-        <button class="settle-quick-btn" onclick="quickSettle('${d.from.uid}','${d.to.uid}',${d.amount.toFixed(2)},'${(d.from.name||'').replace(/'/g,'')}',' ${(d.to.name||'').replace(/'/g,'')}')">${t('settleBtn')||'Settle'}</button>
+        <button class="settle-quick-btn" onclick="quickSettle('${d.from.uid}','${d.to.uid}',${d.amount.toFixed(2)},'${esc((d.from.name||'').replace(/['"\\]/g,''))}','${esc((d.to.name||'').replace(/['"\\]/g,''))}')">${t('settleBtn')||'Settle'}</button>
       </div>
     </div>`).join('');
 }
@@ -109,7 +109,7 @@ function renderDebtDetail(debts,expenses){
   const memberRows=members.map(m=>{
     const net=(paid[m.uid]||0)-(owedTotal[m.uid]||0);
     return `<div class="detail-row">
-      <div class="detail-label">${getAvatar(m.name)} ${(m.name||'').split(' ')[0]}</div>
+      <div class="detail-label">${renderAvatarEl(m.uid,m.name,20)} ${esc((m.name||'').split(' ')[0])}</div>
       <div>
         <div class="detail-value">${t('paidLabel')} ${fmt(paid[m.uid]||0)}</div>
         <div class="detail-value" style="font-size:11px;color:var(--muted)">${t('owesLabel')} ${fmt(owedTotal[m.uid]||0)}</div>
@@ -119,10 +119,10 @@ function renderDebtDetail(debts,expenses){
   const debtRows=debts.length===0
     ?`<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">🎉 ${t('allClear')}</div>`
     :debts.map(d=>`<div class="detail-row">
-      <div class="detail-label">${getAvatar(d.from.name)} <strong>${(d.from.name||'').split(' ')[0]}</strong> → ${getAvatar(d.to.name)} ${(d.to.name||'').split(' ')[0]}</div>
+      <div class="detail-label">${renderAvatarEl(d.from.uid,d.from.name,20)} <strong>${esc((d.from.name||'').split(' ')[0])}</strong> → ${renderAvatarEl(d.to.uid,d.to.name,20)} ${esc((d.to.name||'').split(' ')[0])}</div>
       <div style="display:flex;align-items:center;gap:8px">
         <div class="detail-value neg">${fmt(d.amount)}</div>
-        <button class="settle-quick-btn" onclick="quickSettle('${d.from.uid}','${d.to.uid}',${d.amount.toFixed(2)},'${(d.from.name||'').replace(/'/g,'')}','${(d.to.name||'').replace(/'/g,'')}');closeModal('debtModal')">${t('settleBtn')||'Settle'}</button>
+        <button class="settle-quick-btn" onclick="quickSettle('${d.from.uid}','${d.to.uid}',${d.amount.toFixed(2)},'${esc((d.from.name||'').replace(/['"\\]/g,''))}','${esc((d.to.name||'').replace(/['"\\]/g,''))}');closeModal('debtModal')">${t('settleBtn')||'Settle'}</button>
       </div></div>`).join('');
   el.innerHTML=`
     <div style="margin-bottom:20px">

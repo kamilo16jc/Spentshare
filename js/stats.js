@@ -20,7 +20,7 @@ function openStatsModal(){
     const amt=memberTotals[m.uid]||0;const pct=total>0?Math.round(amt/total*100):0;const bw=Math.round(amt/maxMember*100);
     return `<div style="margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <div style="font-family:'Nunito',sans-serif;font-size:13px;font-weight:700">${getAvatar(m.name)} ${(m.name||'').split(' ')[0]}</div>
+        <div style="font-family:'Nunito',sans-serif;font-size:13px;font-weight:700">${renderAvatarEl(m.uid,m.name,18)} ${esc((m.name||'').split(' ')[0])}</div>
         <div style="display:flex;gap:8px;align-items:center"><span style="font-size:11px;color:var(--muted)">${pct}%</span><span style="font-family:'Nunito',sans-serif;font-size:14px;font-weight:900">${fmt(amt)}</span></div>
       </div>
       <div class="bar-track"><div class="bar-fill c${i%5}" style="width:0" data-w="${bw}"></div></div>
@@ -49,7 +49,7 @@ function openStatsModal(){
       const paidName=(window._groupMembers||[]).find(m=>m.uid===e.paidByUid)?.name||e.paidBy||'?';
       return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
         <div style="font-family:'Nunito',sans-serif;font-size:18px;font-weight:900;color:var(--border);width:24px;text-align:center;flex-shrink:0" class="${rankCls[i]}">${rankEmoji[i]}</div>
-        <div style="flex:1"><div style="font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">${e.description}</div><div style="font-size:11px;color:var(--muted)">${(paidName).split(' ')[0]} · ${catEmojis[e.category]||'📦'}</div></div>
+        <div style="flex:1"><div style="font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">${esc(e.description)}</div><div style="font-size:11px;color:var(--muted)">${esc((paidName).split(' ')[0])} · ${catEmojis[e.category]||'📦'}</div></div>
         <div style="font-family:'Nunito',sans-serif;font-size:15px;font-weight:900;flex-shrink:0">${fmt(e.amount)}</div>
       </div>`;
     }).join('');
