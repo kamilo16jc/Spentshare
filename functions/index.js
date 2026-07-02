@@ -34,6 +34,25 @@ const CAT_EMOJI = {
 
 const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
+// Category names for the PDF — the built-in PDF fonts (Helvetica) can't
+// render emoji, they come out as garbage glyphs
+const CAT_NAME_ES = {
+  food: 'Comida', transport: 'Transporte', utilities: 'Servicios', health: 'Salud',
+  entertainment: 'Ocio', home: 'Casa', education: 'Educación', other: 'Otro',
+  travel: 'Viajes', shopping: 'Compras', pets: 'Mascotas', drinks: 'Bebidas',
+  personalcare: 'Cuidado personal', kids: 'Niños', gifts: 'Regalos',
+};
+
+// Strip anything outside Latin-1 (emoji, symbols) — Helvetica only covers Latin-1.
+// Keeps accents (á é ñ ü) intact.
+function pdfSafe(s) {
+  return String(s == null ? '' : s)
+    .replace(/[–—]/g, '-').replace(/[‘’]/g, "'").replace(/[“”]/g, '"')
+    .replace(/[^ -~À-ÿ¡¿]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 const CURRENCIES = {
   USD: { symbol: '$', decimals: 2, thousandsSep: ',', decimalSep: '.' },
   COP: { symbol: '$', decimals: 0, thousandsSep: '.', decimalSep: ',' },
@@ -233,84 +252,106 @@ function buildMonthlyPdf({ group, members, expenses, monthLabel, totals, catTota
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
-    // Header
-    doc.fillColor('#ff6b35').fontSize(28).text('SpentShare', { continued: false });
-    doc.fillColor('#1a1a2e').fontSize(14).text(`${group.emoji || '🏠'} ${group.name}`);
-    doc.fontSize(11).fillColor('#888').text(`Resumen mensual — ${monthLabel} · Moneda: ${currency}`);
-    doc.moveDown(1);
+    const LEFT = 50, RIGHT_X = 380, RIGHT_W = 182, ROW_H = 18;
 
-    // Total
+    const ensureSpace = (needed = ROW_H) => {
+      if (doc.y + needed > 720) doc.addPage();
+    };
+
+    const sectionTitle = (txt) => {
+      ensureSpace(40);
+      doc.moveDown(0.8);
+      doc.font('Helvetica-Bold').fontSize(13).fillColor('#1a1a2e').text(txt, LEFT);
+      const y = doc.y + 3;
+      doc.moveTo(LEFT, y).lineTo(562, y).lineWidth(0.7).strokeColor('#e5ddd3').stroke();
+      doc.y = y + 8;
+    };
+
+    // Two-column row: label left, amount right-aligned
+    const row = (label, value, { valueColor = '#555', bold = false } = {}) => {
+      ensureSpace();
+      const y = doc.y;
+      doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(10.5)
+        .fillColor('#1a1a2e')
+        .text(label, LEFT, y, { width: 320, height: ROW_H, ellipsis: true, lineBreak: false });
+      doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(10.5)
+        .fillColor(valueColor)
+        .text(value, RIGHT_X, y, { width: RIGHT_W, align: 'right', lineBreak: false });
+      doc.y = y + ROW_H;
+    };
+
+    // ── Header ──
+    doc.font('Helvetica-Bold').fontSize(26).fillColor('#ff6b35').text('SpentShare', LEFT, 50);
+    doc.font('Helvetica-Bold').fontSize(15).fillColor('#1a1a2e').text(pdfSafe(group.name) || 'Grupo', LEFT);
+    doc.font('Helvetica').fontSize(10).fillColor('#888')
+      .text(`Resumen mensual - ${monthLabel} - Moneda: ${currency}`, LEFT);
+
+    // ── Total box ──
     const total = expenses.filter(e => e.type !== 'settle').reduce((s, e) => s + Number(e.amount || 0), 0);
-    doc.fillColor('#1a1a2e').fontSize(12).text('Total del mes', { continued: false });
-    doc.fillColor('#ff6b35').fontSize(24).text(`${fm(total)} ${currency}`);
-    doc.moveDown(0.5);
-    doc.fillColor('#555').fontSize(10).text(`${expenses.length} movimientos registrados`);
     doc.moveDown(1);
+    const boxY = doc.y;
+    doc.roundedRect(LEFT, boxY, 512, 64, 10).fillColor('#fff5f0').fill();
+    doc.font('Helvetica').fontSize(9).fillColor('#888')
+      .text('TOTAL DEL MES', LEFT + 18, boxY + 12, { characterSpacing: 1.5 });
+    doc.font('Helvetica-Bold').fontSize(22).fillColor('#ff6b35')
+      .text(`${fm(total)} ${currency}`, LEFT + 18, boxY + 26);
+    doc.font('Helvetica').fontSize(9).fillColor('#888')
+      .text(`${expenses.length} movimientos registrados`, RIGHT_X - 60, boxY + 38, { width: RIGHT_W + 42, align: 'right' });
+    doc.y = boxY + 74;
 
-    // By member
-    doc.fillColor('#1a1a2e').fontSize(14).text('Pagado por miembro', { underline: false });
-    doc.moveDown(0.4);
-    doc.fontSize(11);
+    // ── By member ──
+    sectionTitle('Pagado por miembro');
     members.forEach(m => {
       const paid = totals[m.uid] || 0;
-      doc.fillColor('#1a1a2e').text(`${m.name || '?'}`, { continued: true });
-      doc.fillColor('#555').text(`    ${fm(paid)}`, { align: 'left' });
+      const pct = total > 0 ? Math.round((paid / total) * 100) : 0;
+      row(pdfSafe(m.name) || '?', `${fm(paid)}  (${pct}%)`);
     });
-    doc.moveDown(1);
 
-    // By category
-    doc.fillColor('#1a1a2e').fontSize(14).text('Por categoría');
-    doc.moveDown(0.4);
-    doc.fontSize(11);
+    // ── By category ──
+    sectionTitle('Por categoría');
     const sortedCats = Object.entries(catTotals).sort((a, b) => b[1] - a[1]);
     if (sortedCats.length === 0) {
-      doc.fillColor('#888').text('Sin datos');
+      doc.font('Helvetica').fontSize(10.5).fillColor('#888').text('Sin datos', LEFT);
     } else {
       sortedCats.forEach(([cat, amt]) => {
         const pct = total > 0 ? Math.round((amt / total) * 100) : 0;
-        doc.fillColor('#1a1a2e').text(`${CAT_EMOJI[cat] || '📦'}  ${cat}`, { continued: true });
-        doc.fillColor('#555').text(`    ${fm(amt)} (${pct}%)`);
+        row(CAT_NAME_ES[cat] || pdfSafe(cat) || 'Otro', `${fm(amt)}  (${pct}%)`);
       });
     }
-    doc.moveDown(1);
 
-    // Debts
-    doc.fillColor('#1a1a2e').fontSize(14).text('Deudas pendientes');
-    doc.moveDown(0.4);
-    doc.fontSize(11);
+    // ── Debts ──
+    sectionTitle('Deudas pendientes');
     if (debts.length === 0) {
-      doc.fillColor('#3ecf8e').text('🎉 Todas las cuentas al día');
+      doc.font('Helvetica-Bold').fontSize(10.5).fillColor('#3ecf8e').text('Todas las cuentas al día', LEFT);
+      doc.moveDown(0.3);
     } else {
       debts.forEach(d => {
-        doc.fillColor('#1a1a2e').text(
-          `${d.from.name || '?'}  →  ${d.to.name || '?'}`,
-          { continued: true }
+        row(
+          `${pdfSafe(d.from.name) || '?'}  le debe a  ${pdfSafe(d.to.name) || '?'}`,
+          fm(d.amount),
+          { valueColor: '#f56565', bold: true }
         );
-        doc.fillColor('#f56565').text(`    ${fm(d.amount)}`);
       });
     }
-    doc.moveDown(1);
 
-    // Top 5
+    // ── Top 5 ──
     const top5 = [...expenses]
       .filter(e => e.type !== 'settle')
       .sort((a, b) => Number(b.amount || 0) - Number(a.amount || 0))
       .slice(0, 5);
     if (top5.length) {
-      doc.fillColor('#1a1a2e').fontSize(14).text('Top 5 gastos del mes');
-      doc.moveDown(0.4);
-      doc.fontSize(11);
+      sectionTitle('Top 5 gastos del mes');
       top5.forEach((e, i) => {
-        doc.fillColor('#1a1a2e').text(
-          `${i + 1}. ${e.description || ''}`,
-          { continued: true }
-        );
-        doc.fillColor('#555').text(`    ${fm(Number(e.amount || 0))}`);
+        const cat = CAT_NAME_ES[e.category] ? ` - ${CAT_NAME_ES[e.category]}` : '';
+        row(`${i + 1}. ${pdfSafe(e.description) || 'Gasto'}${cat}`, fm(Number(e.amount || 0)));
       });
     }
 
+    // ── Footer ──
     doc.moveDown(2);
-    doc.fillColor('#aaa').fontSize(9).text('Generado automáticamente por SpentShare · spentshare.com', { align: 'center' });
+    ensureSpace(30);
+    doc.font('Helvetica').fontSize(8.5).fillColor('#aaa')
+      .text('Generado automáticamente por SpentShare - spentshare.com', LEFT, doc.y, { width: 512, align: 'center' });
     doc.end();
   });
 }
