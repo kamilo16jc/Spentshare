@@ -34,20 +34,22 @@ function subscribeExpenses(){
 function renderExpenses(expenses){
   const list=document.getElementById('expensesList');
   if(!expenses||expenses.length===0){
-    list.innerHTML=`<div class="empty-state"><div class="empty-icon">💸</div><p>${lang==='es'?'No hay gastos aún':'No expenses yet'}</p><small style="font-size:12px;margin-top:4px;display:block">${lang==='es'?'Toca + para agregar el primero':'Tap + to add the first one'}</small></div>`;return;
+    list.innerHTML=`<div class="empty-state"><div class="empty-icon"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l1 18-4-2-3 2-3-2-4 2z"/><path d="M9 8h6M9 12h6"/></svg></div><p>${lang==='es'?'No hay gastos aún':'No expenses yet'}</p><small style="font-size:12px;margin-top:4px;display:block">${lang==='es'?'Agrega el primero desde Acciones rápidas':'Add the first one from Quick actions'}</small></div>`;return;
   }
   const members=window._groupMembers||[];
   const visible=showAllExpenses?expenses:expenses.slice(0,10);
   list.innerHTML=visible.map(e=>{
     const locale=lang==='es'?'es-MX':'en-US';
     const date=e.createdAt?.toDate?e.createdAt.toDate().toLocaleDateString(locale,{day:'numeric',month:'short'}):t('today');
-    const emoji=catEmojis[e.category]||'📦';
+    // Neutral monogram placeholder — Claude will later swap this for the
+    // detected store logo (or a generated glyph) per expense.
+    const mono=((e.description||'?').trim().charAt(0)||'?').toUpperCase();
     const isSettle=e.type==='settle';
     const n=members.length||1;
-    const splitLabel=e.split==='all'?(lang==='es'?`÷ ${n} personas`:`÷ ${n} people`):e.split==='two'?(lang==='es'?'÷ 2 personas':'÷ 2 people'):e.split==='full'?(lang==='es'?'💸 Devolver todo':'💸 Full reimburse'):t('solo');
+    const splitLabel=e.split==='all'?(lang==='es'?`÷ ${n} personas`:`÷ ${n} people`):e.split==='two'?(lang==='es'?'÷ 2 personas':'÷ 2 people'):e.split==='full'?(lang==='es'?'Devolver todo':'Full reimburse'):t('solo');
     const paidByName=members.find(m=>m.uid===e.paidByUid)?.name||e.paidBy||'?';
     return `<div class="expense-item" onclick="deleteExpensePrompt('${e.id}')">
-      <div class="expense-emoji">${isSettle?'🤝':emoji}</div>
+      <div class="expense-emoji${isSettle?' is-settle':''}">${esc(mono)}</div>
       <div class="expense-info">
         <div class="expense-desc">${esc(e.description)}</div>
         <div class="expense-meta">
@@ -212,7 +214,16 @@ const categoryKeywords = {
   ]
 };
 
+// The category picker is gone: as the user types the description, we silently
+// set the category and show a live monogram preview. Later, Claude reads the
+// same description to fetch/generate the store logo that drops into this tile.
 function autoDetectCategory(text){
+  const tile = document.getElementById('autoIconTile');
+  if(tile){
+    const ch = (text||'').trim().charAt(0);
+    tile.firstChild ? tile.firstChild.textContent = (ch ? ch.toUpperCase() : '·') : null;
+    tile.classList.toggle('filled', !!ch);
+  }
   if(!text || text.length < 2) return;
   const lower = text.toLowerCase().trim();
   const words = lower.split(/[\s,.-]+/);
@@ -221,22 +232,12 @@ function autoDetectCategory(text){
     const match = keywords.some(kw => {
       const kwWords = kw.split(' ');
       if(kwWords.length === 1){
-        return words.some(w => w === kw || w.startsWith(kw) && kw.length >= 4);
+        return words.some(w => w === kw || (w.startsWith(kw) && kw.length >= 4));
       } else {
         return lower.includes(kw);
       }
     });
-    if(match){
-      const btn = document.querySelector(`.cat-pill[data-cat="${cat}"]`);
-      if(btn && selectedCat !== cat){
-        document.querySelectorAll('.cat-pill').forEach(b=>b.classList.remove('selected'));
-        btn.classList.add('selected');
-        selectedCat = cat;
-        btn.style.transform = 'scale(1.15)';
-        setTimeout(()=>btn.style.transform = '', 300);
-      }
-      return;
-    }
+    if(match){ selectedCat = cat; return; }
   }
 }
 
@@ -302,12 +303,11 @@ function selectCat(el){
 function resetForm(){
   document.getElementById('inputAmount').value='';
   document.getElementById('inputDesc').value='';
-  selectedCat='food';
+  selectedCat='other';
   selectedSplit='all';
   selectedWithWhom=null;
-  document.querySelectorAll('.cat-pill').forEach(b=>b.classList.remove('selected'));
-  const foodBtn=document.querySelector('.cat-pill[data-cat="food"]');
-  if(foodBtn) foodBtn.classList.add('selected');
+  const tile=document.getElementById('autoIconTile');
+  if(tile){ if(tile.firstChild) tile.firstChild.textContent='·'; tile.classList.remove('filled'); }
   document.querySelectorAll('.split-btn').forEach(b=>b.classList.remove('selected'));
   const allBtn=document.querySelector('.split-btn[data-split="all"]');
   if(allBtn) allBtn.classList.add('selected');

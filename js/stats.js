@@ -20,8 +20,8 @@ function openStatsModal(){
     const amt=memberTotals[m.uid]||0;const pct=total>0?Math.round(amt/total*100):0;const bw=Math.round(amt/maxMember*100);
     return `<div style="margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <div style="font-family:'Nunito',sans-serif;font-size:13px;font-weight:700">${renderAvatarEl(m.uid,m.name,18)} ${esc((m.name||'').split(' ')[0])}</div>
-        <div style="display:flex;gap:8px;align-items:center"><span style="font-size:11px;color:var(--muted)">${pct}%</span><span style="font-family:'Nunito',sans-serif;font-size:14px;font-weight:900">${fmt(amt)}</span></div>
+        <div style="font-family:var(--ui);font-size:13px;font-weight:700">${renderAvatarEl(m.uid,m.name,18)} ${esc((m.name||'').split(' ')[0])}</div>
+        <div style="display:flex;gap:8px;align-items:center"><span style="font-size:11px;color:var(--muted)">${pct}%</span><span style="font-family:var(--ui);font-size:14px;font-weight:900">${fmt(amt)}</span></div>
       </div>
       <div class="bar-track"><div class="bar-fill c${i%5}" style="width:0" data-w="${bw}"></div></div>
     </div>`;
@@ -35,22 +35,22 @@ function openStatsModal(){
       const pct=total>0?Math.round(amt/total*100):0;const bw=Math.round(amt/maxCat*100);
       return `<div style="margin-bottom:10px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
-          <div style="font-size:12px;color:var(--text2)">${catEmojis[cat]||'📦'} ${t('cat'+cat.charAt(0).toUpperCase()+cat.slice(1))||cat}</div>
-          <div style="display:flex;gap:8px"><span style="font-size:11px;color:var(--muted)">${pct}%</span><span style="font-family:'Nunito',sans-serif;font-size:12px;font-weight:700">${fmt(amt)}</span></div>
+          <div style="font-size:12px;color:var(--text2)">${t('cat'+cat.charAt(0).toUpperCase()+cat.slice(1))||cat}</div>
+          <div style="display:flex;gap:8px"><span style="font-size:11px;color:var(--muted)">${pct}%</span><span style="font-family:var(--ui);font-size:12px;font-weight:700">${fmt(amt)}</span></div>
         </div>
         <div class="bar-track"><div class="bar-fill cat" style="width:0" data-w="${bw}"></div></div>
       </div>`;
     }).join('');
   const top5=[...monthly].sort((a,b)=>(parseFloat(b.amount)||0)-(parseFloat(a.amount)||0)).slice(0,5);
-  const rankCls=['gold','silver','bronze','',''];const rankEmoji=['🥇','🥈','🥉','4','5'];
+  const rankCls=['gold','silver','bronze','',''];const rankEmoji=['1','2','3','4','5'];
   document.getElementById('topExpenses').innerHTML=top5.length===0
     ?`<div style="text-align:center;color:var(--muted);font-size:13px;padding:10px">${lang==='es'?'Sin gastos este mes':'No expenses this month'}</div>`
     :top5.map((e,i)=>{
       const paidName=(window._groupMembers||[]).find(m=>m.uid===e.paidByUid)?.name||e.paidBy||'?';
       return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
-        <div style="font-family:'Nunito',sans-serif;font-size:18px;font-weight:900;color:var(--border);width:24px;text-align:center;flex-shrink:0" class="${rankCls[i]}">${rankEmoji[i]}</div>
-        <div style="flex:1"><div style="font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">${esc(e.description)}</div><div style="font-size:11px;color:var(--muted)">${esc((paidName).split(' ')[0])} · ${catEmojis[e.category]||'📦'}</div></div>
-        <div style="font-family:'Nunito',sans-serif;font-size:15px;font-weight:900;flex-shrink:0">${fmt(e.amount)}</div>
+        <div style="font-family:var(--ui);font-size:18px;font-weight:900;color:var(--border);width:24px;text-align:center;flex-shrink:0" class="${rankCls[i]}">${rankEmoji[i]}</div>
+        <div style="flex:1"><div style="font-family:var(--ui);font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">${esc(e.description)}</div><div style="font-size:11px;color:var(--muted)">${esc((paidName).split(' ')[0])} · ${t('cat'+(e.category||'other').charAt(0).toUpperCase()+(e.category||'other').slice(1))||''}</div></div>
+        <div style="font-family:var(--ui);font-size:15px;font-weight:900;flex-shrink:0">${fmt(e.amount)}</div>
       </div>`;
     }).join('');
   openModal('statsModal');

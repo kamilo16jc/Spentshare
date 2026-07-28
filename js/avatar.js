@@ -104,7 +104,7 @@ function renderAvatarEl(uid, name, size=28){
   if(isEmoji) return `<span style="font-size:${size}px;line-height:1">${val}</span>`;
   if(val && val.startsWith('data:')) return `<img src="${val}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover">`;
   const initial = (name||'?')[0].toUpperCase();
-  return `<span style="width:${size}px;height:${size}px;border-radius:50%;background:linear-gradient(135deg,var(--orange),var(--green));display:inline-flex;align-items:center;justify-content:center;font-family:'Nunito',sans-serif;font-size:${Math.round(size*0.45)}px;font-weight:900;color:white;flex-shrink:0">${initial}</span>`;
+  return `<span style="width:${size}px;height:${size}px;border-radius:50%;background:linear-gradient(135deg,var(--orange),var(--green));display:inline-flex;align-items:center;justify-content:center;font-family:var(--ui);font-size:${Math.round(size*0.45)}px;font-weight:900;color:white;flex-shrink:0">${initial}</span>`;
 }
 
 function selectAvatarEmoji(emoji){

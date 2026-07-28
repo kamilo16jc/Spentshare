@@ -23,23 +23,55 @@ function showGroupScreen(){
   renderGroupList();
 }
 
+// Apple-Watch-style honeycomb of group bubbles.
+// Tap a bubble -> reveal full name; tap the active bubble again -> open the group.
 function renderGroupList(){
   const list=document.getElementById('groupList');
   if(userGroups.length===0){
-    list.innerHTML=`<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px;font-weight:600">${t('noGroups')}</div>`;return;
+    list.innerHTML=`<div class="hive-empty">${t('noGroups')}</div>`;return;
   }
-  list.innerHTML=userGroups.map(g=>`
-    <div class="group-item">
-      <div class="group-emoji" style="cursor:pointer" onclick="selectGroup('${g.id}')">${g.emoji||'🏠'}</div>
-      <div class="group-info" style="cursor:pointer" onclick="selectGroup('${g.id}')">
-        <div class="group-name-txt">${esc(g.name)}</div>
-        <div class="group-members-txt">${(g.memberUids||[]).length} ${lang==='es'?'miembros':'members'}</div>
-      </div>
-      <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
-        <button class="group-open-btn" onclick="selectGroup('${g.id}')">${t('openGroupBtn')}</button>
-        <button onclick="deleteGroup('${g.id}')" style="background:var(--red-light);border:1px solid rgba(245,101,101,0.2);color:var(--red);border-radius:50px;padding:6px 12px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='var(--red)';this.style.color='white'" onmouseout="this.style.background='var(--red-light)';this.style.color='var(--red)'">🗑️</button>
-      </div>
-    </div>`).join('');
+  const per=3;
+  let rows='';
+  for(let i=0;i<userGroups.length;i+=per){
+    const chunk=userGroups.slice(i,i+per);
+    const rowIdx=i/per;
+    rows+=`<div class="hive-row${rowIdx%2?' odd':''}">`+chunk.map((g,j)=>{
+      const idx=i+j;
+      const letter=((g.name||'?').trim().charAt(0)||'?').toUpperCase();
+      const members=(g.memberUids||[]).length;
+      const mlabel=members+' '+(lang==='es'?'miembros':'members');
+      return `<button class="hive-bubble b${idx%6}" style="animation-delay:-${(idx*0.37).toFixed(2)}s" onclick="hiveTap(this,'${g.id}')" aria-label="${esc(g.name)}">
+        <span class="hb-letter">${esc(letter)}</span>
+        <span class="hb-del" title="${lang==='es'?'Eliminar':'Delete'}" onclick="hiveDelete(event,'${g.id}')">✕</span>
+        <span class="hb-name"><b>${esc(g.name)}</b><small>${mlabel}</small></span>
+      </button>`;
+    }).join('')+`</div>`;
+  }
+  const hint = lang==='es'
+    ? 'Toca un grupo para ver su nombre. Tócalo otra vez para abrirlo.'
+    : 'Tap a group to reveal its name. Tap again to open it.';
+  list.innerHTML=`<div class="hive">${rows}<div class="hive-hint">${hint}</div></div>`;
+  initHiveParallax();
+}
+
+function hiveTap(el,id){
+  if(el.classList.contains('active')){ selectGroup(id); return; }
+  document.querySelectorAll('.hive-bubble.active').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function hiveDelete(ev,id){ ev.stopPropagation(); ev.preventDefault(); deleteGroup(id); }
+
+// Gentle parallax: rows drift in opposite directions as the screen scrolls.
+function initHiveParallax(){
+  const sc=document.getElementById('groupScreen');
+  const rows=[...document.querySelectorAll('.hive-row')];
+  if(!sc||!rows.length) return;
+  const onScroll=()=>{
+    const y=sc.scrollTop||0;
+    rows.forEach((r,i)=>{ const dir=i%2?1:-1; r.style.transform=`translateY(${(-y*0.05*dir).toFixed(1)}px)`; });
+  };
+  sc.onscroll=onScroll; onScroll();
 }
 
 async function deleteGroup(gid){
@@ -63,7 +95,7 @@ async function selectGroup(gid){
   // Clear the previous group's data so it never leaks into the new one
   window._expenses=null;
   window._groupMembers=[];
-  document.getElementById('headerGroupEmoji').textContent=grp.emoji||'🏠';
+  document.getElementById('headerGroupEmoji').textContent=((grp.name||'?').trim().charAt(0)||'?').toUpperCase();
   document.getElementById('headerGroupName').textContent=grp.name;
   document.getElementById('groupInviteCode').textContent=grp.inviteCode||'--';
   // Switch screens right away — data loads below and fills in as it arrives.

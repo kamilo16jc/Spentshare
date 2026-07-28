@@ -4,19 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>SpentShare</title>
-<meta name="theme-color" content="#ff6b35">
+<meta name="theme-color" content="#2f7d72">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="SpentShare">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+
 <link rel="preconnect" href="https://www.gstatic.com">
 <link rel="preconnect" href="https://firestore.googleapis.com">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;900&family=Nunito+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/splash.css">
 <link rel="stylesheet" href="css/auth.css">
@@ -33,7 +33,7 @@
 <!-- SPLASH -->
 <div id="splash">
   <div class="coin-wrapper">
-    <div class="coin">💰</div>
+    <div class="coin">S</div>
     <div class="split-line"></div><div class="split-line"></div><div class="split-line"></div>
     <div class="dot"></div><div class="dot"></div><div class="dot"></div>
   </div>
@@ -50,7 +50,7 @@
   <div class="auth-card" id="authCard">
     <div class="card-accent"></div>
     <div class="card-logo">
-      <div class="mini-coin">💰</div>
+      <div class="mini-coin">S</div>
       <div class="mini-name">Spent<span>Share</span></div>
     </div>
     <div class="lang-toggle">
@@ -63,7 +63,7 @@
     </div>
     <!-- LOGIN -->
     <div id="loginForm">
-      <div class="welcome-title" data-i18n="loginTitle">Welcome back 👋</div>
+      <div class="welcome-title" data-i18n="loginTitle">Welcome back</div>
       <div class="welcome-sub" data-i18n="loginSub">Sign in to your account</div>
       <button class="google-btn" onclick="googleAuth()">
         <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/></svg>
@@ -76,7 +76,7 @@
     </div>
     <!-- REGISTER -->
     <div id="registerForm" style="display:none">
-      <div class="welcome-title" data-i18n="registerTitle">Create account 🎉</div>
+      <div class="welcome-title" data-i18n="registerTitle">Create account</div>
       <div class="welcome-sub" data-i18n="registerSub">Free forever, no credit card needed</div>
       <button class="google-btn" onclick="googleAuth()">
         <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/></svg>
@@ -90,7 +90,7 @@
     </div>
     <div class="success-overlay" id="authSuccess">
       <div style="font-size:56px;animation:popBig 0.5s cubic-bezier(0.34,1.56,0.64,1)">✅</div>
-      <div id="authSuccessText" style="font-family:'Nunito',sans-serif;font-size:22px;font-weight:900;color:white">Welcome!</div>
+      <div id="authSuccessText" style="font-family:var(--ui);font-size:22px;font-weight:900;color:white">Welcome!</div>
     </div>
   </div>
 </div>
@@ -100,9 +100,9 @@
   <div class="group-card">
     <div class="card-accent"></div>
     <div class="card-logo">
-      <div class="mini-coin">💰</div>
+      <div class="mini-coin">S</div>
       <div class="mini-name">Spent<span>Share</span></div>
-      <button onclick="logoutUser()" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;font-family:'Nunito',sans-serif;font-weight:700;" data-i18n="logoutBtn">Log out</button>
+      <button onclick="logoutUser()" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;font-family:var(--ui);font-weight:700;" data-i18n="logoutBtn">Log out</button>
     </div>
     <div class="section-title" data-i18n="myGroupsLabel">MY GROUPS</div>
     <div class="group-list" id="groupList"><div class="skeleton" style="height:64px"></div><div class="skeleton" style="height:64px"></div></div>
@@ -121,7 +121,7 @@
 <div class="modal-overlay" id="createGroupModal" onclick="closeOnOverlay(event,'createGroupModal')">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-title" data-i18n="createGroupTitle">✨ New group</div>
+    <div class="modal-title" data-i18n="createGroupTitle">New group</div>
     <div class="form-group"><label class="form-label" data-i18n="groupNameLabel">Group name</label><input class="form-input" type="text" id="newGroupName" placeholder='e.g. "Casa Melrose"'></div>
     <div class="form-group">
       <label class="form-label" data-i18n="groupEmojiLabel">Icon</label>
@@ -152,7 +152,7 @@
       <div style="font-size:12px;color:var(--muted)" data-i18n="shareCodeLabel">Share this code with friends</div>
       <div class="invite-code-val" id="newGroupCode">--</div>
       <div class="invite-code-sub" data-i18n="codeValid">Valid for 30 days</div>
-      <button class="copy-btn" onclick="copyInviteCode()" data-i18n="copyBtn">📋 Copy</button>
+      <button class="copy-btn" onclick="copyInviteCode()" data-i18n="copyBtn">Copy</button>
       <div style="margin-top:10px"><button class="submit-btn-form" onclick="goToNewGroup()" data-i18n="openGroupBtn" style="margin-top:0;padding:12px">Open group →</button></div>
     </div>
   </div>
@@ -162,12 +162,12 @@
 <div id="dashboard">
   <div class="header">
     <div class="header-logo">
-      <div class="header-coin">💰</div>
+      <div class="header-coin">S</div>
       <div class="header-name">Spent<span>Share</span></div>
     </div>
     <div class="header-right">
       <button class="group-selector" onclick="goToGroupPicker()">
-        <span class="group-sel-emoji" id="headerGroupEmoji">🏠</span>
+        <span class="group-sel-emoji" id="headerGroupEmoji"></span>
         <span class="group-sel-name" id="headerGroupName">Group</span>
         <span class="group-sel-arrow">▼</span>
       </button>
@@ -186,14 +186,14 @@
     </div>
     <div class="section-title" id="t-quickActions">Quick actions</div>
     <div class="quick-actions">
-      <button class="qa-btn" onclick="openModal()"><div class="qa-icon orange">➕</div><div class="qa-label" id="t-addExpense">Add expense</div></button>
-      <button class="qa-btn" onclick="openSettleModal()"><div class="qa-icon green">🤝</div><div class="qa-label" id="t-settle">Settle debt</div></button>
-      <button class="qa-btn" onclick="openMembersModal()"><div class="qa-icon blue">👥</div><div class="qa-label" id="t-members">Members</div></button>
-      <button class="qa-btn" onclick="openStatsModal()"><div class="qa-icon red">📈</div><div class="qa-label" id="t-stats">Statistics</div></button>
+      <button class="qa-btn" onclick="openModal()"><div class="qa-icon orange"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div><div class="qa-label" id="t-addExpense">Add expense</div></button>
+      <button class="qa-btn" onclick="openSettleModal()"><div class="qa-icon green"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></div><div class="qa-label" id="t-settle">Settle debt</div></button>
+      <button class="qa-btn" onclick="openMembersModal()"><div class="qa-icon blue"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="qa-label" id="t-members">Members</div></button>
+      <button class="qa-btn" onclick="openStatsModal()"><div class="qa-icon red"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div><div class="qa-label" id="t-stats">Statistics</div></button>
     </div>
     <div class="debt-section">
       <div class="expenses-header">
-        <div class="section-title" style="margin:0" id="t-whoOwes">💸 Who owes who</div>
+        <div class="section-title" style="margin:0" id="t-whoOwes">Who owes who</div>
         <button class="see-all" onclick="openDebtDetail()" id="t-detail">Detail →</button>
       </div>
       <div id="debtSummary"></div>
@@ -207,47 +207,26 @@
   </div>
   <button class="fab" onclick="openModal()">+</button>
   <div class="bottom-nav">
-    <button class="nav-item" onclick="setTab(this);openStatsModal()"><span class="nav-icon">📊</span><span class="nav-label" id="t-nav2">Stats</span></button>
-    <button class="nav-item" onclick="setTab(this);openMembersModal()"><span class="nav-icon">👥</span><span class="nav-label" id="t-nav3">Members</span></button>
-    <button class="nav-item" onclick="setTab(this);goToGroupPicker()"><span class="nav-icon">🔀</span><span class="nav-label" id="t-nav4">Groups</span></button>
+    <button class="nav-item" onclick="setTab(this);openStatsModal()"><span class="nav-icon"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span><span class="nav-label" id="t-nav2">Stats</span></button>
+    <button class="nav-item" onclick="setTab(this);openMembersModal()"><span class="nav-icon"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><span class="nav-label" id="t-nav3">Members</span></button>
+    <button class="nav-item" onclick="setTab(this);goToGroupPicker()"><span class="nav-icon"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg></span><span class="nav-label" id="t-nav4">Groups</span></button>
   </div>
 </div>
 
 <!-- ADD EXPENSE MODAL -->
 <div class="modal-overlay" id="addModal" onclick="closeOnOverlay(event,'addModal')">
-  <div class="modal"><div style="width:40px;height:4px;background:#e0e0e0;border-radius:4px;margin:0 auto 20px;"></div>
-    <div class="modal-handle"></div>
-    <div class="modal-title" data-i18n="addModalTitle">💸 New expense</div>
-    <div class="form-group"><label class="form-label" data-i18n="amountLabel">Amount</label><input class="form-input" style="font-size:32px;font-weight:900;text-align:center;color:var(--orange)" type="number" id="inputAmount" placeholder="$0.00" min="0" step="0.01"></div>
+  <div class="modal"><div class="modal-handle"></div>
+    <div class="modal-title" data-i18n="addModalTitle">New expense</div>
+    <div class="form-group"><label class="form-label" data-i18n="amountLabel">Amount</label><input class="form-input" style="font-family:var(--num);font-size:34px;font-weight:600;letter-spacing:-0.03em;text-align:center;color:var(--text);font-variant-numeric:tabular-nums" type="number" id="inputAmount" placeholder="$0.00" min="0" step="0.01"></div>
     <div class="form-group"><label class="form-label" data-i18n="descLabel">Description</label><input class="form-input" type="text" id="inputDesc" placeholder="e.g. Groceries, gas..." oninput="autoDetectCategory(this.value)"></div>
-    <div class="form-group">
-      <label class="form-label" data-i18n="catLabel">Category</label>
-      <div class="cat-grid">
-        <button class="cat-pill selected" data-cat="food" onclick="selectCat(this)"><span class="cat-emoji">🛒</span><span class="cat-name" data-i18n="catFood">Food</span></button>
-        <button class="cat-pill" data-cat="transport" onclick="selectCat(this)"><span class="cat-emoji">🚗</span><span class="cat-name" data-i18n="catTransport">Transport</span></button>
-        <button class="cat-pill" data-cat="utilities" onclick="selectCat(this)"><span class="cat-emoji">💡</span><span class="cat-name" data-i18n="catUtilities">Utilities</span></button>
-        <button class="cat-pill" data-cat="health" onclick="selectCat(this)"><span class="cat-emoji">💊</span><span class="cat-name" data-i18n="catHealth">Health</span></button>
-        <button class="cat-pill" data-cat="entertainment" onclick="selectCat(this)"><span class="cat-emoji">🎬</span><span class="cat-name" data-i18n="catEntertainment">Entertainment</span></button>
-        <button class="cat-pill" data-cat="home" onclick="selectCat(this)"><span class="cat-emoji">🏠</span><span class="cat-name" data-i18n="catHome">Home</span></button>
-        <button class="cat-pill" data-cat="education" onclick="selectCat(this)"><span class="cat-emoji">📚</span><span class="cat-name" data-i18n="catEducation">Education</span></button>
-        <button class="cat-pill" data-cat="other" onclick="selectCat(this)"><span class="cat-emoji">📦</span><span class="cat-name" data-i18n="catOther">Other</span></button>
-        <button class="cat-pill" data-cat="travel" onclick="selectCat(this)"><span class="cat-emoji">✈️</span><span class="cat-name" data-i18n="catTravel">Travel</span></button>
-        <button class="cat-pill" data-cat="shopping" onclick="selectCat(this)"><span class="cat-emoji">👗</span><span class="cat-name" data-i18n="catShopping">Shopping</span></button>
-        <button class="cat-pill" data-cat="pets" onclick="selectCat(this)"><span class="cat-emoji">🐾</span><span class="cat-name" data-i18n="catPets">Pets</span></button>
-        <button class="cat-pill" data-cat="drinks" onclick="selectCat(this)"><span class="cat-emoji">🍺</span><span class="cat-name" data-i18n="catDrinks">Drinks</span></button>
-        <button class="cat-pill" data-cat="personalcare" onclick="selectCat(this)"><span class="cat-emoji">💇</span><span class="cat-name" data-i18n="catPersonalcare">Personal care</span></button>
-        <button class="cat-pill" data-cat="kids" onclick="selectCat(this)"><span class="cat-emoji">👶</span><span class="cat-name" data-i18n="catKids">Kids</span></button>
-        <button class="cat-pill" data-cat="gifts" onclick="selectCat(this)"><span class="cat-emoji">🎁</span><span class="cat-name" data-i18n="catGifts">Gifts</span></button>
-      </div>
-    </div>
     <div class="form-group"><label class="form-label" data-i18n="paidByLabel">Who paid?</label><div class="paid-grid" id="paidByGrid"></div></div>
     <div class="form-group">
       <label class="form-label" data-i18n="splitLabel">Split between</label>
       <div class="split-grid">
-        <button class="split-btn selected" data-split="all" onclick="selectSplit(this)"><span class="split-emoji">👥</span><span data-i18n="splitAll">Everyone</span></button>
-        <button class="split-btn" data-split="two" onclick="selectSplit(this)"><span class="split-emoji">👤</span><span data-i18n="splitTwo">Two people</span></button>
-        <button class="split-btn" data-split="full" onclick="selectSplit(this)"><span class="split-emoji">💸</span><span data-i18n="splitFull">Pay me back</span></button>
-        <button class="split-btn" data-split="solo" onclick="selectSplit(this)"><span class="split-emoji">🧾</span><span data-i18n="splitSolo">Just me</span></button>
+        <button class="split-btn selected" data-split="all" onclick="selectSplit(this)"><span data-i18n="splitAll">Everyone</span></button>
+        <button class="split-btn" data-split="two" onclick="selectSplit(this)"><span data-i18n="splitTwo">Two people</span></button>
+        <button class="split-btn" data-split="full" onclick="selectSplit(this)"><span data-i18n="splitFull">Pay me back</span></button>
+        <button class="split-btn" data-split="solo" onclick="selectSplit(this)"><span data-i18n="splitSolo">Just me</span></button>
       </div>
     </div>
     <div class="form-group" id="withWhomGroup" style="display:none"><label class="form-label" data-i18n="withWhomLabel">Split with who?</label><div class="paid-grid" id="withWhomGrid"></div></div>
@@ -257,33 +236,31 @@
 
 <!-- SETTLE MODAL -->
 <div class="modal-overlay" id="settleModal" onclick="closeOnOverlay(event,'settleModal')">
-  <div class="modal"><div style="width:40px;height:4px;background:#e0e0e0;border-radius:4px;margin:0 auto 20px;"></div>
-    <div class="modal-handle"></div>
-    <div class="modal-title" data-i18n="settleModalTitle">🤝 Settle debt</div>
+  <div class="modal"><div class="modal-handle"></div>
+    <div class="modal-title" data-i18n="settleModalTitle">Settle debt</div>
     <div class="form-group"><label class="form-label" data-i18n="settleFromLabel">Who pays?</label><div class="paid-grid" id="settleFromGrid"></div></div>
     <div class="form-group"><label class="form-label" data-i18n="settleToLabel">Who receives?</label><div class="paid-grid" id="settleToGrid"></div></div>
-    <div class="form-group"><label class="form-label" data-i18n="amountLabel">Amount</label><input class="form-input" style="font-size:32px;font-weight:900;text-align:center;color:var(--orange)" type="number" id="settleAmount" placeholder="$0.00" min="0" step="0.01"></div>
+    <div class="form-group"><label class="form-label" data-i18n="amountLabel">Amount</label><input class="form-input" style="font-family:var(--num);font-size:34px;font-weight:600;letter-spacing:-0.03em;text-align:center;color:var(--text);font-variant-numeric:tabular-nums" type="number" id="settleAmount" placeholder="$0.00" min="0" step="0.01"></div>
     <button class="submit-btn-form" onclick="addSettle()" data-i18n="savePayBtn">Record payment ✓</button>
   </div>
 </div>
 
 <!-- MEMBERS MODAL -->
 <div class="modal-overlay" id="membersModal" onclick="closeOnOverlay(event,'membersModal')">
-  <div class="modal"><div style="width:40px;height:4px;background:#e0e0e0;border-radius:4px;margin:0 auto 20px;"></div>
-    <div class="modal-handle"></div>
-    <div class="modal-title" data-i18n="membersModalTitle">👥 Members</div>
+  <div class="modal"><div class="modal-handle"></div>
+    <div class="modal-title" data-i18n="membersModalTitle">Members</div>
     <div id="membersList" style="margin-bottom:20px"></div>
     <div style="border-top:1px solid var(--border);padding-top:16px">
       <label class="form-label" data-i18n="inviteMoreLabel">Invite someone</label>
       <div style="display:flex;gap:8px;margin-bottom:16px">
         <input class="form-input" type="email" id="inviteMoreEmail" placeholder="email@example.com" style="flex:1;padding:11px 14px;">
-        <button onclick="sendInviteEmail()" style="background:var(--green);border:none;border-radius:14px;padding:0 18px;color:white;font-family:'Nunito',sans-serif;font-weight:700;cursor:pointer;white-space:nowrap" data-i18n="sendInviteBtn">Send</button>
+        <button onclick="sendInviteEmail()" style="background:var(--green);border:none;border-radius:14px;padding:0 18px;color:white;font-family:var(--ui);font-weight:700;cursor:pointer;white-space:nowrap" data-i18n="sendInviteBtn">Send</button>
       </div>
       <div class="invite-code-box">
         <div style="font-size:12px;color:var(--muted)" data-i18n="groupCodeLabel">Group invite code</div>
         <div class="invite-code-val" id="groupInviteCode">--</div>
         <div class="invite-code-sub" data-i18n="codeValid">Valid for 30 days</div>
-        <button class="copy-btn" onclick="copyInviteCode()" data-i18n="copyBtn">📋 Copy</button>
+        <button class="copy-btn" onclick="copyInviteCode()" data-i18n="copyBtn">Copy</button>
       </div>
     </div>
   </div>
@@ -291,12 +268,10 @@
 
 <!-- STATS MODAL -->
 <div class="modal-overlay" id="statsModal" onclick="closeOnOverlay(event,'statsModal')">
-  <div class="modal" style="padding-bottom:50px"><div style="width:40px;height:4px;background:#e0e0e0;border-radius:4px;margin:0 auto 20px;"></div>
-    <div class="modal-handle"></div>
-    <div class="modal-title">📈 <span data-i18n="statsTitle">Statistics</span> — <span id="statsMonthLabel" style="color:var(--orange)"></span></div>
-    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:18px;padding:16px 20px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center">
-      <div><div style="font-size:11px;color:rgba(255,255,255,0.4);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px" data-i18n="statsTotal">Monthly total</div><div id="statsTotalAmt" style="font-family:'Nunito',sans-serif;font-size:32px;font-weight:900;color:white;letter-spacing:-1px">$0.00</div></div>
-      <div style="font-size:40px">💰</div>
+  <div class="modal" style="padding-bottom:50px"><div class="modal-handle"></div>
+    <div class="modal-title"><span data-i18n="statsTitle">Statistics</span> — <span id="statsMonthLabel" style="color:var(--orange)"></span></div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:18px 20px;margin-bottom:20px;box-shadow:var(--card-shadow)">
+      <div style="font-size:11px;color:var(--muted);letter-spacing:1.4px;text-transform:uppercase;margin-bottom:4px;font-weight:600" data-i18n="statsTotal">Monthly total</div><div id="statsTotalAmt" style="font-family:var(--num);font-size:34px;font-weight:500;color:var(--text);letter-spacing:-0.035em;font-variant-numeric:tabular-nums">$0.00</div>
     </div>
     <div class="section-title" style="margin-bottom:12px" data-i18n="statsByMember">By member</div>
     <div id="memberBars" style="margin-bottom:22px"></div>
@@ -309,9 +284,8 @@
 
 <!-- DEBT DETAIL MODAL -->
 <div class="modal-overlay" id="debtModal" onclick="closeOnOverlay(event,'debtModal')">
-  <div class="modal"><div style="width:40px;height:4px;background:#e0e0e0;border-radius:4px;margin:0 auto 20px;"></div>
-    <div class="modal-handle"></div>
-    <div class="modal-title" data-i18n="debtModalTitle">💰 Balance detail</div>
+  <div class="modal"><div class="modal-handle"></div>
+    <div class="modal-title" data-i18n="debtModalTitle">Balance detail</div>
     <div id="debtDetailContent"></div>
   </div>
 </div>
@@ -319,7 +293,7 @@
 <!-- CURRENCY PICKER MODAL (for legacy groups without currency) -->
 <div class="modal-overlay" id="currencyPickerModal">
   <div class="modal" style="max-width:400px">
-    <div class="modal-title" data-i18n="currencyPickerTitle">💱 Choose group currency</div>
+    <div class="modal-title" data-i18n="currencyPickerTitle">Choose group currency</div>
     <div style="font-size:13px;color:var(--muted);margin-bottom:18px" data-i18n="currencyPickerSub">This group doesn't have a currency set yet. Pick one — all amounts will be displayed in this currency.</div>
     <div class="currency-grid" style="margin-bottom:10px">
       <button class="currency-pick-btn" id="currencyPickerUsd" style="padding:16px">
@@ -349,7 +323,7 @@
       <div id="profileNameEdit" style="display:none;margin-bottom:4px">
         <div style="display:flex;gap:6px">
           <input class="form-input" type="text" id="profileNameInput" placeholder="Your name" style="padding:8px 12px;font-size:14px;flex:1">
-          <button onclick="saveName()" style="background:var(--green);border:none;border-radius:12px;padding:8px 14px;color:white;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer">✓</button>
+          <button onclick="saveName()" style="background:var(--green);border:none;border-radius:12px;padding:8px 14px;color:white;font-family:var(--ui);font-size:13px;font-weight:700;cursor:pointer">✓</button>
           <button onclick="cancelEditName()" style="background:var(--cream);border:none;border-radius:12px;padding:8px 12px;font-size:13px;cursor:pointer">✕</button>
         </div>
       </div>
@@ -395,10 +369,10 @@
         <div class="avatar-section-title" data-i18n="groupCodeLabel">Invite code</div>
         <div style="background:var(--green-light);border:1px solid rgba(62,207,142,0.3);border-radius:14px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;">
           <div>
-            <div style="font-family:'Nunito',sans-serif;font-size:22px;font-weight:900;color:var(--green);letter-spacing:5px" id="profileGroupCode">--</div>
+            <div style="font-family:var(--ui);font-size:22px;font-weight:900;color:var(--green);letter-spacing:5px" id="profileGroupCode">--</div>
             <div style="font-size:11px;color:var(--muted);margin-top:2px" id="profileGroupName">—</div>
           </div>
-          <button onclick="copyInviteCode();showToast(t('toastCopied'))" style="background:var(--green);border:none;border-radius:10px;padding:8px 14px;color:white;font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;cursor:pointer;">📋</button>
+          <button onclick="copyInviteCode();showToast(t('toastCopied'))" style="background:var(--green);border:none;border-radius:10px;padding:8px 14px;color:white;font-family:var(--ui);font-size:12px;font-weight:700;cursor:pointer;">📋</button>
         </div>
       </div>
       <div style="height:1px;background:var(--border);margin:10px 0"></div>

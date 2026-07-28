@@ -1,3 +1,120 @@
-:root{--orange:#ff6b35;--orange-light:#fff5f0;--green:#3ecf8e;--green-light:#f0fdf8;--blue:#4f8ef7;--blue-light:#eff6ff;--red:#f56565;--red-light:#fff5f5;--cream:#f7f3ee;--white:#ffffff;--text:#1a1a2e;--text2:#555;--muted:#aaa;--border:#ede9e3;--card-shadow:0 4px 20px rgba(0,0,0,0.06);}
+/* ============================================================
+   SpentShare — Ledger design system
+   Sober paper + ink, one teal accent, Apple-style tabular numbers,
+   tactile 3D buttons. Variable NAMES are kept for backwards-compat
+   with existing markup/JS; only their VALUES changed.
+   ============================================================ */
+:root{
+  /* --- accent (was orange): sober teal-ink, primary actions/selection --- */
+  --orange:#2f7d72;
+  --orange-dark:#256a60;
+  --orange-light:#e7f1ef;
+  /* --- positive / success --- */
+  --green:#2c8a68;
+  --green-light:#e7f3ed;
+  /* --- secondary neutral-blue --- */
+  --blue:#3f6d8c;
+  --blue-light:#eaf1f5;
+  /* --- negative --- */
+  --red:#c0483f;
+  --red-light:#f8ece9;
+  /* --- neutrals: warm paper + ink --- */
+  --cream:#f4f2ec;          /* page background (paper) */
+  --white:#ffffff;          /* raised surfaces / cards */
+  --surface:#ffffff;
+  --surface-2:#faf8f3;      /* recessed tracks / segmented bg */
+  --text:#1b2530;           /* ink */
+  --text2:#48525d;
+  --muted:#8b929b;
+  --border:#e6e1d8;         /* hairline */
+  --line-soft:#efeae2;
+  --card-shadow:0 1px 2px rgba(27,37,48,.05),0 1px 3px rgba(27,37,48,.045);
+
+  /* --- typography: Apple system stack, no webfonts --- */
+  --ui:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,Roboto,sans-serif;
+  --num:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",system-ui,sans-serif;
+  --radius:16px;
+  --radius-lg:22px;
+
+  /* --- 3D button surfaces --- */
+  --btn-face-top:#ffffff;
+  --btn-face-bot:#f2efe8;
+  --btn-edge:#dcd6cb;
+  --btn-hi:rgba(255,255,255,.9);
+  --btn-drop:rgba(40,52,64,.16);
+  --btn-txt:#28323d;
+  /* accent 3D */
+  --btn3d-acc-top:#3c9084;
+  --btn3d-acc-bot:#2b7469;
+  --btn3d-acc-edge:#1f574e;
+  --btn3d-acc-hi:rgba(255,255,255,.32);
+}
+
 *{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:'Nunito Sans',sans-serif;background:var(--cream);color:var(--text);min-height:100vh;overflow-x:hidden;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);}
+html{-webkit-text-size-adjust:100%;}
+body{
+  font-family:var(--ui);
+  background:var(--cream);
+  color:var(--text);
+  min-height:100vh;
+  overflow-x:hidden;
+  padding-top:env(safe-area-inset-top);
+  padding-bottom:env(safe-area-inset-bottom);
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  letter-spacing:-0.006em;
+}
+input,button,textarea,select{font-family:var(--ui);}
+
+/* numbers: Apple, minimalist, columns that line up */
+.num,.balance-amount,.expense-amount,.debt-amount,.bm-amount,
+.invite-code-val,.detail-value,#statsTotalAmt{
+  font-family:var(--num);
+  font-variant-numeric:tabular-nums;
+  letter-spacing:-0.02em;
+}
+
+/* ============================================================
+   3D BUTTON SYSTEM  (tactile, presses down on :active)
+   ============================================================ */
+.btn3d{
+  border:none;cursor:pointer;color:var(--btn-txt);font-family:var(--ui);
+  background:linear-gradient(180deg,var(--btn-face-top),var(--btn-face-bot));
+  box-shadow:
+    inset 0 1px 0 var(--btn-hi),
+    0 1px 1px rgba(40,52,64,.05),
+    0 3px 0 var(--btn-edge),
+    0 6px 12px -4px var(--btn-drop);
+  transition:transform .1s cubic-bezier(.2,.8,.2,1),box-shadow .1s ease,filter .15s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+.btn3d:hover{filter:brightness(1.015);}
+.btn3d:active{
+  transform:translateY(3px);
+  box-shadow:
+    inset 0 1px 0 var(--btn-hi),
+    0 1px 1px rgba(40,52,64,.05),
+    0 0 0 var(--btn-edge),
+    0 1px 3px -1px var(--btn-drop);
+}
+/* accent-filled 3D button */
+.btn3d-acc{
+  border:none;cursor:pointer;color:#fff;font-family:var(--ui);
+  background:linear-gradient(180deg,var(--btn3d-acc-top),var(--btn3d-acc-bot));
+  box-shadow:
+    inset 0 1px 0 var(--btn3d-acc-hi),
+    0 3px 0 var(--btn3d-acc-edge),
+    0 7px 16px -5px rgba(31,87,78,.5);
+  transition:transform .1s cubic-bezier(.2,.8,.2,1),box-shadow .1s ease,filter .15s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+.btn3d-acc:hover{filter:brightness(1.03);}
+.btn3d-acc:active{
+  transform:translateY(3px);
+  box-shadow:inset 0 1px 0 var(--btn3d-acc-hi),0 0 0 var(--btn3d-acc-edge),0 2px 6px -2px rgba(31,87,78,.5);
+}
+.btn3d:disabled,.btn3d-acc:disabled{opacity:.5;cursor:not-allowed;transform:none;filter:none;}
+
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;}
+}

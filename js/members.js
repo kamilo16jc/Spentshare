@@ -54,18 +54,18 @@ async function openMembersModal(){
         ? `<div style="width:44px;height:44px;border-radius:50%;background:var(--cream);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">${avatar}</div>`
         : avatar.startsWith('data:')
           ? `<img src="${avatar}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0">`
-          : `<div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--orange),var(--green));display:flex;align-items:center;justify-content:center;font-family:'Nunito',sans-serif;font-size:18px;font-weight:900;color:white;flex-shrink:0">${(m.name||'?')[0].toUpperCase()}</div>`;
+          : `<div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--orange),var(--green));display:flex;align-items:center;justify-content:center;font-family:var(--ui);font-size:18px;font-weight:900;color:white;flex-shrink:0">${(m.name||'?')[0].toUpperCase()}</div>`;
       return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
         ${avatarEl}
         <div style="flex:1;min-width:0">
-          <div style="font-family:'Nunito',sans-serif;font-size:14px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:6px">
+          <div style="font-family:var(--ui);font-size:14px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:6px">
             ${esc(m.name||'?')}
             ${isMe(m.uid)?`<span style="font-size:10px;background:var(--orange-light);color:var(--orange);border-radius:20px;padding:2px 8px;font-weight:700">${youLabel}</span>`:''}
           </div>
           <div style="font-size:11px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.email||'')}</div>
         </div>
         <div style="text-align:right;flex-shrink:0">
-          <div style="font-family:'Nunito',sans-serif;font-size:14px;font-weight:900;color:${netColor}">${netText}</div>
+          <div style="font-family:var(--ui);font-size:14px;font-weight:900;color:${netColor}">${netText}</div>
         </div>
       </div>`;
     }).join('');
