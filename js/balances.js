@@ -63,7 +63,39 @@ function updateBalances(expenses){
   document.getElementById('totalMonth').textContent=fmt(total);
   const mn=lang==='es'?months_es:months_en;
   document.getElementById('balanceMonth').textContent=`${mn[now.getMonth()]} ${now.getFullYear()}`;
+  renderBalanceSpark(monthly);
   renderDebtSummary(debts);
+}
+
+// Soft ambient sparkline behind the balance card: cumulative spend across the
+// current month. Real data, very low opacity, minimalist.
+function renderBalanceSpark(monthly){
+  const el=document.getElementById('balanceSpark');
+  if(!el)return;
+  const now=new Date();
+  const days=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+  const byDay=new Array(days).fill(0);
+  (monthly||[]).filter(e=>e.type!=='settle').forEach(e=>{
+    let day=now.getDate();
+    if(e.createdAt?.toDate){
+      const d=e.createdAt.toDate();
+      if(d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear())day=d.getDate();
+    }
+    byDay[Math.min(day,days)-1]+=parseFloat(e.amount)||0;
+  });
+  let cum=0;const pts=byDay.map(v=>(cum+=v));
+  const max=Math.max(...pts,1);
+  if(cum<=0){el.innerHTML='';el.style.display='none';return;}
+  el.style.display='block';
+  const W=300,H=80,n=pts.length;
+  const xy=pts.map((v,i)=>[n>1?(i/(n-1))*W:0, H-(v/max)*(H-6)-2]);
+  const line='M '+xy.map(p=>p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' L ');
+  el.innerHTML=`<defs><linearGradient id="bspark" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="var(--orange)" stop-opacity="0.15"/>
+      <stop offset="1" stop-color="var(--orange)" stop-opacity="0"/>
+    </linearGradient></defs>
+    <path d="${line} L ${W} ${H} L 0 ${H} Z" fill="url(#bspark)"/>
+    <path d="${line}" fill="none" stroke="var(--orange)" stroke-opacity="0.30" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`;
 }
 
 function renderDebtSummary(debts){
