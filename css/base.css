@@ -1,53 +1,56 @@
 /* ============================================================
-   SpentShare — Ledger design system
-   Sober paper + ink, one teal accent, Apple-style tabular numbers,
-   tactile 3D buttons. Variable NAMES are kept for backwards-compat
-   with existing markup/JS; only their VALUES changed.
+   SpentShare — "Finova" design system (dark + ember)
+   Ported from the Pocket Finance Flow reference. Variable NAMES
+   are kept for backwards-compat with existing markup/JS; only
+   their VALUES changed. All colors in OKLCH.
    ============================================================ */
 :root{
-  /* --- accent (was orange): sober teal-ink, primary actions/selection --- */
-  --orange:#2f7d72;
-  --orange-dark:#256a60;
-  --orange-light:#e7f1ef;
+  /* --- accent (was orange): ember / primary --- */
+  --orange:oklch(0.652 0.18 35.2);
+  --orange-2:oklch(0.58 0.22 25);          /* gradient end / deeper ember */
+  --orange-dark:oklch(0.58 0.22 25);
+  --orange-light:oklch(0.652 0.18 35.2 / 0.15);  /* primary tint */
   /* --- positive / success --- */
-  --green:#2c8a68;
-  --green-light:#e7f3ed;
-  /* --- secondary neutral-blue --- */
-  --blue:#3f6d8c;
-  --blue-light:#eaf1f5;
-  /* --- negative --- */
-  --red:#c0483f;
-  --red-light:#f8ece9;
-  /* --- neutrals: warm paper + ink --- */
-  --cream:#f4f2ec;          /* page background (paper) */
-  --white:#ffffff;          /* raised surfaces / cards */
-  --surface:#ffffff;
-  --surface-2:#faf8f3;      /* recessed tracks / segmented bg */
-  --text:#1b2530;           /* ink */
-  --text2:#48525d;
-  --muted:#8b929b;
-  --border:#e6e1d8;         /* hairline */
-  --line-soft:#efeae2;
-  --card-shadow:0 1px 2px rgba(27,37,48,.05),0 1px 3px rgba(27,37,48,.045);
+  --green:oklch(0.65 0.18 145);
+  --green-light:oklch(0.65 0.18 145 / 0.15);
+  /* --- secondary neutral (Finova has no blue; soft slate) --- */
+  --blue:oklch(0.7 0.02 250);
+  --blue-light:oklch(0.7 0.05 250 / 0.15);
+  /* --- negative / danger --- */
+  --red:oklch(0.65 0.18 25);
+  --red-light:oklch(0.65 0.18 25 / 0.15);
+  /* --- neutrals: dark surfaces + light ink --- */
+  --cream:oklch(0.218 0 0);        /* page background */
+  --white:oklch(0.297 0 0);        /* cards */
+  --surface:oklch(0.297 0 0);
+  --surface-2:oklch(0.35 0 0);     /* recessed tiles / tracks / inputs */
+  --text:oklch(0.95 0 0);          /* foreground */
+  --text2:oklch(0.78 0 0);
+  --muted:oklch(0.65 0 0);         /* muted foreground */
+  --border:oklch(1 0 0 / 0.10);
+  --line-soft:oklch(1 0 0 / 0.06);
+  --input:oklch(1 0 0 / 0.15);
+  --card-shadow:0 1px 3px oklch(0 0 0 / 0.35);
 
-  /* --- typography: Apple system stack, no webfonts --- */
-  --ui:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,Roboto,sans-serif;
-  --num:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",system-ui,sans-serif;
+  /* --- typography: Sora (display/numbers) + Manrope (body) --- */
+  --ui:"Manrope",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  --num:"Sora","Manrope",-apple-system,system-ui,sans-serif;
+  --display:"Sora","Manrope",system-ui,sans-serif;
   --radius:16px;
-  --radius-lg:22px;
+  --radius-lg:24px;
+  --radius-xl:28px;
 
-  /* --- 3D button surfaces --- */
-  --btn-face-top:#ffffff;
-  --btn-face-bot:#f2efe8;
-  --btn-edge:#dcd6cb;
-  --btn-hi:rgba(255,255,255,.9);
-  --btn-drop:rgba(40,52,64,.16);
-  --btn-txt:#28323d;
-  /* accent 3D */
-  --btn3d-acc-top:#3c9084;
-  --btn3d-acc-bot:#2b7469;
-  --btn3d-acc-edge:#1f574e;
-  --btn3d-acc-hi:rgba(255,255,255,.32);
+  /* legacy 3D-button tokens kept as aliases (buttons are now flat) */
+  --btn-face-top:var(--surface-2);
+  --btn-face-bot:var(--surface-2);
+  --btn-edge:transparent;
+  --btn-hi:transparent;
+  --btn-drop:oklch(0 0 0 / 0.3);
+  --btn-txt:var(--text);
+  --btn3d-acc-top:var(--orange);
+  --btn3d-acc-bot:var(--orange-2);
+  --btn3d-acc-edge:transparent;
+  --btn3d-acc-hi:transparent;
 }
 
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -62,57 +65,38 @@ body{
   padding-bottom:env(safe-area-inset-bottom);
   -webkit-font-smoothing:antialiased;
   -moz-osx-font-smoothing:grayscale;
-  letter-spacing:-0.006em;
 }
 input,button,textarea,select{font-family:var(--ui);}
 
-/* numbers: Apple, minimalist, columns that line up */
+/* numbers / display use Sora */
 .num,.balance-amount,.expense-amount,.debt-amount,.bm-amount,
 .invite-code-val,.detail-value,#statsTotalAmt{
   font-family:var(--num);
   font-variant-numeric:tabular-nums;
-  letter-spacing:-0.02em;
+  letter-spacing:-0.01em;
 }
 
 /* ============================================================
-   3D BUTTON SYSTEM  (tactile, presses down on :active)
+   BUTTON SYSTEM  (Finova: flat, rounded, press = scale down)
    ============================================================ */
-.btn3d{
-  border:none;cursor:pointer;color:var(--btn-txt);font-family:var(--ui);
-  background:linear-gradient(180deg,var(--btn-face-top),var(--btn-face-bot));
-  box-shadow:
-    inset 0 1px 0 var(--btn-hi),
-    0 1px 1px rgba(40,52,64,.05),
-    0 3px 0 var(--btn-edge),
-    0 6px 12px -4px var(--btn-drop);
-  transition:transform .1s cubic-bezier(.2,.8,.2,1),box-shadow .1s ease,filter .15s ease;
+.btn3d{           /* neutral / secondary button */
+  border:none;cursor:pointer;color:var(--text);font-family:var(--ui);font-weight:600;
+  background:var(--surface-2);
+  transition:background .18s ease, transform .12s ease, filter .18s ease;
   -webkit-tap-highlight-color:transparent;
 }
-.btn3d:hover{filter:brightness(1.015);}
-.btn3d:active{
-  transform:translateY(3px);
-  box-shadow:
-    inset 0 1px 0 var(--btn-hi),
-    0 1px 1px rgba(40,52,64,.05),
-    0 0 0 var(--btn-edge),
-    0 1px 3px -1px var(--btn-drop);
-}
-/* accent-filled 3D button */
-.btn3d-acc{
-  border:none;cursor:pointer;color:#fff;font-family:var(--ui);
-  background:linear-gradient(180deg,var(--btn3d-acc-top),var(--btn3d-acc-bot));
-  box-shadow:
-    inset 0 1px 0 var(--btn3d-acc-hi),
-    0 3px 0 var(--btn3d-acc-edge),
-    0 7px 16px -5px rgba(31,87,78,.5);
-  transition:transform .1s cubic-bezier(.2,.8,.2,1),box-shadow .1s ease,filter .15s ease;
+.btn3d:hover{filter:brightness(1.08);}
+.btn3d:active{transform:scale(0.96);}
+
+.btn3d-acc{       /* primary / accent button (ember gradient) */
+  border:none;cursor:pointer;color:oklch(0.985 0.003 248);font-family:var(--ui);font-weight:600;
+  background:linear-gradient(135deg,var(--orange) 0%,var(--orange-2) 100%);
+  box-shadow:0 8px 24px -8px oklch(0.652 0.18 35.2 / 0.5);
+  transition:transform .12s ease, filter .18s ease, box-shadow .18s ease;
   -webkit-tap-highlight-color:transparent;
 }
-.btn3d-acc:hover{filter:brightness(1.03);}
-.btn3d-acc:active{
-  transform:translateY(3px);
-  box-shadow:inset 0 1px 0 var(--btn3d-acc-hi),0 0 0 var(--btn3d-acc-edge),0 2px 6px -2px rgba(31,87,78,.5);
-}
+.btn3d-acc:hover{filter:brightness(1.05);}
+.btn3d-acc:active{transform:scale(0.96);}
 .btn3d:disabled,.btn3d-acc:disabled{opacity:.5;cursor:not-allowed;transform:none;filter:none;}
 
 @media (prefers-reduced-motion:reduce){

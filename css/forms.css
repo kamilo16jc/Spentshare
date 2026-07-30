@@ -1,46 +1,31 @@
 .cat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
-.cat-pill{padding:10px 6px;border:1px solid var(--border);border-radius:12px;background:var(--surface);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all 0.12s;}
+.cat-pill{padding:10px 6px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all 0.12s;}
 .cat-pill:hover,.cat-pill.selected{border-color:var(--orange);background:var(--orange-light);}
-.cat-pill.selected{box-shadow:0 0 0 2px rgba(47,125,114,.15);}
 .cat-emoji{font-size:21px;}
 .cat-name{font-size:10px;font-weight:600;color:var(--text2);}
 .paid-grid{display:flex;gap:8px;flex-wrap:wrap;}
-.paid-btn{flex:1;min-width:60px;padding:10px 6px;border:1px solid var(--border);border-radius:13px;background:var(--surface);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all 0.12s;}
-.paid-btn:hover,.paid-btn.selected{border-color:var(--blue);background:var(--blue-light);}
-.paid-btn.selected{box-shadow:0 0 0 2px rgba(63,109,140,.15);}
+.paid-btn{flex:1;min-width:60px;padding:10px 6px;border:1px solid var(--border);border-radius:14px;background:var(--surface-2);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all 0.12s;}
+.paid-btn:hover,.paid-btn.selected{border-color:var(--orange);background:var(--orange-light);}
 .paid-btn .paid-avatar{font-size:20px;}
 .paid-btn .paid-name{font-size:11px;font-weight:600;color:var(--text);text-align:center;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-/* Auto icon preview — placeholder where Claude drops the detected store logo */
-.auto-icon-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px dashed var(--border);border-radius:14px;background:var(--surface-2);}
-.auto-icon-tile{position:relative;width:44px;height:44px;border-radius:12px;flex-shrink:0;display:grid;place-items:center;background:var(--surface);border:1px solid var(--border);font-family:var(--num);font-size:19px;font-weight:600;color:var(--muted);letter-spacing:-.02em;overflow:visible;}
-.auto-icon-tile.filled{color:var(--text2);}
-.auto-icon-tile .ai-spark{position:absolute;bottom:-4px;right:-4px;width:17px;height:17px;border-radius:50%;background:var(--orange);color:#fff;font-size:9px;font-weight:800;display:grid;place-items:center;border:2px solid var(--surface-2);}
-.auto-icon-text{min-width:0;}
-.auto-icon-title{font-size:13px;font-weight:650;color:var(--text);letter-spacing:-.01em;}
-.auto-icon-sub{font-size:11.5px;color:var(--muted);margin-top:1px;line-height:1.35;}
-
 .split-grid{display:flex;gap:8px;}
-.split-btn{flex:1;padding:12px 8px;border:1px solid var(--border);border-radius:12px;background:var(--surface);cursor:pointer;font-size:12px;font-weight:600;color:var(--text2);transition:all 0.12s;display:flex;align-items:center;justify-content:center;text-align:center;min-height:44px;}
-.split-btn:hover,.split-btn.selected{border-color:var(--green);background:var(--green-light);color:var(--green);}
-.split-btn.selected{box-shadow:0 0 0 2px rgba(44,138,104,.15);}
-.submit-btn-form{width:100%;padding:14px;border:none;border-radius:14px;font-size:15px;font-weight:650;color:white;cursor:pointer;margin-top:8px;
-  background:linear-gradient(180deg,var(--btn3d-acc-top),var(--btn3d-acc-bot));
-  box-shadow:inset 0 1px 0 var(--btn3d-acc-hi),0 3px 0 var(--btn3d-acc-edge),0 7px 16px -5px rgba(31,87,78,.5);
-  transition:transform .1s cubic-bezier(.2,.8,.2,1),box-shadow .1s ease;}
-.submit-btn-form:active{transform:translateY(3px);box-shadow:inset 0 1px 0 var(--btn3d-acc-hi),0 0 0 var(--btn3d-acc-edge),0 2px 6px -2px rgba(31,87,78,.5);}
+.split-btn{flex:1;padding:12px 8px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2);cursor:pointer;font-size:12px;font-weight:600;color:var(--text2);transition:all 0.12s;display:flex;align-items:center;justify-content:center;text-align:center;min-height:44px;}
+.split-btn:hover,.split-btn.selected{border-color:var(--orange);background:var(--orange-light);color:var(--text);}
+.submit-btn-form{width:100%;padding:14px;border:none;border-radius:14px;font-size:15px;font-weight:650;color:#fff;cursor:pointer;margin-top:8px;background:linear-gradient(135deg,var(--orange),var(--orange-2));box-shadow:0 10px 26px -8px oklch(0.652 0.18 35.2 / 0.55);transition:transform .12s ease,filter .18s ease;}
+.submit-btn-form:hover{filter:brightness(1.05);}
+.submit-btn-form:active{transform:scale(0.98);}
 .submit-btn-form:disabled{opacity:0.5;cursor:not-allowed;transform:none;}
 .detail-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);}
 .detail-row:last-child{border-bottom:none;}
 .detail-label{font-size:13px;color:var(--text2);}
-.detail-value{font-family:var(--num);font-size:14px;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums;letter-spacing:-0.02em;}
+.detail-value{font-family:var(--num);font-size:14px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;letter-spacing:-0.01em;}
 .detail-value.pos{color:var(--green);}
 .detail-value.neg{color:var(--red);}
 .member-row-m{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
 .member-row-m:last-child{border:none;}
 .currency-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.currency-pick-btn{padding:12px 14px;border:1px solid var(--border);border-radius:13px;background:var(--surface);cursor:pointer;display:flex;align-items:center;gap:10px;transition:all 0.12s;text-align:left;}
+.currency-pick-btn{padding:12px 14px;border:1px solid var(--border);border-radius:14px;background:var(--surface-2);cursor:pointer;display:flex;align-items:center;gap:10px;transition:all 0.12s;text-align:left;}
 .currency-pick-btn:hover,.currency-pick-btn.selected{border-color:var(--orange);background:var(--orange-light);}
-.currency-pick-btn.selected{box-shadow:0 0 0 2px rgba(47,125,114,.15);}
 .currency-flag{font-size:24px;flex-shrink:0;}
 .currency-txt{font-size:13px;font-weight:700;color:var(--text);line-height:1.3;}
 .currency-txt small{font-size:10px;font-weight:500;color:var(--muted);}

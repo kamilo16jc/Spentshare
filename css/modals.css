@@ -1,21 +1,19 @@
-.modal-overlay{position:fixed;inset:0;background:rgba(27,37,48,0.42);z-index:1000;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.25s;backdrop-filter:blur(3px);}
+.modal-overlay{position:fixed;inset:0;background:oklch(0 0 0 / 0.6);z-index:1000;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.25s;backdrop-filter:blur(4px);}
 .modal-overlay.show{opacity:1;pointer-events:all;}
-.modal{background:var(--surface);border-radius:24px 24px 0 0;padding:26px 22px 40px;width:100%;max-width:480px;transform:translateY(100%);transition:transform 0.36s cubic-bezier(0.32,0.9,0.4,1);max-height:90vh;overflow-y:auto;box-shadow:0 -8px 40px rgba(27,37,48,.18);}
+.modal{background:var(--surface);border-radius:var(--radius-xl) var(--radius-xl) 0 0;padding:26px 22px 40px;width:100%;max-width:480px;transform:translateY(100%);transition:transform 0.36s cubic-bezier(0.32,0.9,0.4,1);max-height:90vh;overflow-y:auto;box-shadow:0 -12px 50px oklch(0 0 0 / 0.5);border-top:1px solid var(--border);}
 .modal-overlay.show .modal{transform:translateY(0);}
-.modal-handle{width:38px;height:4px;background:var(--border);border-radius:4px;margin:0 auto 20px;}
-.modal-title{font-size:19px;font-weight:700;color:var(--text);margin-bottom:20px;letter-spacing:-0.02em;}
+.modal-handle{width:38px;height:4px;background:var(--surface-2);border-radius:4px;margin:0 auto 20px;}
+.modal-title{font-family:var(--display);font-size:19px;font-weight:700;color:var(--text);margin-bottom:20px;letter-spacing:-0.02em;}
 .emoji-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:4px;}
-.emoji-btn{aspect-ratio:1;border-radius:11px;border:1px solid var(--border);background:var(--surface);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.12s;}
+.emoji-btn{aspect-ratio:1;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.12s;}
 .emoji-btn:hover,.emoji-btn.selected{border-color:var(--orange);background:var(--orange-light);}
-.emoji-btn.selected{box-shadow:0 0 0 2px rgba(47,125,114,.18);}
-.invite-code-box{background:var(--green-light);border:1px solid rgba(44,138,104,0.3);border-radius:14px;padding:16px;text-align:center;margin-top:14px;}
-.invite-code-val{font-family:var(--num);font-size:28px;font-weight:600;color:var(--green);letter-spacing:6px;font-variant-numeric:tabular-nums;}
+.emoji-btn.selected{box-shadow:0 0 0 2px oklch(0.652 0.18 35.2 / 0.4);}
+.invite-code-box{background:var(--green-light);border:1px solid oklch(0.65 0.18 145 / 0.3);border-radius:16px;padding:16px;text-align:center;margin-top:14px;}
+.invite-code-val{font-family:var(--num);font-size:28px;font-weight:700;color:var(--green);letter-spacing:6px;font-variant-numeric:tabular-nums;}
 .invite-code-sub{font-size:12px;color:var(--muted);margin-top:4px;}
-.copy-btn{border:none;border-radius:10px;padding:7px 16px;color:white;font-size:12px;font-weight:600;cursor:pointer;margin-top:8px;
-  background:linear-gradient(180deg,var(--btn3d-acc-top),var(--btn3d-acc-bot));
-  box-shadow:inset 0 1px 0 var(--btn3d-acc-hi),0 2px 0 var(--btn3d-acc-edge),0 4px 9px -3px rgba(31,87,78,.4);transition:transform .1s ease;}
-.copy-btn:active{transform:translateY(2px);}
+.copy-btn{border:none;border-radius:10px;padding:8px 16px;color:#fff;font-size:12px;font-weight:600;cursor:pointer;margin-top:8px;background:linear-gradient(135deg,var(--orange),var(--orange-2));transition:transform .12s ease;}
+.copy-btn:active{transform:scale(0.95);}
 .chips-area{display:flex;flex-wrap:wrap;margin-top:8px;min-height:28px;}
-.member-chip{display:inline-flex;align-items:center;gap:6px;background:var(--blue-light);border:1px solid rgba(63,109,140,0.22);border-radius:999px;padding:4px 10px;font-size:12px;font-weight:600;color:var(--blue);margin:3px;}
+.member-chip{display:inline-flex;align-items:center;gap:6px;background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:4px 10px;font-size:12px;font-weight:600;color:var(--text2);margin:3px;}
 .chip-x{cursor:pointer;opacity:0.6;font-size:10px;}
 .chip-x:hover{opacity:1;}
