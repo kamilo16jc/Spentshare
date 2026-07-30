@@ -1,4 +1,4 @@
-const CACHE_NAME = 'spentshare-v6';
+const CACHE_NAME = 'spentshare-v7';
 const ASSETS = [
   '/Spentshare/',
   '/Spentshare/index.html',
@@ -25,8 +25,7 @@ const ASSETS = [
   '/Spentshare/js/balances.js',
   '/Spentshare/js/stats.js',
   '/Spentshare/js/profile.js',
-  '/Spentshare/js/app.js',
-  'https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;900&family=Nunito+Sans:wght@300;400;600&display=swap'
+  '/Spentshare/js/app.js'
 ];
 
 // Install — cache core assets

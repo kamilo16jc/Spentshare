@@ -47,19 +47,18 @@ async function saveAvatar(val){
 }
 
 function applyAvatarEverywhere(val){
-  const isEmoji = val && !val.startsWith('data:');
-  const circle = document.getElementById('userInitialCircle');
-  if(circle){
-    if(isEmoji){ circle.classList.remove('initials'); circle.textContent=val; circle.style.background='transparent'; circle.style.fontSize='22px'; }
-    else if(val){ circle.classList.remove('initials'); circle.innerHTML=`<img src="${val}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`; }
-    else{ circle.classList.add('initials'); circle.textContent=(window._curUser?.displayName||window._curUser?.email||'?')[0].toUpperCase(); circle.style.background=''; }
-  }
-  const big = document.getElementById('profileAvatarBig');
-  if(big){
-    if(isEmoji){ big.classList.remove('initials'); big.textContent=val; big.style.background='transparent'; big.style.fontSize='42px'; }
-    else if(val){ big.classList.remove('initials'); big.innerHTML=`<img src="${val}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`; }
-    else{ big.classList.add('initials'); big.textContent=(window._curUser?.displayName||window._curUser?.email||'?')[0].toUpperCase(); big.style.background=''; }
-  }
+  // Only uploaded photos are shown; emoji avatars are ignored -> initial circle.
+  const isPhoto = val && val.startsWith('data:');
+  const initialOf = () => (window._curUser?.displayName||window._curUser?.email||'?')[0].toUpperCase();
+  const set = (elId) => {
+    const el = document.getElementById(elId);
+    if(!el) return;
+    el.style.background=''; el.style.fontSize='';
+    if(isPhoto){ el.classList.remove('initials'); el.innerHTML=`<img src="${val}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`; }
+    else{ el.classList.add('initials'); el.innerHTML=''; el.textContent=initialOf(); }
+  };
+  set('userInitialCircle');
+  set('profileAvatarBig');
   renderAllAvatars();
 }
 
@@ -100,11 +99,10 @@ async function loadGroupMemberAvatars(){
 
 function renderAvatarEl(uid, name, size=28){
   const val = getAvatarForMember(uid, name);
-  const isEmoji = val && !val.startsWith('data:');
-  if(isEmoji) return `<span style="font-size:${size}px;line-height:1">${val}</span>`;
-  if(val && val.startsWith('data:')) return `<img src="${val}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover">`;
+  // Uploaded photos stay; everything else (including saved emoji) -> initial circle.
+  if(val && val.startsWith('data:')) return `<img src="${val}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;flex-shrink:0">`;
   const initial = (name||'?')[0].toUpperCase();
-  return `<span style="width:${size}px;height:${size}px;border-radius:50%;background:linear-gradient(135deg,var(--orange),var(--green));display:inline-flex;align-items:center;justify-content:center;font-family:var(--ui);font-size:${Math.round(size*0.45)}px;font-weight:900;color:white;flex-shrink:0">${initial}</span>`;
+  return `<span style="width:${size}px;height:${size}px;border-radius:50%;background:var(--orange);display:inline-flex;align-items:center;justify-content:center;font-family:var(--ui);font-size:${Math.round(size*0.46)}px;font-weight:700;color:white;flex-shrink:0">${initial}</span>`;
 }
 
 function selectAvatarEmoji(emoji){

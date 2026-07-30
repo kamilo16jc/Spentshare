@@ -48,13 +48,7 @@ async function openMembersModal(){
       const net = netPos[m.uid]||0;
       const netColor = Math.abs(net)<0.01?'var(--muted)':net>0?'var(--green)':'var(--red)';
       const netText = Math.abs(net)<0.01?'✓ ok':net>0?'▲ +'+fmt(net):'▼ -'+fmt(Math.abs(net));
-      const avatar = getAvatar(m.name, m.uid);
-      const isEmoji = avatar && !avatar.startsWith('data:');
-      const avatarEl = isEmoji
-        ? `<div style="width:44px;height:44px;border-radius:50%;background:var(--cream);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">${avatar}</div>`
-        : avatar.startsWith('data:')
-          ? `<img src="${avatar}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0">`
-          : `<div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--orange),var(--green));display:flex;align-items:center;justify-content:center;font-family:var(--ui);font-size:18px;font-weight:900;color:white;flex-shrink:0">${(m.name||'?')[0].toUpperCase()}</div>`;
+      const avatarEl = renderAvatarEl(m.uid, m.name, 44);
       return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
         ${avatarEl}
         <div style="flex:1;min-width:0">

@@ -57,7 +57,7 @@ const TX = {
     catTravel:'Travel',catShopping:'Shopping',catPets:'Pets',catDrinks:'Drinks',
     catPersonalcare:'Personal care',catKids:'Kids',catGifts:'Gifts',
     debtByPerson:'By person',debtPending:'Pending debts',
-    membersOf:(n)=>`Members of ${n}`,noGroups:'No groups yet. Create one!',languageLabel:'Language',chooseAvatarLabel:'Choose avatar',uploadPhotoLabel:'Upload photo',editNameLabel:'Edit name'
+    membersOf:(n)=>`Members of ${n}`,noGroups:'No groups yet. Create one!',languageLabel:'Language',chooseAvatarLabel:'Avatar',uploadPhotoLabel:'Upload photo',editNameLabel:'Edit name'
   },
   es:{
     tabLogin:'Entrar',tabRegister:'Registrarse',
@@ -116,7 +116,7 @@ const TX = {
     catTravel:'Viajes',catShopping:'Compras',catPets:'Mascotas',catDrinks:'Bebidas',
     catPersonalcare:'Cuidado personal',catKids:'Niños',catGifts:'Regalos',
     debtByPerson:'Por persona',debtPending:'Deudas pendientes',
-    membersOf:(n)=>`Miembros de ${n}`,noGroups:'Sin grupos. ¡Crea uno!',languageLabel:'Idioma',chooseAvatarLabel:'Elegir avatar',uploadPhotoLabel:'Subir foto',editNameLabel:'Editar nombre'
+    membersOf:(n)=>`Miembros de ${n}`,noGroups:'Sin grupos. ¡Crea uno!',languageLabel:'Idioma',chooseAvatarLabel:'Avatar',uploadPhotoLabel:'Subir foto',editNameLabel:'Editar nombre'
   }
 };
 
