@@ -23,56 +23,31 @@ function showGroupScreen(){
   renderGroupList();
 }
 
-// Apple-Watch-style honeycomb of group bubbles.
-// Tap a bubble -> reveal full name; tap the active bubble again -> open the group.
+// Group list — Finova-style cards. One tap opens the group.
+const CHEVRON_SVG='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>';
+const TRASH_SVG='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>';
+
 function renderGroupList(){
   const list=document.getElementById('groupList');
   if(userGroups.length===0){
     list.innerHTML=`<div class="hive-empty">${t('noGroups')}</div>`;return;
   }
-  const per=3;
-  let rows='';
-  for(let i=0;i<userGroups.length;i+=per){
-    const chunk=userGroups.slice(i,i+per);
-    const rowIdx=i/per;
-    rows+=`<div class="hive-row${rowIdx%2?' odd':''}">`+chunk.map((g,j)=>{
-      const idx=i+j;
-      const letter=((g.name||'?').trim().charAt(0)||'?').toUpperCase();
-      const members=(g.memberUids||[]).length;
-      const mlabel=members+' '+(lang==='es'?'miembros':'members');
-      return `<button class="hive-bubble b${idx%6}" style="animation-delay:-${(idx*0.37).toFixed(2)}s" onclick="hiveTap(this,'${g.id}')" aria-label="${esc(g.name)}">
-        <span class="hb-letter">${esc(letter)}</span>
-        <span class="hb-del" title="${lang==='es'?'Eliminar':'Delete'}" onclick="hiveDelete(event,'${g.id}')">✕</span>
-        <span class="hb-name"><b>${esc(g.name)}</b><small>${mlabel}</small></span>
-      </button>`;
-    }).join('')+`</div>`;
-  }
-  const hint = lang==='es'
-    ? 'Toca un grupo para ver su nombre. Tócalo otra vez para abrirlo.'
-    : 'Tap a group to reveal its name. Tap again to open it.';
-  list.innerHTML=`<div class="hive">${rows}<div class="hive-hint">${hint}</div></div>`;
-  initHiveParallax();
-}
-
-function hiveTap(el,id){
-  if(el.classList.contains('active')){ selectGroup(id); return; }
-  document.querySelectorAll('.hive-bubble.active').forEach(b=>b.classList.remove('active'));
-  el.classList.add('active');
+  list.innerHTML=userGroups.map(g=>{
+    const letter=((g.name||'?').trim().charAt(0)||'?').toUpperCase();
+    const members=(g.memberUids||[]).length;
+    const mlabel=members+' '+(lang==='es'?'miembros':'members');
+    // stable warm gradient per group (keeps the ember essence, plays with tones)
+    const tone=((g.name||'?').split('').reduce((a,c)=>a+c.charCodeAt(0),0))%6;
+    return `<button class="group-item" onclick="selectGroup('${g.id}')" aria-label="${esc(g.name)}">
+      <span class="gc-avatar tone-${tone}">${esc(letter)}</span>
+      <span class="gc-info"><span class="gc-name">${esc(g.name)}</span><span class="gc-sub">${mlabel}</span></span>
+      <span class="gc-del" title="${lang==='es'?'Eliminar':'Delete'}" onclick="hiveDelete(event,'${g.id}')">${TRASH_SVG}</span>
+      <span class="gc-arrow">${CHEVRON_SVG}</span>
+    </button>`;
+  }).join('');
 }
 
 function hiveDelete(ev,id){ ev.stopPropagation(); ev.preventDefault(); deleteGroup(id); }
-
-// Gentle parallax: rows drift in opposite directions as the screen scrolls.
-function initHiveParallax(){
-  const sc=document.getElementById('groupScreen');
-  const rows=[...document.querySelectorAll('.hive-row')];
-  if(!sc||!rows.length) return;
-  const onScroll=()=>{
-    const y=sc.scrollTop||0;
-    rows.forEach((r,i)=>{ const dir=i%2?1:-1; r.style.transform=`translateY(${(-y*0.05*dir).toFixed(1)}px)`; });
-  };
-  sc.onscroll=onScroll; onScroll();
-}
 
 async function deleteGroup(gid){
   const gname = userGroups.find(g=>g.id===gid)?.name || '';
