@@ -1,3 +1,11 @@
+/* Scan-receipt button (opens camera / photo picker) */
+.scan-receipt-btn{width:100%;margin-bottom:18px;padding:13px;border:1.5px dashed var(--border);border-radius:14px;background:var(--surface-2);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;font-size:14px;font-weight:600;color:var(--text);transition:border-color .15s,background .15s,opacity .15s;-webkit-tap-highlight-color:transparent;}
+.scan-receipt-btn:hover{border-color:var(--orange);color:var(--orange);}
+.scan-receipt-btn:active{transform:scale(0.99);}
+.scan-receipt-btn.loading{opacity:.7;pointer-events:none;border-style:solid;border-color:var(--orange);color:var(--orange);}
+.scan-receipt-btn.loading svg{animation:scanPulse 1s ease-in-out infinite;}
+@keyframes scanPulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+
 .cat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
 .cat-pill{padding:10px 6px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all 0.12s;}
 .cat-pill:hover,.cat-pill.selected{border-color:var(--orange);background:var(--orange-light);}

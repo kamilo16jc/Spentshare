@@ -704,3 +704,75 @@ exports.enrichExpense = onDocumentCreated(
     }
   }
 );
+
+// ───────────────────────────────────────────────────────────
+// AI: scan a receipt photo -> total, merchant, category, logo (Claude vision)
+// Callable from the app; the frontend pre-fills the "new expense" form.
+// ───────────────────────────────────────────────────────────
+exports.scanReceipt = onCall(
+  { secrets: [ANTHROPIC_API_KEY], memory: '512MiB', timeoutSeconds: 60 },
+  async (req) => {
+    if (!req.auth) throw new HttpsError('unauthenticated', 'Login required');
+    const { imageBase64, mediaType } = req.data || {};
+    if (!imageBase64 || typeof imageBase64 !== 'string') {
+      throw new HttpsError('invalid-argument', 'Missing image');
+    }
+    if (imageBase64.length > 7_000_000) { // ~5MB decoded — client should downscale
+      throw new HttpsError('invalid-argument', 'Image too large');
+    }
+    const mt = ['image/jpeg', 'image/png', 'image/webp'].includes(mediaType) ? mediaType : 'image/jpeg';
+
+    const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
+    const schema = {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        found: { type: 'boolean', description: 'True if the image is a purchase receipt/ticket and a total was found.' },
+        amount: { type: 'number', description: 'The FINAL total paid, as a plain number (no currency symbol, no thousands separators). 0 if not found.' },
+        currency: { type: 'string', enum: ['USD', 'COP', ''], description: 'Currency if clearly shown, else empty string.' },
+        merchant: { type: 'string', description: 'Store/brand name printed on the receipt.' },
+        category: { type: 'string', enum: EXPENSE_CATEGORIES },
+        domain: { type: 'string', description: 'Primary web domain of the store for its logo, e.g. "exito.com". Empty string if not a recognizable brand.' },
+        emoji: { type: 'string', description: 'A single emoji representing the expense.' },
+      },
+      required: ['found', 'amount', 'currency', 'merchant', 'category', 'domain', 'emoji'],
+    };
+
+    const resp = await anthropic.messages.create({
+      model: AI_MODEL,
+      max_tokens: 1024,
+      thinking: { type: 'disabled' },
+      output_config: { effort: 'low', format: { type: 'json_schema', schema } },
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: mt, data: imageBase64 } },
+          { type: 'text', text:
+            'This is a photo of a purchase receipt (Colombia / Latin America; usually Spanish). ' +
+            'Extract the FINAL TOTAL amount paid (the grand total, after taxes — a plain number, e.g. 84300, ' +
+            'not "84.300" or "$84,300"), the currency if shown (COP or USD), the store/brand name, the best ' +
+            'category, the store web domain so we can fetch its logo (empty string if it is not a recognizable brand), ' +
+            'and one emoji. If the image is NOT a receipt, set found=false.' },
+        ],
+      }],
+    });
+
+    const tb = resp.content.find((b) => b.type === 'text');
+    const out = JSON.parse((tb && tb.text) || '{}');
+
+    const cats = new Set(EXPENSE_CATEGORIES);
+    let domain = String(out.domain || '').trim().toLowerCase()
+      .replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/[^a-z0-9.\-]/g, '');
+    if (!/\.[a-z]{2,}$/.test(domain)) domain = '';
+
+    return {
+      found: !!out.found,
+      amount: Number(out.amount) || 0,
+      currency: ['USD', 'COP'].includes(out.currency) ? out.currency : '',
+      merchant: String(out.merchant || '').trim().slice(0, 80),
+      category: cats.has(out.category) ? out.category : 'other',
+      domain,
+      emoji: String(out.emoji || '').trim().slice(0, 8),
+    };
+  }
+);

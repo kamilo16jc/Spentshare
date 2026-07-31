@@ -31,6 +31,59 @@ function subscribeExpenses(){
   groupUnsub=expUnsub;
 }
 
+// ── RECEIPT SCAN (photo → total + merchant + category + logo, via Claude vision) ──
+function downscaleImage(file, maxSide, quality){
+  return new Promise((resolve,reject)=>{
+    const url=URL.createObjectURL(file);
+    const img=new Image();
+    img.onload=()=>{
+      URL.revokeObjectURL(url);
+      let w=img.naturalWidth||img.width, h=img.naturalHeight||img.height;
+      const scale=Math.min(1, maxSide/Math.max(w,h));
+      w=Math.max(1,Math.round(w*scale)); h=Math.max(1,Math.round(h*scale));
+      const c=document.createElement('canvas'); c.width=w; c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      resolve(c.toDataURL('image/jpeg',quality).split(',')[1]);
+    };
+    img.onerror=()=>{ URL.revokeObjectURL(url); reject(new Error('image load failed')); };
+    img.src=url;
+  });
+}
+
+async function handleReceiptScan(ev){
+  const file=ev.target.files&&ev.target.files[0];
+  ev.target.value=''; // allow re-picking the same file
+  if(!file) return;
+  if(!file.type||!file.type.startsWith('image/')){ showToast(lang==='es'?'Elegí una imagen':'Pick an image'); return; }
+  const btn=document.getElementById('scanReceiptBtn');
+  const label=document.getElementById('scanReceiptLabel');
+  const original=label?label.textContent:'';
+  if(btn) btn.classList.add('loading');
+  if(label) label.textContent=t('scanReading');
+  try{
+    const base64=await downscaleImage(file,1600,0.72);
+    const res=await window._callFn('scanReceipt',{ imageBase64:base64, mediaType:'image/jpeg' });
+    const d=(res&&res.data)?res.data:res;
+    if(!d||!d.found){
+      showToast(t('scanFail'));
+    }else{
+      if(d.amount>0) document.getElementById('inputAmount').value=d.amount;
+      const descEl=document.getElementById('inputDesc');
+      if(d.merchant){ descEl.value=d.merchant; if(typeof autoDetectCategory==='function') autoDetectCategory(d.merchant); }
+      if(d.category) selectedCat=d.category;
+      // stash so the saved expense shows the logo instantly (no second AI call)
+      window.pendingReceipt={ logoDomain:d.domain||'', logoEmoji:d.emoji||'', merchant:d.merchant||'', category:d.category||'other' };
+      showToast(t('scanDone'));
+    }
+  }catch(e){
+    console.error('scanReceipt error',e);
+    showToast(lang==='es'?'Error al leer el recibo':'Error reading the receipt');
+  }finally{
+    if(btn) btn.classList.remove('loading');
+    if(label) label.textContent=original||t('scanReceipt');
+  }
+}
+
 // The expense tile: real store logo (from Claude's detected domain) on top of an
 // emoji/monogram fallback. If the logo image fails to load, it removes itself and
 // the fallback underneath shows through.
@@ -97,6 +150,10 @@ async function addExpense(){
   btn.disabled=true;btn.textContent=t('saving');
   const members=window._groupMembers||[];
   const paidByMember=members.find(m=>m.uid===selectedPaidBy);
+  // If a receipt was scanned, carry its logo/merchant so the expense shows the
+  // logo instantly and enrichExpense skips the redundant AI call.
+  const receipt=(window.pendingReceipt&&desc&&window.pendingReceipt.merchant&&desc===window.pendingReceipt.merchant)?window.pendingReceipt:null;
+  const extra=receipt?{ logoDomain:receipt.logoDomain||'', logoEmoji:receipt.logoEmoji||'', merchant:receipt.merchant||'', aiEnriched:true }:{};
   try{
     await window._addDoc(window._col(window._db,`groups/${currentGroup.id}/expenses`),{
       amount,description:desc,category:selectedCat,
@@ -104,7 +161,8 @@ async function addExpense(){
       split:selectedSplit,
       splitWith:(selectedSplit==='two'||selectedSplit==='full')?(members.find(m=>m.uid===selectedWithWhom)?.name||null):null,
       splitWithUid:(selectedSplit==='two'||selectedSplit==='full')?selectedWithWhom:null,
-      createdByUid:window._curUser?.uid,createdAt:window._srvTs(),type:'expense'
+      createdByUid:window._curUser?.uid,createdAt:window._srvTs(),type:'expense',
+      ...extra
     });
     closeModal('addModal');showToast(t('toastAdded'));resetForm();
   }catch(e){console.error('addExpense error:',e);showToast(t('errSave'));}
@@ -319,6 +377,7 @@ function resetForm(){
   selectedCat='other';
   selectedSplit='all';
   selectedWithWhom=null;
+  window.pendingReceipt=null;
   const tile=document.getElementById('autoIconTile');
   if(tile){ if(tile.firstChild) tile.firstChild.textContent='·'; tile.classList.remove('filled'); }
   document.querySelectorAll('.split-btn').forEach(b=>b.classList.remove('selected'));
