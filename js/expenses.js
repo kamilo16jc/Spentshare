@@ -31,6 +31,20 @@ function subscribeExpenses(){
   groupUnsub=expUnsub;
 }
 
+// The expense tile: real store logo (from Claude's detected domain) on top of an
+// emoji/monogram fallback. If the logo image fails to load, it removes itself and
+// the fallback underneath shows through.
+function expenseGlyph(e, mono){
+  const glyph = e.logoEmoji ? esc(e.logoEmoji) : esc(mono);
+  if(e.logoDomain){
+    // Free brand-icon service (no API key). 404s on unknown domains -> the img
+    // removes itself and the emoji/monogram underneath shows through.
+    const src='https://icons.duckduckgo.com/ip3/'+encodeURIComponent(e.logoDomain)+'.ico';
+    return `<img class="exp-logo" src="${src}" alt="" loading="lazy" onerror="this.remove()"><span class="exp-glyph">${glyph}</span>`;
+  }
+  return `<span class="exp-glyph">${glyph}</span>`;
+}
+
 function renderExpenses(expenses){
   const list=document.getElementById('expensesList');
   if(!expenses||expenses.length===0){
@@ -41,15 +55,14 @@ function renderExpenses(expenses){
   list.innerHTML=visible.map(e=>{
     const locale=lang==='es'?'es-MX':'en-US';
     const date=e.createdAt?.toDate?e.createdAt.toDate().toLocaleDateString(locale,{day:'numeric',month:'short'}):t('today');
-    // Neutral monogram placeholder — Claude will later swap this for the
-    // detected store logo (or a generated glyph) per expense.
+    // Monogram fallback; Claude enriches the expense with a store logo / emoji.
     const mono=((e.description||'?').trim().charAt(0)||'?').toUpperCase();
     const isSettle=e.type==='settle';
     const n=members.length||1;
     const splitLabel=e.split==='all'?(lang==='es'?`÷ ${n} personas`:`÷ ${n} people`):e.split==='two'?(lang==='es'?'÷ 2 personas':'÷ 2 people'):e.split==='full'?(lang==='es'?'Devolver todo':'Full reimburse'):t('solo');
     const paidByName=members.find(m=>m.uid===e.paidByUid)?.name||e.paidBy||'?';
     return `<div class="expense-item" onclick="deleteExpensePrompt('${e.id}')">
-      <div class="expense-emoji${isSettle?' is-settle':''}">${esc(mono)}</div>
+      <div class="expense-emoji${isSettle?' is-settle':''}">${expenseGlyph(e,mono)}</div>
       <div class="expense-info">
         <div class="expense-desc">${esc(e.description)}</div>
         <div class="expense-meta">

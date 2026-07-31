@@ -12,6 +12,7 @@ const { setGlobalOptions } = require('firebase-functions/v2');
 const admin = require('firebase-admin');
 const { Resend } = require('resend');
 const PDFDocument = require('pdfkit');
+const Anthropic = require('@anthropic-ai/sdk');
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -19,7 +20,13 @@ const db = admin.firestore();
 setGlobalOptions({ region: 'us-east1', maxInstances: 10 });
 
 const RESEND_API_KEY = defineSecret('RESEND_API_KEY');
+const ANTHROPIC_API_KEY = defineSecret('ANTHROPIC_API_KEY');
 const FROM = 'SpentShare <noreply@spentshare.com>';
+
+// Model used to categorize expenses & detect the store logo.
+// claude-opus-5 is the default; for this high-volume classification task you
+// can switch to 'claude-haiku-4-5' (much cheaper, plenty capable) if desired.
+const AI_MODEL = 'claude-opus-5';
 
 // ───────────────────────────────────────────────────────────
 // Helpers
@@ -596,6 +603,104 @@ exports.monthlySummary = onSchedule(
       } catch (err) {
         console.error(`monthlySummary group ${gDoc.id} error`, err);
       }
+    }
+  }
+);
+
+// ───────────────────────────────────────────────────────────
+// AI: categorize an expense + detect the store logo (Claude)
+// ───────────────────────────────────────────────────────────
+const EXPENSE_CATEGORIES = Object.keys(CAT_EMOJI); // reuse the app's category set
+
+async function analyzeExpenseDescription(description) {
+  const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
+  const schema = {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      category: { type: 'string', enum: EXPENSE_CATEGORIES,
+        description: 'Best-fitting expense category from the list.' },
+      merchant: { type: 'string',
+        description: 'Clean store/brand name, e.g. "Amazon", "Éxito", "Uber". Empty string if no identifiable store.' },
+      domain: { type: 'string',
+        description: 'Primary web domain of the store for fetching its logo, e.g. "amazon.com". Empty string if it is not a real, recognizable brand.' },
+      emoji: { type: 'string',
+        description: 'A single emoji that best represents this expense (fallback when there is no store logo).' },
+    },
+    required: ['category', 'merchant', 'domain', 'emoji'],
+  };
+
+  const resp = await anthropic.messages.create({
+    model: AI_MODEL,
+    max_tokens: 1024,
+    thinking: { type: 'disabled' }, // structured output constrains the result; keep it fast & cheap
+    output_config: { effort: 'low', format: { type: 'json_schema', schema } },
+    messages: [{
+      role: 'user',
+      content:
+        'You categorize expenses for a shared-expenses app used mainly in Colombia / Latin America. ' +
+        'Descriptions are short and may be in Spanish or English (a store name, a product, or a note). ' +
+        'Return: the best category; the store/brand name if identifiable; its primary web domain so we can fetch its logo ' +
+        '(empty string when it is NOT a real recognizable brand — e.g. "cena", "arriendo", "regalo a Ana", "mercado"); ' +
+        'and one emoji that represents the expense.\n\n' +
+        `Expense description: "${description}"`,
+    }],
+  });
+
+  const textBlock = resp.content.find((b) => b.type === 'text');
+  const out = JSON.parse((textBlock && textBlock.text) || '{}');
+
+  const cats = new Set(EXPENSE_CATEGORIES);
+  const category = cats.has(out.category) ? out.category : 'other';
+  const merchant = String(out.merchant || '').trim().slice(0, 60);
+  let domain = String(out.domain || '').trim().toLowerCase()
+    .replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/[^a-z0-9.\-]/g, '');
+  if (!/\.[a-z]{2,}$/.test(domain)) domain = '';
+  const emoji = String(out.emoji || '').trim().slice(0, 8);
+
+  return { category, merchant, domain, emoji };
+}
+
+// Trigger: enrich a new expense with AI (category + store logo). Runs in the
+// background; the app's realtime listener shows the logo the moment it lands.
+exports.enrichExpense = onDocumentCreated(
+  { document: 'groups/{groupId}/expenses/{expenseId}', secrets: [ANTHROPIC_API_KEY] },
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+    const data = snap.data() || {};
+    if (data.type === 'settle' || data.aiEnriched) return;
+    const description = String(data.description || '').trim();
+    if (!description) return;
+
+    // Cache by normalized description — "Uber", "Éxito" repeat constantly.
+    const key = description.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
+
+    try {
+      let ai = null;
+      const cacheRef = key ? db.doc(`aiCache/${key}`) : null;
+      if (cacheRef) {
+        const cached = await cacheRef.get();
+        if (cached.exists) ai = cached.data();
+      }
+      if (!ai) {
+        ai = await analyzeExpenseDescription(description);
+        if (cacheRef) {
+          await cacheRef.set({ ...ai, at: admin.firestore.FieldValue.serverTimestamp() }).catch(() => {});
+        }
+      }
+      await snap.ref.update({
+        category: ai.category || data.category || 'other',
+        merchant: ai.merchant || '',
+        logoDomain: ai.domain || '',
+        logoEmoji: ai.emoji || '',
+        aiEnriched: true,
+      });
+    } catch (err) {
+      console.error('enrichExpense error', err);
+      // Mark as attempted so a bad description doesn't get retried forever.
+      try { await snap.ref.update({ aiEnriched: true }); } catch (_) {}
     }
   }
 );
