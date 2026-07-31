@@ -776,3 +776,79 @@ exports.scanReceipt = onCall(
     };
   }
 );
+
+// ───────────────────────────────────────────────────────────
+// AI: parse a natural-language expense -> structured fields (Claude)
+// e.g. "cené 45 mil con Ana" -> {amount, description, category, split, paidBy...}
+// ───────────────────────────────────────────────────────────
+exports.parseExpense = onCall(
+  { secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 30 },
+  async (req) => {
+    if (!req.auth) throw new HttpsError('unauthenticated', 'Login required');
+    const { text, members, currency } = req.data || {};
+    if (!text || typeof text !== 'string' || !text.trim()) {
+      throw new HttpsError('invalid-argument', 'Missing text');
+    }
+    const memberNames = Array.isArray(members)
+      ? members.map((m) => String((m && m.name) || '').trim()).filter(Boolean)
+      : [];
+
+    const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
+    const schema = {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        found: { type: 'boolean', description: 'True if the text describes an expense.' },
+        amount: { type: 'number', description: 'Amount as a plain number. Interpret "84 mil" / "84.300" / "84k" as 84300. 0 if not stated.' },
+        description: { type: 'string', description: 'Short label for the expense (store name or what it was).' },
+        merchant: { type: 'string', description: 'Store/brand name if identifiable, else empty.' },
+        category: { type: 'string', enum: EXPENSE_CATEGORIES },
+        domain: { type: 'string', description: 'Store web domain for its logo, empty if not a recognizable brand.' },
+        emoji: { type: 'string', description: 'One emoji representing the expense.' },
+        split: { type: 'string', enum: ['all', 'two', 'full', 'solo', ''],
+          description: '"all"=split between everyone; "two"=split with ONE specific person; "full"=one person owes it back in full; "solo"=only the payer. Empty if unclear.' },
+        paidBy: { type: 'string', description: 'Name of who paid, EXACTLY as in the member list. Empty if the speaker paid (default).' },
+        splitWith: { type: 'string', description: 'For split "two"/"full": the other person name from the member list. Empty otherwise.' },
+      },
+      required: ['found', 'amount', 'description', 'merchant', 'category', 'domain', 'emoji', 'split', 'paidBy', 'splitWith'],
+    };
+
+    const resp = await anthropic.messages.create({
+      model: AI_MODEL,
+      max_tokens: 1024,
+      thinking: { type: 'disabled' },
+      output_config: { effort: 'low', format: { type: 'json_schema', schema } },
+      messages: [{
+        role: 'user',
+        content:
+          'Parse a shared expense described in natural language (Colombia / Latin America, usually Spanish). ' +
+          `Group members: ${memberNames.length ? memberNames.join(', ') : '(unknown)'}. Currency: ${currency || 'USD'}. ` +
+          'Extract the amount as a plain number ("84 mil"/"84.300"/"84k" -> 84300), a short description/store, the category, ' +
+          'the store web domain for its logo (empty if not a real brand), an emoji, how to split it, who paid, and (only for a "two"/"full" split) with whom. ' +
+          'Match names EXACTLY to the member list. If the payer is not named, leave paidBy empty (the speaker paid). If it is not an expense, set found=false.\n\n' +
+          `Text: "${text.trim()}"`,
+      }],
+    });
+
+    const tb = resp.content.find((b) => b.type === 'text');
+    const out = JSON.parse((tb && tb.text) || '{}');
+
+    const cats = new Set(EXPENSE_CATEGORIES);
+    let domain = String(out.domain || '').trim().toLowerCase()
+      .replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/[^a-z0-9.\-]/g, '');
+    if (!/\.[a-z]{2,}$/.test(domain)) domain = '';
+
+    return {
+      found: !!out.found,
+      amount: Number(out.amount) || 0,
+      description: String(out.description || out.merchant || '').trim().slice(0, 80),
+      merchant: String(out.merchant || '').trim().slice(0, 80),
+      category: cats.has(out.category) ? out.category : 'other',
+      domain,
+      emoji: String(out.emoji || '').trim().slice(0, 8),
+      split: ['all', 'two', 'full', 'solo'].includes(out.split) ? out.split : '',
+      paidBy: String(out.paidBy || '').trim().slice(0, 80),
+      splitWith: String(out.splitWith || '').trim().slice(0, 80),
+    };
+  }
+);

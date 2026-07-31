@@ -31,6 +31,68 @@ function subscribeExpenses(){
   groupUnsub=expUnsub;
 }
 
+// ── NATURAL LANGUAGE EXPENSE ("cené 45 mil con Ana" → fills the whole form) ──
+function matchMember(name){
+  if(!name) return null;
+  const n=String(name).trim().toLowerCase(); if(!n) return null;
+  const members=window._groupMembers||[];
+  return members.find(m=>{
+    const mn=String(m.name||'').toLowerCase(); const mf=mn.split(' ')[0];
+    return mn===n || mf===n || (n.length>=3 && (mn.startsWith(n)||n.startsWith(mf)));
+  })||null;
+}
+
+function selectPaidByUid(uid){
+  if(!uid) return;
+  selectedPaidBy=uid;
+  document.querySelectorAll('#paidByGrid .paid-btn').forEach(b=>b.classList.toggle('selected', b.dataset.uid===uid));
+}
+
+async function parseExpenseText(){
+  const el=document.getElementById('nlInput');
+  const text=(el&&el.value||'').trim();
+  if(!text) return;
+  const btn=document.getElementById('nlGoBtn');
+  if(btn){ btn.classList.add('loading'); btn.disabled=true; }
+  try{
+    const members=(window._groupMembers||[]).map(m=>({uid:m.uid,name:m.name}));
+    const res=await window._callFn('parseExpense',{ text, members, currency: currentGroup&&currentGroup.currency });
+    const d=(res&&res.data)?res.data:res;
+    if(!d||!d.found){ showToast(lang==='es'?'No lo entendí, probá reformular':'Could not understand that'); return; }
+    if(d.amount>0) document.getElementById('inputAmount').value=d.amount;
+    const desc=d.description||d.merchant||'';
+    if(desc) document.getElementById('inputDesc').value=desc;
+    if(d.category) selectedCat=d.category;
+    // who paid
+    const payer=matchMember(d.paidBy);
+    if(payer) selectPaidByUid(payer.uid);
+    // split + with whom
+    if(d.split){
+      const sb=document.querySelector('.split-btn[data-split="'+d.split+'"]');
+      if(sb && typeof selectSplit==='function') selectSplit(sb);
+      if(d.split==='two'||d.split==='full'){
+        const other=matchMember(d.splitWith);
+        if(other){
+          selectedWithWhom=other.uid;
+          setTimeout(()=>{
+            const wb=document.querySelector('#withWhomGrid .paid-btn[data-uid="'+other.uid+'"]');
+            if(wb){ document.querySelectorAll('#withWhomGrid .paid-btn').forEach(b=>b.classList.remove('selected')); wb.classList.add('selected'); }
+          },60);
+        }
+      }
+    }
+    // carry the logo so the saved expense shows it instantly (no second AI call)
+    window.pendingReceipt={ logoDomain:d.domain||'', logoEmoji:d.emoji||'', merchant:desc, category:d.category||'other' };
+    if(el) el.value='';
+    showToast(lang==='es'?'Listo ✓':'Done ✓');
+  }catch(e){
+    console.error('parseExpense error',e);
+    showToast(lang==='es'?'Error al interpretar':'Error parsing');
+  }finally{
+    if(btn){ btn.classList.remove('loading'); btn.disabled=false; }
+  }
+}
+
 // ── RECEIPT SCAN (photo → total + merchant + category + logo, via Claude vision) ──
 function downscaleImage(file, maxSide, quality){
   return new Promise((resolve,reject)=>{
@@ -378,6 +440,7 @@ function resetForm(){
   selectedSplit='all';
   selectedWithWhom=null;
   window.pendingReceipt=null;
+  const nl=document.getElementById('nlInput'); if(nl) nl.value='';
   const tile=document.getElementById('autoIconTile');
   if(tile){ if(tile.firstChild) tile.firstChild.textContent='·'; tile.classList.remove('filled'); }
   document.querySelectorAll('.split-btn').forEach(b=>b.classList.remove('selected'));

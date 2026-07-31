@@ -1,3 +1,12 @@
+/* Natural-language expense input ("Escribí el gasto…") */
+.nl-input-row{display:flex;gap:8px;margin-bottom:12px;}
+.nl-input{flex:1;}
+.nl-go{flex-shrink:0;width:50px;border:none;border-radius:12px;display:grid;place-items:center;color:#fff;cursor:pointer;background:linear-gradient(135deg,var(--orange),var(--orange-2));box-shadow:0 6px 16px -6px oklch(0.652 0.18 35.2 / 0.5);transition:transform .12s ease,filter .15s ease;-webkit-tap-highlight-color:transparent;}
+.nl-go:hover{filter:brightness(1.05);}
+.nl-go:active{transform:scale(0.95);}
+.nl-go:disabled,.nl-go.loading{opacity:.6;pointer-events:none;}
+.nl-go.loading svg{animation:scanPulse 1s ease-in-out infinite;}
+
 /* Scan-receipt button (opens camera / photo picker) */
 .scan-receipt-btn{width:100%;margin-bottom:18px;padding:13px;border:1.5px dashed var(--border);border-radius:14px;background:var(--surface-2);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;font-size:14px;font-weight:600;color:var(--text);transition:border-color .15s,background .15s,opacity .15s;-webkit-tap-highlight-color:transparent;}
 .scan-receipt-btn:hover{border-color:var(--orange);color:var(--orange);}
