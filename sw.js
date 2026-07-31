@@ -1,37 +1,43 @@
-const CACHE_NAME = 'spentshare-v15';
+const CACHE_NAME = 'spentshare-v16';
+// Relative paths (resolved against the SW's own location) so the same file
+// works both on GitHub Pages (/Spentshare/) and on the custom domain (root).
 const ASSETS = [
-  '/Spentshare/',
-  '/Spentshare/index.html',
-  '/Spentshare/manifest.json',
-  '/Spentshare/css/base.css',
-  '/Spentshare/css/splash.css',
-  '/Spentshare/css/auth.css',
-  '/Spentshare/css/groups.css',
-  '/Spentshare/css/modals.css',
-  '/Spentshare/css/dashboard.css',
-  '/Spentshare/css/forms.css',
-  '/Spentshare/css/stats.css',
-  '/Spentshare/css/profile.css',
-  '/Spentshare/js/firebase.js',
-  '/Spentshare/js/state.js',
-  '/Spentshare/js/i18n.js',
-  '/Spentshare/js/ui.js',
-  '/Spentshare/js/currency.js',
-  '/Spentshare/js/auth.js',
-  '/Spentshare/js/avatar.js',
-  '/Spentshare/js/members.js',
-  '/Spentshare/js/groups.js',
-  '/Spentshare/js/expenses.js',
-  '/Spentshare/js/balances.js',
-  '/Spentshare/js/stats.js',
-  '/Spentshare/js/profile.js',
-  '/Spentshare/js/app.js'
+  './',
+  'index.html',
+  'manifest.json',
+  'css/base.css',
+  'css/splash.css',
+  'css/auth.css',
+  'css/groups.css',
+  'css/modals.css',
+  'css/dashboard.css',
+  'css/forms.css',
+  'css/stats.css',
+  'css/profile.css',
+  'js/firebase.js',
+  'js/state.js',
+  'js/i18n.js',
+  'js/ui.js',
+  'js/currency.js',
+  'js/auth.js',
+  'js/avatar.js',
+  'js/members.js',
+  'js/groups.js',
+  'js/expenses.js',
+  'js/balances.js',
+  'js/stats.js',
+  'js/profile.js',
+  'js/app.js'
 ];
 
 // Install — cache core assets
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
+    caches.open(CACHE_NAME).then(cache =>
+      // Add each asset independently so one 404 can't abort the whole install
+      // (which would leave the old service worker serving stale files forever).
+      Promise.all(ASSETS.map(url => cache.add(url).catch(() => null)))
+    )
   );
   self.skipWaiting();
 });
