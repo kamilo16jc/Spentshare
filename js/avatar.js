@@ -110,14 +110,21 @@ function selectAvatarEmoji(emoji){
   saveAvatar(emoji);
 }
 
-function handleAvatarUpload(e){
+// Any photo is accepted — the system downscales it client-side to a small
+// square-ish avatar (no more manual 500KB limit).
+async function handleAvatarUpload(e){
   const file = e.target.files[0];
+  e.target.value=''; // allow re-picking the same file
   if(!file) return;
-  if(file.size > 500000){ showToast(lang==='es'?'⚠️ Imagen muy grande (max 500KB)':'⚠️ Image too large (max 500KB)'); return; }
-  const reader = new FileReader();
-  reader.onload = ev => {
-    saveAvatar(ev.target.result);
-    document.querySelectorAll('.avatar-emoji-btn').forEach(b=>b.classList.remove('selected'));
-  };
-  reader.readAsDataURL(file);
+  if(!file.type || !file.type.startsWith('image/')){
+    showToast(lang==='es'?'⚠️ Elegí una imagen':'⚠️ Pick an image'); return;
+  }
+  try{
+    // 400px longest side, JPEG q0.82 -> ~30-60KB, well under Firestore limits.
+    const base64 = await downscaleImage(file, 400, 0.82);
+    saveAvatar('data:image/jpeg;base64,'+base64);
+  }catch(err){
+    console.error('avatar upload error', err);
+    showToast(lang==='es'?'⚠️ No se pudo procesar la imagen':'⚠️ Could not process the image');
+  }
 }
