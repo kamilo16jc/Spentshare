@@ -5,11 +5,22 @@ function loadBudgets(){
   if(budgetUnsub){budgetUnsub();budgetUnsub=null;}
   if(!currentGroup)return;
   window._budgets=[];
-  const q=window._query(window._col(window._db,`groups/${currentGroup.id}/budgets`),window._orderBy('createdAt','desc'));
+  // No orderBy in the query: a just-created doc has a pending serverTimestamp
+  // (null locally), which can drop it from an orderBy('createdAt') snapshot.
+  // Sort client-side instead so new budgets always show immediately.
+  const q=window._col(window._db,`groups/${currentGroup.id}/budgets`);
   budgetUnsub=window._onSnap(q,snap=>{
-    window._budgets=snap.docs.map(d=>({id:d.id,...d.data()}));
+    window._budgets=snap.docs.map(d=>({id:d.id,...d.data()}))
+      .sort((a,b)=>((b.createdAt&&b.createdAt.seconds)||0)-((a.createdAt&&a.createdAt.seconds)||0));
     renderBudgets();
-  },()=>{});
+  },err=>{
+    // Surface the real error instead of hiding it — a permission-denied here
+    // means the Firestore rules don't cover the groups/{id}/budgets subcollection.
+    console.error('budgets listener error:', err.code, err.message);
+    if(err.code==='permission-denied'){
+      showToast(lang==='es'?'⚠️ Permisos de Firestore no permiten presupuestos':'⚠️ Firestore rules block budgets');
+    }
+  });
 }
 
 // This month's spending for a budget's categories.

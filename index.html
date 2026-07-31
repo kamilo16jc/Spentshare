@@ -229,8 +229,8 @@
   <div class="modal"><div class="modal-handle"></div>
     <div class="modal-title" data-i18n="addModalTitle">New expense</div>
     <div class="nl-input-row">
-      <input class="form-input nl-input" id="nlInput" type="text" placeholder="Escribí el gasto… ej: cené 45 mil con Ana" onkeydown="if(event.key==='Enter'){event.preventDefault();parseExpenseText();}">
-      <button class="nl-go" id="nlGoBtn" onclick="parseExpenseText()" aria-label="Interpretar" title="Interpretar">
+      <input class="form-input nl-input" id="nlInput" type="text" data-i18n-ph="nlPh" placeholder="Escribí el gasto… ej: cené 45 mil con Ana" onkeydown="if(event.key==='Enter'){event.preventDefault();parseExpenseText();}">
+      <button class="nl-go" id="nlGoBtn" onclick="parseExpenseText()" data-i18n-title="nlInterpret" aria-label="Interpretar" title="Interpretar">
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.7 5.1L19 10l-5.3 1.9L12 17l-1.7-5.1L5 10l5.3-1.9L12 3z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z"/></svg>
       </button>
     </div>
@@ -336,8 +336,8 @@
     <div class="modal-title" id="t-budgetTitle" data-i18n="budgetTitle">Nuevo presupuesto</div>
     <div class="budget-hint" id="t-budgetHint" data-i18n="budgetHint">Escribí en palabras qué querés controlar este mes.</div>
     <div class="nl-input-row">
-      <input class="form-input nl-input" id="budgetInput" type="text" placeholder="Ej: 500 mil para restaurantes este mes" onkeydown="if(event.key==='Enter'){event.preventDefault();createBudgetFromText();}">
-      <button class="nl-go" id="budgetGoBtn" onclick="createBudgetFromText()" aria-label="Crear" title="Crear">
+      <input class="form-input nl-input" id="budgetInput" type="text" data-i18n-ph="budgetPh" placeholder="Ej: 500 mil para restaurantes este mes" onkeydown="if(event.key==='Enter'){event.preventDefault();createBudgetFromText();}">
+      <button class="nl-go" id="budgetGoBtn" onclick="createBudgetFromText()" data-i18n-title="budgetCreate" aria-label="Crear" title="Crear">
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.7 5.1L19 10l-5.3 1.9L12 17l-1.7-5.1L5 10l5.3-1.9L12 3z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z"/></svg>
       </button>
     </div>

@@ -21,6 +21,7 @@ const TX = {
     autoIconLabel:'Icon',autoIconTitle:'Detected automatically',autoIconSub:'The store logo and category are read from the description',
     scanReceipt:'Scan receipt',scanReading:'Reading receipt…',scanDone:'Receipt scanned ✓',scanFail:'Could not read the receipt',
     budgetsLabel:'Budgets',newBudgetBtn2:'+ New',budgetTitle:'New budget',budgetHint:'Describe in words what you want to keep an eye on this month.',budgetExamples:'e.g. “dining out 500k”, “fun 300k this month”, “groceries 800k”.',
+    nlPh:'Type the expense… e.g. dinner 45k with Ana',nlInterpret:'Interpret',budgetPh:'e.g. 500k for dining out this month',budgetCreate:'Create',
     paidByLabel:'Who paid?',splitLabel:'Split between',withWhomLabel:'Split with who?',
     splitAll:'Everyone',splitTwo:'Two people',splitFull:'Pay me back',splitSolo:'Just me',
     addBtn:'Add expense ✓',savePayBtn:'Record payment ✓',
@@ -82,6 +83,7 @@ const TX = {
     autoIconLabel:'Ícono',autoIconTitle:'Se detecta automáticamente',autoIconSub:'El logo de la tienda y la categoría salen de la descripción',
     scanReceipt:'Escanear recibo',scanReading:'Leyendo recibo…',scanDone:'Recibo leído ✓',scanFail:'No pude leer el recibo',
     budgetsLabel:'Presupuestos',newBudgetBtn2:'+ Nuevo',budgetTitle:'Nuevo presupuesto',budgetHint:'Escribí en palabras qué querés controlar este mes.',budgetExamples:'Ej: “restaurantes 500 mil”, “ocio 300 mil este mes”, “mercado 800 mil”.',
+    nlPh:'Escribí el gasto… ej: cené 45 mil con Ana',nlInterpret:'Interpretar',budgetPh:'Ej: 500 mil para restaurantes este mes',budgetCreate:'Crear',
     paidByLabel:'¿Quién pagó?',splitLabel:'¿Cómo dividir?',withWhomLabel:'¿Con quién?',
     splitAll:'Todos',splitTwo:'Dos personas',splitFull:'Que me devuelvan',splitSolo:'Solo yo',
     addBtn:'Agregar gasto ✓',savePayBtn:'Registrar pago ✓',
@@ -134,8 +136,18 @@ function setLang(l){
     const k=el.dataset.i18n; const v=TX[l][k];
     if(v!==undefined && typeof v==='string') el.textContent=v;
   });
+  // Attribute translations: placeholders, titles and aria-labels aren't textContent,
+  // so they need their own passes or they'd stay frozen in the original language.
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{
+    const v=TX[l][el.dataset.i18nPh]; if(typeof v==='string') el.placeholder=v;
+  });
+  document.querySelectorAll('[data-i18n-title]').forEach(el=>{
+    const v=TX[l][el.dataset.i18nTitle];
+    if(typeof v==='string'){ el.title=v; el.setAttribute('aria-label',v); }
+  });
   updateDashboardLabels();
   if(window._expenses){renderExpenses(window._expenses);updateBalances(window._expenses);}
+  if(typeof renderBudgets==='function') renderBudgets();
 }
 
 function updateDashboardLabels(){
