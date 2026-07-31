@@ -130,6 +130,7 @@ function t(k,...a){ const v=TX[lang][k]; return typeof v==='function'?v(...a):(v
 
 function setLang(l){
   lang=l;
+  try{ localStorage.setItem('lang',l); }catch(e){}
   document.getElementById('btnEn').classList.toggle('active',l==='en');
   document.getElementById('btnEs').classList.toggle('active',l==='es');
   document.querySelectorAll('[data-i18n]').forEach(el=>{

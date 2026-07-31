@@ -1,4 +1,14 @@
 // Bootstrap — splash fade, expose functions to window for inline onclick handlers
+
+// Apply the active language to the whole UI on load. Without this, the app
+// kept whatever hardcoded default text each element had in index.html (a mix
+// of English and Spanish), so e.g. the expense placeholder showed Spanish even
+// in English mode. Also restores the user's saved language choice.
+try{
+  let _saved; try{ _saved=localStorage.getItem('lang'); }catch(e){}
+  setLang(_saved==='en'||_saved==='es' ? _saved : lang);
+}catch(e){}
+
 setTimeout(()=>{
   document.getElementById('splash').classList.add('hide');
   setTimeout(()=>{
