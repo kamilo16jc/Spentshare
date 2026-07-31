@@ -233,4 +233,5 @@ function finalizeDashboard(){
   loadAvatar();
   renderMemberGrids();
   subscribeExpenses();
+  if(typeof loadBudgets==='function') loadBudgets();
 }

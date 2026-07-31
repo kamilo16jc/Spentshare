@@ -852,3 +852,74 @@ exports.parseExpense = onCall(
     };
   }
 );
+
+// ───────────────────────────────────────────────────────────
+// AI: parse a natural-language budget -> {name, categories, amount, emoji}
+// e.g. "presupuesto de restaurantes de 500 mil este mes"
+// ───────────────────────────────────────────────────────────
+exports.parseBudget = onCall(
+  { secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 30 },
+  async (req) => {
+    if (!req.auth) throw new HttpsError('unauthenticated', 'Login required');
+    const { text, currency } = req.data || {};
+    if (!text || typeof text !== 'string' || !text.trim()) {
+      throw new HttpsError('invalid-argument', 'Missing text');
+    }
+
+    const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
+    const schema = {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        found: { type: 'boolean', description: 'True if the text is a request to create a spending budget.' },
+        name: { type: 'string', description: 'Short budget name, e.g. "Restaurantes", "Ocio".' },
+        categories: {
+          type: 'array',
+          items: { type: 'string', enum: EXPENSE_CATEGORIES },
+          description: '1 to 4 app categories this budget covers.',
+        },
+        amount: { type: 'number', description: 'Monthly limit as a plain number ("500 mil"/"500.000"/"500k" -> 500000). 0 if not stated.' },
+        emoji: { type: 'string', description: 'One emoji for the budget.' },
+      },
+      required: ['found', 'name', 'categories', 'amount', 'emoji'],
+    };
+
+    const resp = await anthropic.messages.create({
+      model: AI_MODEL,
+      max_tokens: 1024,
+      thinking: { type: 'disabled' },
+      output_config: { effort: 'low', format: { type: 'json_schema', schema } },
+      messages: [{
+        role: 'user',
+        content:
+          'Create a monthly spending budget from a natural-language request (Colombia / Latin America, usually Spanish). ' +
+          `Currency: ${currency || 'USD'}. The app categories and what they cover:\n` +
+          'food (comida, mercado, restaurantes, salidas a comer), transport (transporte, gasolina, uber, taxi), ' +
+          'utilities (servicios, luz, agua, internet), health (salud, farmacia, médico), ' +
+          'entertainment (ocio, cine, streaming, conciertos, salidas), home (casa, arriendo, muebles), ' +
+          'education (educación, cursos), other (otros), travel (viajes, hoteles, vuelos), shopping (compras, ropa), ' +
+          'pets (mascotas), drinks (bar, licor, tragos), personalcare (cuidado personal, peluquería), kids (niños), gifts (regalos).\n' +
+          'Return a short budget name, the category or categories it covers (from that list — "restaurantes"/"salidas a comer" -> food; "ocio"/"salidas" -> entertainment), ' +
+          'the monthly limit as a plain number ("500 mil"/"500.000"/"500k" -> 500000), and one emoji. If it is NOT a budget request, set found=false.\n\n' +
+          `Request: "${text.trim()}"`,
+      }],
+    });
+
+    const tb = resp.content.find((b) => b.type === 'text');
+    const out = JSON.parse((tb && tb.text) || '{}');
+
+    const catSet = new Set(EXPENSE_CATEGORIES);
+    let categories = Array.isArray(out.categories)
+      ? out.categories.filter((c) => catSet.has(c)) : [];
+    categories = [...new Set(categories)].slice(0, 4);
+    if (!categories.length) categories = ['other'];
+
+    return {
+      found: !!out.found,
+      name: String(out.name || '').trim().slice(0, 40) || 'Presupuesto',
+      categories,
+      amount: Number(out.amount) || 0,
+      emoji: String(out.emoji || '').trim().slice(0, 8),
+    };
+  }
+);

@@ -65,6 +65,7 @@ function updateBalances(expenses){
   document.getElementById('balanceMonth').textContent=`${mn[now.getMonth()]} ${now.getFullYear()}`;
   renderBalanceSpark(monthly);
   renderDebtSummary(debts);
+  if(typeof renderBudgets==='function') renderBudgets();
 }
 
 // Soft ambient sparkline behind the balance card: cumulative spend across the

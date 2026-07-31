@@ -202,6 +202,13 @@
       </div>
       <div id="debtSummary"></div>
     </div>
+    <div class="budgets-section" id="budgetsSection">
+      <div class="expenses-header">
+        <div class="section-title" style="margin:0" id="t-budgets" data-i18n="budgetsLabel">Presupuestos</div>
+        <button class="see-all" onclick="openBudgetModal()" id="t-newBudget" data-i18n="newBudgetBtn2">+ Nuevo</button>
+      </div>
+      <div id="budgetsList"></div>
+    </div>
     <div class="expenses-header">
       <div class="section-title" style="margin:0" id="t-recentExpenses">Recent expenses</div>
       <button class="see-all" id="t-seeAll" onclick="toggleSeeAll()">See all →</button>
@@ -323,6 +330,21 @@
   </div>
 </div>
 
+<!-- CREATE BUDGET MODAL -->
+<div class="modal-overlay" id="budgetModal" onclick="closeOnOverlay(event,'budgetModal')">
+  <div class="modal"><div class="modal-handle"></div>
+    <div class="modal-title" id="t-budgetTitle" data-i18n="budgetTitle">Nuevo presupuesto</div>
+    <div class="budget-hint" id="t-budgetHint" data-i18n="budgetHint">Escribí en palabras qué querés controlar este mes.</div>
+    <div class="nl-input-row">
+      <input class="form-input nl-input" id="budgetInput" type="text" placeholder="Ej: 500 mil para restaurantes este mes" onkeydown="if(event.key==='Enter'){event.preventDefault();createBudgetFromText();}">
+      <button class="nl-go" id="budgetGoBtn" onclick="createBudgetFromText()" aria-label="Crear" title="Crear">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.7 5.1L19 10l-5.3 1.9L12 17l-1.7-5.1L5 10l5.3-1.9L12 3z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z"/></svg>
+      </button>
+    </div>
+    <div class="budget-examples" id="t-budgetExamples" data-i18n="budgetExamples">Ej: “ocio 300 mil”, “transporte 200k este mes”, “mercado 800 mil”.</div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <!-- PROFILE MODAL -->
@@ -395,6 +417,7 @@
 <script src="js/expenses.js"></script>
 <script src="js/balances.js"></script>
 <script src="js/stats.js"></script>
+<script src="js/budgets.js"></script>
 <script src="js/profile.js"></script>
 <script src="js/app.js"></script>
 
