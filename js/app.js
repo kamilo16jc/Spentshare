@@ -46,6 +46,8 @@ Object.assign(window,{
   openSettleModal,
   // stats
   openStatsModal,
+  // history
+  openHistoryModal, setHistoryMode, renderHistory,
   // profile
   openProfile, closeProfile, setLangProfile, editName, cancelEditName, saveName,
 });

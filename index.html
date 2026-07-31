@@ -218,6 +218,7 @@
   </div>
   <button class="fab" onclick="openModal()">+</button>
   <div class="bottom-nav">
+    <button class="nav-item" onclick="setTab(this);openHistoryModal()"><span class="nav-icon"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l3 2"/></svg></span><span class="nav-label" data-i18n="navHistory" id="t-navHistory">History</span></button>
     <button class="nav-item" onclick="setTab(this);openStatsModal()"><span class="nav-icon"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span><span class="nav-label" id="t-nav2">Stats</span></button>
     <button class="nav-item" onclick="setTab(this);openMembersModal()"><span class="nav-icon"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><span class="nav-label" id="t-nav3">Members</span></button>
     <button class="nav-item" onclick="setTab(this);goToGroupPicker()"><span class="nav-icon"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg></span><span class="nav-label" id="t-nav4">Groups</span></button>
@@ -301,6 +302,32 @@
     <div id="categoryBars" style="margin-bottom:22px"></div>
     <div class="section-title" style="margin-bottom:12px" data-i18n="statsTop">Top expenses</div>
     <div id="topExpenses"></div>
+  </div>
+</div>
+
+<!-- HISTORY MODAL -->
+<div class="modal-overlay" id="historyModal" onclick="closeOnOverlay(event,'historyModal')">
+  <div class="modal" style="padding-bottom:50px"><div class="modal-handle"></div>
+    <div class="modal-title" data-i18n="historyTitle">History</div>
+    <div class="hist-modes">
+      <button class="hist-mode active" data-mode="month" onclick="setHistoryMode('month')" data-i18n="histMonth">Month</button>
+      <button class="hist-mode" data-mode="day" onclick="setHistoryMode('day')" data-i18n="histDay">Day</button>
+      <button class="hist-mode" data-mode="range" onclick="setHistoryMode('range')" data-i18n="histRange">Range</button>
+      <button class="hist-mode" data-mode="all" onclick="setHistoryMode('all')" data-i18n="histAll">All</button>
+    </div>
+    <div class="hist-inputs">
+      <div id="histMonthWrap"><input type="month" id="histMonth" class="form-input hist-date" onchange="renderHistory()"></div>
+      <div id="histDayWrap" style="display:none"><input type="date" id="histDay" class="form-input hist-date" onchange="renderHistory()"></div>
+      <div id="histRangeWrap" style="display:none">
+        <input type="date" id="histFrom" class="form-input hist-date" onchange="renderHistory()">
+        <input type="date" id="histTo" class="form-input hist-date" onchange="renderHistory()">
+      </div>
+    </div>
+    <div class="hist-summary">
+      <div class="hist-count"><span id="histCount">0</span> <span data-i18n="histExpenses">expenses</span></div>
+      <div class="hist-total" id="histTotal">$0.00</div>
+    </div>
+    <div id="historyList"></div>
   </div>
 </div>
 
@@ -418,6 +445,7 @@
 <script src="js/balances.js"></script>
 <script src="js/stats.js"></script>
 <script src="js/budgets.js"></script>
+<script src="js/history.js"></script>
 <script src="js/profile.js"></script>
 <script src="js/app.js"></script>
 
