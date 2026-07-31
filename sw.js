@@ -1,4 +1,4 @@
-const CACHE_NAME = 'spentshare-v16';
+const CACHE_NAME = 'spentshare-v17';
 // Relative paths (resolved against the SW's own location) so the same file
 // works both on GitHub Pages (/Spentshare/) and on the custom domain (root).
 const ASSETS = [

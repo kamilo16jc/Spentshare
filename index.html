@@ -423,8 +423,21 @@
 
 <script>
 if ('serviceWorker' in navigator) {
+  // Auto-update: when a new service worker takes control, reload once so the
+  // fresh code is used immediately (no more "close the app twice" dance).
+  // index.html is served network-first, so this reaches devices stuck on an
+  // old service worker as soon as they open the app.
+  let _swRefreshing = false;
+  const _hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (_swRefreshing || !_hadController) return; // skip the first-ever install
+    _swRefreshing = true;
+    window.location.reload();
+  });
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(()=>{});
+    navigator.serviceWorker.register('sw.js')
+      .then(reg => { reg.update(); })
+      .catch(()=>{});
   });
 }
 </script>
