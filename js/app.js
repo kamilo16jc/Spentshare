@@ -201,8 +201,13 @@ document.addEventListener('click', e => {
   if (el.dataset.currency && S.groupDraft) { S.groupDraft.currency = el.dataset.currency; updateGroupPreview(); return; }
 });
 
+// Espera (poco) a que lleguen los datos del grupo para no mostrar "Cargando…" y luego el contenido
+async function groupReady(ms = 700) {
+  const end = Date.now() + ms;
+  while (Date.now() < end && (S.expenses === null || !S.members.length)) await wait(30);
+}
 function enterGroup(gid, source) {
-  const update = () => { if (gid !== S.gid) openGroup(gid); closeSheet(false); go('home'); };
+  const update = async () => { if (gid !== S.gid) { openGroup(gid); await groupReady(); } closeSheet(false); go('home'); };
   if (source.classList.contains('group-tile') && document.startViewTransition && canAnimate()) {
     source.classList.add('opening');
     document.startViewTransition(update).finished.catch(() => {});

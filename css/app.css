@@ -258,3 +258,7 @@
 @keyframes logoFloat{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(0,-7px,0)}}
 .boot-logo{animation:logoFloat 3.2s ease-in-out infinite;will-change:transform}
 @media(prefers-reduced-motion:reduce){.auth-logo-img,.boot-logo{animation:none}.auth-logo-tilt{transition:none}}
+/* Misma pantalla con datos nuevos (render "static"): sin animación de entrada, así no parpadea */
+#main.static .page,#main.static .group-tile,#main.static .mosaic-action,#main.static .progress>span,#main.static .bar,#main.static .invite-banner{animation:none}
+/* "Cargando…" solo aparece si la carga tarda más de medio segundo */
+.designed-empty.is-loading{animation:fadeIn .25s .5s both}

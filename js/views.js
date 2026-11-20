@@ -6,8 +6,10 @@ function header() {
   const right = S.page === 'auth'
     ? `<button class="auth-mode" data-action="toggle-lang" aria-label="${esc(t('aria.lang'))}">${lang.toUpperCase()}</button>`
     : `<button class="profile-button" data-action="profile" aria-label="${esc(t('aria.profile'))}">${avatar(S.me || { name: '?' })}</button>`;
-  $('#topbar').innerHTML = `<button class="brand" data-action="home" aria-label="SpentShare"><span class="brand-mark">${icon('logo')}</span><div>Spent<span>Share</span></div></button><div class="top-actions">${right}</div>`;
+  const html = `<button class="brand" data-action="home" aria-label="SpentShare"><span class="brand-mark">${icon('logo')}</span><div>Spent<span>Share</span></div></button><div class="top-actions">${right}</div>`;
+  if (html !== lastTopbar) { $('#topbar').innerHTML = html; lastTopbar = html; }   // la foto de perfil no se vuelve a pintar
 }
+let lastTopbar = '';
 
 const TABS = [['home', 'home'], ['activity', 'activity'], ['stats', 'chart'], ['groups', 'users']];
 function nav() {
@@ -51,7 +53,7 @@ function emptyPlan(kind = 'plan') {
   const [h, p] = kind === 'stats' ? [t('empty.statsH'), t('empty.statsP')] : [t('empty.planH'), t('empty.planP')];
   return `<div class="designed-empty">${emptyIllustration(kind)}<h2>${h}</h2><p>${p}</p><button class="full-btn" data-action="add-expense">${icon('plus')} ${t('btn.addExpense')}</button></div>`;
 }
-const loadingCard = () => `<div class="designed-empty"><p class="muted">${t('loading')}</p></div>`;
+const loadingCard = () => `<div class="designed-empty is-loading"><p class="muted">${t('loading')}</p></div>`;   // aparece solo si la carga tarda
 
 // Sin grupo abierto: crear el primero o unirse
 function noGroup() {
@@ -349,14 +351,25 @@ function mountAuthScene() {
 }
 
 // ───────────────────────── render ─────────────────────────
+// Solo se anima la entrada cuando cambia la pantalla (o termina de cargar). Si es la misma pantalla
+// con datos nuevos se cambia sin animación, y si nada cambió no se toca: antes cada dato que llegaba
+// volvía a hacer aparecer toda la página desde transparente y se veía parpadear.
+let lastView = { key: '', html: '' };
 function render(scroll = true) {
-  if (authSceneObserver) { authSceneObserver.disconnect(); authSceneObserver = null; }
   applyGroupTheme(); header(); nav();
   document.documentElement.lang = lang;
-  $('#main').className = S.page === 'auth' ? '' : 'main';
-  $('#main').innerHTML = S.page === 'home' ? home() : S.page === 'activity' ? activity() : S.page === 'stats' ? stats() : S.page === 'groups' ? groupsPage() : S.page === 'auth' ? auth() : '';
-  if (S.page === 'auth') mountAuthScene();
-  if (S.page === 'stats') bindChart();
+  const main = $('#main');
+  const html = S.page === 'home' ? home() : S.page === 'activity' ? activity() : S.page === 'stats' ? stats() : S.page === 'groups' ? groupsPage() : S.page === 'auth' ? auth() : '';
+  const loading = S.page !== 'auth' && S.page !== 'groups' && !!S.group && S.expenses === null;
+  const key = [S.page, S.gid || '', lang, loading ? 'loading' : ''].join('|');
+  if (key !== lastView.key || html !== lastView.html) {
+    if (authSceneObserver) { authSceneObserver.disconnect(); authSceneObserver = null; }
+    main.className = (S.page === 'auth' ? '' : 'main') + (key === lastView.key ? ' static' : '');
+    main.innerHTML = html;
+    lastView = { key, html };
+    if (S.page === 'auth') mountAuthScene();
+    if (S.page === 'stats') bindChart();
+  }
   if (scroll) window.scrollTo({ top: 0, behavior: 'instant' });
 }
 // Repinta cuando llegan datos en vivo, sin mover el scroll ni romper lo que se está escribiendo

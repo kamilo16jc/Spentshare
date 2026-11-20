@@ -1,5 +1,5 @@
-// v23: logo 3D de la entrada como imagen (ya no parpadea). Cambiar el número en cada publicación.
-const CACHE_NAME = 'spentshare-v23';
+// v24: sin parpadeo al cambiar de pantalla. Cambiar el número en cada publicación.
+const CACHE_NAME = 'spentshare-v24';
 // Relative paths (resolved against the SW's own location) so the same file
 // works both on GitHub Pages (/Spentshare/) and on the custom domain (root).
 const ASSETS = [
