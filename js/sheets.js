@@ -96,16 +96,22 @@ function addExpenseSheet() {
     { cls: 'expense-sheet', noFocus: true, onOpen: () => setTimeout(() => { const a = $('#expense-amount'); a && a.focus(); }, 60) });
 }
 // Mientras escribe el título: si es un comercio conocido, su logo y su categoría (sin IA)
+const recOpen = () => !!(S.auto && S.auto.kind === 'recurring' && $('#recurring-form'));
 function titleMerchant(text) {
-  const m = merchantFor(text), img = $('#title-logo'), src = merchantLogo(m);
-  if (img) {
-    if (src) { if (img.getAttribute('src') !== src) img.src = src; img.alt = m.name; img.hidden = false; }
-    else { img.hidden = true; img.removeAttribute('src'); }
-    img.parentElement.classList.toggle('has-logo', !!src);
-  }
+  const m = merchantFor(text);
+  // en el gasto fijo, escribir un comercio conocido lo deja elegido en "¿De qué es?"
+  if (recOpen() && m && m.id !== S.auto.merchantId) { S.auto.merchantId = m.id; updateMerchantChoices(); }
+  showTitleLogo(recOpen() ? merchantById(S.auto.merchantId) || m : m);
   if (S.draft.manualCat) return;
   const k = (m && m.cat) || guessCategory(text);
   if (k) setCategory(k, false);
+}
+function showTitleLogo(m) {
+  const img = $('#title-logo'); if (!img) return;
+  const src = merchantLogo(m);
+  if (src) { if (img.getAttribute('src') !== src) img.src = src; img.alt = m.name; img.hidden = false; }
+  else { img.hidden = true; img.removeAttribute('src'); }
+  img.parentElement.classList.toggle('has-logo', !!src);
 }
 async function submitExpense(form) {
   const amount = parseAmount($('#expense-amount').value), title = $('#expense-title').value.trim();
@@ -370,7 +376,8 @@ function recurringSheet(id) {
   if (r && r.createdByUid !== uid()) return recurringReadOnly(r);
   const freq = r && FREQS.includes(r.frequency) ? r.frequency : 'monthly';
   const payer = r && memberUids().includes(r.payerUid) ? r.payerUid : uid();
-  S.auto = { kind: 'recurring', id: r ? r.id : null, payer, frequency: freq, day: r ? r.day : defaultDay(freq), dueDays: (r && r.dueDays) || 7, sendCharge: !!(r && r.sendCharge), orig: r ? { frequency: r.frequency, day: r.day } : null };
+  const known = r && (merchantById(r.merchantId) || merchantFor(r.description));
+  S.auto = { kind: 'recurring', id: r ? r.id : null, merchantId: known ? known.id : null, mq: '', payer, frequency: freq, day: r ? r.day : defaultDay(freq), dueDays: (r && r.dueDays) || 7, sendCharge: !!(r && r.sendCharge), orig: r ? { frequency: r.frequency, day: r.day } : null };
   const cat = r && CATS[r.category] ? r.category : 'home';
   const split = r ? (r.splitUids || []).filter(u => memberUids().includes(u)) : [];
   S.draft = { category: cat, manualCat: !!r, split: split.length ? split : S.members.map(m => m.uid) };
@@ -380,6 +387,9 @@ function recurringSheet(id) {
   openSheet(t('rec.title'), `${groupContext()}${r ? '' : `<p class="sheet-intro" style="margin-top:16px">${t('rec.intro')}</p>`}<form id="recurring-form" novalidate>
     <div class="amount-entry"><label for="expense-amount">${t('add.howMuch')}</label><div class="amount-input"><span>${c.symbol}</span><input id="expense-amount" inputmode="decimal" placeholder="${c.decimals ? '0.00' : '0'}" value="${r ? esc(r.amount) : ''}" type="text" autocomplete="off" aria-label="${esc(t('add.howMuch'))}" required></div></div>
     <div class="field"><label for="expense-title">${t('add.what')}</label><div class="title-wrap"><input id="expense-title" placeholder="${esc(t('rec.ph'))}" maxlength="60" value="${esc(r ? r.description : '')}" required><img class="title-logo" id="title-logo" alt="" hidden></div></div>
+    <span class="field-label">${t('rec.whatIs')} <em class="opt">${t('rec.optional')}</em></span>
+    <div class="merchant-search">${icon('search', 'small-ico')}<input id="merchant-q" placeholder="${esc(t('rec.searchPh'))}" autocomplete="off" aria-label="${esc(t('rec.whatIs'))}"></div>
+    <div class="category-choices scroll merchant-choices" id="merchant-choices">${merchantChoices()}</div>
     <span class="field-label">${t('add.category')}</span><div class="category-choices scroll">${cats}</div>
     <div class="field"><label for="expense-payer">${t('add.paid')}</label><div class="select-wrap"><select id="expense-payer">${S.members.map(m => `<option value="${m.uid}" ${m.uid === payer ? 'selected' : ''}>${esc(m.uid === uid() ? t('youCap') : firstName(m.name))}</option>`).join('')}</select>${icon('down')}</div></div>
     ${participantsHtml()}
@@ -391,6 +401,41 @@ function recurringSheet(id) {
     <div class="submit-holder"><button class="full-btn" type="submit">${t('rec.save')}</button></div>
     ${r ? `<button type="button" class="full-btn secondary" data-action="recurring-pause" style="margin-top:10px">${r.active === false ? t('rec.resume') : t('rec.pause')}</button><button type="button" class="danger-link" data-action="recurring-delete">${icon('trash', 'small-ico')} ${t('rec.delete')}</button>` : ''}
     </form>`, { cls: 'expense-sheet', noFocus: true, name: 'recurring', onOpen: () => { if (r) titleMerchant(r.description); else setTimeout(() => { const a = $('#expense-amount'); a && a.focus(); }, 60); } });
+}
+// "¿De qué es?": elegir el comercio (su logo sale en la app y en los correos). Sin búsqueda se ven
+// los más comunes para gastos fijos; con búsqueda, todo el catálogo.
+const FIXED_PICKS = ['netflix', 'spotify', 'youtube', 'disney', 'hulu', 'max', 'amazon', 'apple', 'xbox', 'playstation', 'anthropic',
+  'tmobile', 'att', 'verizon', 'xfinity', 'spectrum', 'comed', 'nicor', 'peoplesgas', 'statefarm', 'geico', 'ventra',
+  'movistar', 'claro', 'tigo', 'enel', 'epm', 'vanti'];
+function merchantChoices() {
+  if (!window.SSMerchants) return '';
+  const d = S.auto, q = fold(d.mq || '').trim();
+  let list = q
+    ? SSMerchants.LIST.filter(m => fold(m.name).includes(q) || m.aliases.some(a => a.includes(q))).slice(0, 24)
+    : FIXED_PICKS.map(merchantById).filter(Boolean);
+  const sel = merchantById(d.merchantId);
+  if (sel) list = [sel, ...list.filter(m => m !== sel)];   // el elegido, primero (siempre a la vista)
+  if (!list.length) return `<p class="auto-hint">${t('rec.noMerchant')}</p>`;
+  return list.map(m => {
+    const on = m.id === d.merchantId;
+    return `<button type="button" class="category-choice merchant-choice ${on ? 'active' : ''}" data-merchant="${m.id}" aria-pressed="${on}"><span class="merchant-tile">${m.logo ? `<img src="logos/${m.id}.png" alt="" loading="lazy">` : `<span aria-hidden="true">${m.emoji || '🏷️'}</span>`}</span><span class="merchant-name">${esc(m.name)}</span></button>`;
+  }).join('');
+}
+function updateMerchantChoices() { const el = $('#merchant-choices'); if (el) { el.innerHTML = merchantChoices(); el.scrollLeft = 0; } }
+// marcar sin volver a dibujar (al tocar un logo la fila no salta)
+function markMerchantChoices() {
+  if (S.auto.merchantId && !$(`[data-merchant="${S.auto.merchantId}"]`)) return updateMerchantChoices();
+  $$('[data-merchant]').forEach(b => { const on = b.dataset.merchant === S.auto.merchantId; b.classList.toggle('active', on); b.setAttribute('aria-pressed', String(on)); });
+}
+function pickMerchant(id) {
+  const d = S.auto; if (!d) return;
+  const prev = merchantById(d.merchantId), m = d.merchantId === id ? null : merchantById(id);   // tocar el elegido lo quita
+  d.merchantId = m ? m.id : null;
+  const title = $('#expense-title');
+  if (m && title && (!title.value.trim() || (prev && title.value.trim() === prev.name))) title.value = m.name;
+  if (m && m.cat && !S.draft.manualCat) setCategory(m.cat, false);
+  markMerchantChoices();
+  showTitleLogo(m || merchantFor(title ? title.value : ''));
 }
 function recChargeHtml() {
   const d = S.auto;
@@ -413,7 +458,8 @@ async function submitRecurring(form) {
   const b = $('button[type="submit"]', form); if (b.disabled) return;
   formError('rec-error', '');
   const note = ($('#rec-note') || {}).value || '';   // opcional: puede quedar vacío
-  const data = { description: title, amount: round2(amount), category: S.draft.category, payerUid: payer, splitUids: [...S.draft.split], frequency: d.frequency, day: Number(d.day) || 1, sendCharge: payer === uid() && !!d.sendCharge, dueDays: Number(d.dueDays) || 7, note: note.trim().slice(0, 140) };
+  const merchantId = merchantById(d.merchantId) ? d.merchantId : null;   // "¿De qué es?" (opcional)
+  const data = { description: title, amount: round2(amount), category: S.draft.category, payerUid: payer, splitUids: [...S.draft.split], frequency: d.frequency, day: Number(d.day) || 1, sendCharge: payer === uid() && !!d.sendCharge, dueDays: Number(d.dueDays) || 7, note: note.trim().slice(0, 140), merchantId };
   const r = d.id && S.recurring.find(x => x.id === d.id);
   // fecha de la próxima vez: nueva si es nuevo o si cambió cuándo se repite (si está pausado, al reanudar)
   if (!r) Object.assign(data, { active: true, nextRunAt: window._Timestamp.fromDate(firstRunDate(data)) });

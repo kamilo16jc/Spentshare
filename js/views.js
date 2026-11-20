@@ -108,7 +108,7 @@ function autoSection() {
   const charge = `<button class="auto-row" data-action="auto-charge"><span class="auto-icon ${on ? 'on' : ''}">${icon('clock')}</span><span class="auto-copy"><strong>${t('auto.chargeTitle')}</strong><span>${on ? esc(scheduleLabel(mine)) + (next ? ' · ' + t('auto.nextShort', fmtDay(next)) : '') : t('auto.rowOff')}</span></span><span class="auto-state ${on ? 'on' : ''}">${on ? t('auto.on') : t('auto.off')}</span></button>`;
   const recs = S.recurring.map(r => {
     const active = r.active !== false, nx = toDate(r.nextRunAt);
-    return `<button class="auto-row" data-action="recurring" data-id="${r.id}">${expenseIcon({ category: r.category, description: r.description })}<span class="auto-copy"><strong>${esc(r.description)}</strong><span><b class="num">${money(r.amount)}</b> · ${esc(scheduleLabel(r))}${active && nx ? ' · ' + t('auto.nextShort', fmtDay(nx)) : ''}</span></span>${active ? icon('chevron', 'small-ico') : `<span class="auto-state">${t('auto.paused')}</span>`}</button>`;
+    return `<button class="auto-row" data-action="recurring" data-id="${r.id}">${expenseIcon(r)}<span class="auto-copy"><strong>${esc(r.description)}</strong><span><b class="num">${money(r.amount)}</b> · ${esc(scheduleLabel(r))}${active && nx ? ' · ' + t('auto.nextShort', fmtDay(nx)) : ''}</span></span>${active ? icon('chevron', 'small-ico') : `<span class="auto-state">${t('auto.paused')}</span>`}</button>`;
   }).join('');
   return `<section class="section"><div class="section-head"><h2>${t('auto.section')}</h2><button class="text-btn" data-action="recurring-new">${icon('plus', 'small-ico')} ${t('rec.add')}</button></div><div class="auto-list">${charge}${recs}</div></section>`;
 }

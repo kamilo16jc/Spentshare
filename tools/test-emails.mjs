@@ -384,6 +384,7 @@ async function main() {
   const recCount = (await db.collection(`groups/${APTO}/expenses`).where('recurringId', '==', RECURRING.internet).get()).size;
   check(recCount === 1, 'exactly one expense for the rule', recCount);
   check(re.note === 'Plan de 500 megas', "the rule's optional comment is on the expense", re.note);
+  check(re.merchant === 'Xfinity' && re.logoDomain === 'xfinity.com' && re.aiEnriched === true, '"What is it?" (merchantId xfinity) -> merchant + logo on the expense', { m: re.merchant, d: re.logoDomain });
   const gymRuns = (await db.collection(`groups/${APTO}/expenses`).where('recurringId', '==', RECURRING.gym).get()).size;
   check(gymRuns === 0, 'paused rule ("Gimnasio") never runs');
   const leftRule = (await db.doc(`groups/${TRIP}/recurring/r_left`).get()).data() || {};
@@ -393,9 +394,12 @@ async function main() {
   check(saraTrip.enabled === false, 'creditor not in the group -> auto charge disabled');
 
   const rule1 = (await db.doc(`groups/${APTO}/recurring/${RECURRING.internet}`).get()).data() || {};
-  const ahead = rule1.nextRunAt ? (rule1.nextRunAt.toMillis() - Date.parse(runAt)) / 86400000 : 0;
-  check(ahead > 27 && ahead < 32 && bd.zoneParts(rule1.nextRunAt.toDate()).h === 8 && rule1.runs === 1 && !!rule1.lastRunAt,
-    `nextRunAt advanced ~1 month to 08:00 Chicago (${rule1.nextRunAt && rule1.nextRunAt.toDate().toISOString()}), runs 1`);
+  // next occurrence strictly after the run: ~1 month later, or today at 08:00 when the test runs
+  // before 08:00 Chicago (in production autoBilling always runs at 08:00, so it is always next month)
+  const expectedNext = bd.nextOccurrence({ frequency: 'monthly', day: rule1.day }, new Date(runAt));
+  check(rule1.nextRunAt && expectedNext && rule1.nextRunAt.toMillis() === expectedNext.getTime() && rule1.nextRunAt.toMillis() > Date.parse(runAt)
+    && bd.zoneParts(rule1.nextRunAt.toDate()).h === 8 && rule1.runs === 1 && !!rule1.lastRunAt,
+    `nextRunAt advanced to the next 08:00 Chicago occurrence (${rule1.nextRunAt && rule1.nextRunAt.toDate().toISOString()}), runs 1`);
   const anaAuto = (await db.doc(`groups/${APTO}/autoCharges/${ana.uid}`).get()).data() || {};
   check(anaAuto.lastRunKey === bd.dayKey(new Date(runAt)) && !!anaAuto.lastRunAt, 'autoCharges lastRunKey = today (Chicago)', anaAuto.lastRunKey);
 
@@ -426,6 +430,7 @@ async function main() {
     'Camilo: Spanish, "Cobro automático de Ana" + "programó este cobro automático"', amCam && amCam.subject);
   check(amSara && amSara.lang === 'es' && amSara.html.includes('Cobro automático de Ana'), 'Sara: Spanish automatic wording', amSara && amSara.subject);
   check(amCam && amCam.html.includes('Plan de 500 megas'), "Camilo's automatic invoice shows the rule's comment", amCam && amCam.subject);
+  check(amCam && amCam.html.includes('https://spentshare.com/logos/xfinity.png'), "Camilo's automatic invoice shows the Xfinity logo on the Internet item");
   check(readOutbox().some((m) => m.kind === 'invoice' && /https:\/\/spentshare\.com\/logos\/[a-z0-9]+\.png/.test(m.html)), "invoice items show merchant logos (app catalog)");
   check(amAna && amAna.lang === 'en' && amAna.html.includes('Camilo’s automatic request') && amAna.html.includes('Camilo set up this automatic request in SpentShare.'),
     'Ana: English, "Camilo’s automatic request"', amAna && amAna.subject);

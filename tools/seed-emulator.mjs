@@ -138,7 +138,7 @@ async function seed() {
   await db.doc(`groups/${GROUPS.apto}/recurring/${RECURRING.internet}`).set({
     active: true, description: 'Internet', amount: 60, category: 'utilities',
     payerUid: ana.uid, splitUids: [ana.uid, camilo.uid, sara.uid],
-    frequency: 'monthly', day: todayChicago, sendCharge: true, dueDays: 7, note: 'Plan de 500 megas',
+    frequency: 'monthly', day: todayChicago, sendCharge: true, dueDays: 7, note: 'Plan de 500 megas', merchantId: 'xfinity',
     createdByUid: ana.uid, createdAt: day(1, 9, 45),
     nextRunAt: Timestamp.fromDate(new Date(Date.now() - 60000)),
   });

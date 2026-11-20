@@ -1198,7 +1198,11 @@ async function runRecurringRule(doc, now, result, getGroup) {
   const others = splitUids.filter((u) => u !== payerUid);
   const partner = splitType === 'two' || splitType === 'full' ? others[0] : null;
   const description = String(rule.description || '').trim().slice(0, 80) || 'Gasto fijo';
-  const cat = catalogFields(description);
+  // "¿De qué es?" (merchantId) wins; otherwise the catalog is matched by the description
+  const picked = rule.merchantId ? merchants.LIST.find((m) => m.id === rule.merchantId) : null;
+  const cat = picked
+    ? { merchant: picked.name, logoDomain: picked.domain || '', logoEmoji: picked.emoji || '', cat: picked.cat || null }
+    : catalogFields(description);
   const expense = {
     type: 'expense', amount, description,
     category: rule.category || (cat && cat.cat) || 'other',

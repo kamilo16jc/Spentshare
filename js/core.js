@@ -119,9 +119,10 @@ function categoryIcon(k) {
 // Comercios conocidos (functions/merchants.js): se reconocen por el nombre sin llamar a la IA
 // y su logo viene de /logos/<id>.png, guardado en la app.
 function merchantFor(text) { return window.SSMerchants ? SSMerchants.find(text) : null; }
+const merchantById = id => (window.SSMerchants && id ? SSMerchants.LIST.find(m => m.id === id) || null : null);
 function merchantOf(e) {
   if (!window.SSMerchants) return null;
-  return (e.logoDomain && SSMerchants.byDomain(e.logoDomain)) || SSMerchants.find(e.merchant || e.description) || null;
+  return merchantById(e.merchantId) || (e.logoDomain && SSMerchants.byDomain(e.logoDomain)) || SSMerchants.find(e.merchant || e.description) || null;
 }
 const merchantLogo = m => (m && m.logo ? `logos/${m.id}.png` : '');
 // Ícono del gasto: logo de la tienda encima del ícono de categoría

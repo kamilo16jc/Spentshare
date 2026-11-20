@@ -165,6 +165,8 @@ const TX = {
     'rec.pause': 'Pausar', 'rec.resume': 'Reanudar', 'rec.paused': 'Gasto fijo pausado', 'rec.resumed': 'Gasto fijo activo otra vez',
     'rec.delete': 'Eliminar gasto fijo', 'rec.deleteConfirm': 'Toca otra vez para eliminarlo', 'rec.deleted': 'Gasto fijo eliminado',
     'rec.notMine': n => `Lo creó ${n}. Solo ${n} lo puede cambiar.`, 'rec.paidBy': 'Lo paga', 'rec.split': 'Se reparte entre', 'rec.when': 'Cuándo',
+    'rec.whatIs': '¿De qué es?', 'rec.optional': '(opcional)', 'rec.searchPh': 'Buscar: Netflix, ComEd, T-Mobile…',
+    'rec.noMerchant': 'No está en la lista. Escríbelo arriba y queda con el ícono de su categoría.',
     'rec.noteLbl': 'Comentario (opcional)', 'rec.notePh': 'Ej.: el plan familiar de 4 pantallas', 'detail.note': 'Comentario',
     'rec.charges': 'Cobro automático', 'rec.yes': 'Sí', 'rec.no': 'No', 'rec.ph': 'Arriendo, internet, Netflix…', 'row.fixed': 'fijo',
 
@@ -338,6 +340,8 @@ const TX = {
     'rec.pause': 'Pause', 'rec.resume': 'Resume', 'rec.paused': 'Fixed expense paused', 'rec.resumed': 'Fixed expense is back on',
     'rec.delete': 'Delete fixed expense', 'rec.deleteConfirm': 'Tap again to delete it', 'rec.deleted': 'Fixed expense deleted',
     'rec.notMine': n => `${n} created it. Only ${n} can change it.`, 'rec.paidBy': 'Paid by', 'rec.split': 'Split between', 'rec.when': 'When',
+    'rec.whatIs': 'What is it?', 'rec.optional': '(optional)', 'rec.searchPh': 'Search: Netflix, ComEd, T-Mobile…',
+    'rec.noMerchant': 'Not on the list. Type it above and it keeps its category icon.',
     'rec.noteLbl': 'Comment (optional)', 'rec.notePh': 'E.g. the family plan with 4 screens', 'detail.note': 'Comment',
     'rec.charges': 'Automatic request', 'rec.yes': 'Yes', 'rec.no': 'No', 'rec.ph': 'Rent, internet, Netflix…', 'row.fixed': 'fixed',
 

@@ -187,6 +187,7 @@ document.addEventListener('click', e => {
   if (el.dataset.bar !== undefined) { selectBar(Number(el.dataset.bar)); return; }
   if (el.dataset.category || el.dataset.donut) { categoryDetail(el.dataset.category || el.dataset.donut); return; }
   if (el.dataset.group !== undefined) { enterGroup(el.dataset.group, el); return; }
+  if (el.dataset.merchant) { pickMerchant(el.dataset.merchant); return; }
   if (el.dataset.choice) { setCategory(el.dataset.choice, true); return; }
   if (el.dataset.participant) {
     const id = el.dataset.participant, sel = S.draft.split;
@@ -220,6 +221,7 @@ document.addEventListener('input', e => {
   if (id === 'expense-amount') { updateSplitPreview(); return; }
   if (id === 'expense-title' && S.draft) { titleMerchant(e.target.value); return; }
   if (id === 'auto-min') { autoRefresh(); return; }
+  if (id === 'merchant-q' && S.auto) { S.auto.mq = e.target.value; updateMerchantChoices(); return; }
   if (id === 'settle-amount') { const v = parseAmount(e.target.value); $('#settle-total').textContent = money(Number.isFinite(v) ? v : 0); return; }
   if (id === 'group-name' && S.groupDraft) { S.groupDraft.name = e.target.value; updateGroupPreview(); }
 });

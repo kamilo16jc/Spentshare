@@ -1,6 +1,6 @@
-// v26: comentario opcional en gastos fijos; logos en los correos.
+// v27: gasto fijo con selector "¿De qué es?" (logos).
 // Cambiar el número en cada publicación.
-const CACHE_NAME = 'spentshare-v26';
+const CACHE_NAME = 'spentshare-v27';
 // Relative paths (resolved against the SW's own location) so the same file
 // works both on GitHub Pages (/Spentshare/) and on the custom domain (root).
 const ASSETS = [
