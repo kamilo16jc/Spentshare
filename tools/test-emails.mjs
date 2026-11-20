@@ -130,6 +130,7 @@ async function groupExpenses(groupId) {
 }
 
 const money = (n) => `$${Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 const toList = (ms) => ms.map((m) => `${m.to} [${m.lang}] ${m.subject}`);
 
 // ───────────────────────── tests ─────────────────────────
@@ -445,6 +446,48 @@ async function main() {
   check(R2.recurring && R2.recurring.created === 0 && R2.auto && R2.auto.requests === 0 && R2.auto.alreadyRan === 3,
     'second run the same day: nothing to do', ab2.error || R2);
   check(JSON.stringify(before2) === JSON.stringify(after2), 'second run: no new expense, request or email', { before2, after2 });
+
+  section('Automatic request in "fixed expenses" mode (Netflix: each one gets only their share)');
+  // Ana switches her automatic request to charge her fixed expense "Netflix" (not the whole balance)
+  await db.doc(`groups/${APTO}/recurring/r_netflix`).set({
+    active: true, description: 'Netflix', amount: 22.98, category: 'entertainment', merchantId: 'netflix',
+    payerUid: ana.uid, splitUids: [ana.uid, camilo.uid, sara.uid],
+    frequency: 'monthly', day: 5, sendCharge: false, dueDays: 7, note: '',
+    createdByUid: ana.uid, createdAt: FieldValue.serverTimestamp(),
+    nextRunAt: Timestamp.fromDate(new Date(Date.parse(runAt) - 60000)),
+  });
+  await db.doc(`groups/${APTO}/autoCharges/${ana.uid}`).set({ enabled: true, mode: 'fixed', recurringIds: ['r_netflix'], dueDays: 3, note: '' }, { merge: true });
+  // Camilo has nothing pending with Ana now; Sara still has her pending Internet request
+  const camPend = await db.collection(`groups/${APTO}/paymentRequests`).where('fromUid', '==', ana.uid).where('toUid', '==', camilo.uid).where('status', '==', 'pending').get();
+  await Promise.all(camPend.docs.map((d) => d.ref.update({ status: 'cancelled' })));
+  const saraPend = (await db.collection(`groups/${APTO}/paymentRequests`).where('fromUid', '==', ana.uid).where('toUid', '==', sara.uid).where('status', '==', 'pending').get()).docs[0];
+  const saraCarry = saraPend ? round2(saraPend.data().amount - (saraPend.data().paidAmount || 0)) : 0;
+  const ab3 = await callFn('devRunAutoBilling', { now: runAt }, tok.ana);
+  const R3 = ab3.result || {};
+  check(R3.recurring && R3.recurring.created === 1 && R3.recurring.charges === 2 && R3.auto && R3.auto.fixedMode === 1,
+    'Netflix added once + 2 charges; the fixed-mode setting sends nothing by date', ab3.error || R3);
+  const nfId = `rec_r_netflix_${bd.compactKey(new Date(Date.parse(runAt) - 60000))}`;
+  const nf = (await db.doc(`groups/${APTO}/expenses/${nfId}`).get()).data() || {};
+  check(nf.notify === false && nf.merchant === 'Netflix', 'the Netflix expense: no shared-expense email (the request replaces it)', { notify: nf.notify, m: nf.merchant });
+  const fixedReqs = (await db.collection(`groups/${APTO}/paymentRequests`).where('scope', '==', 'fixed').get()).docs.map((d) => ({ id: d.id, ...d.data() }));
+  const fCam = fixedReqs.find((r) => r.toUid === camilo.uid && r.status === 'pending');
+  const fSara = fixedReqs.find((r) => r.toUid === sara.uid && r.status === 'pending');
+  check(fCam && fCam.amount === 7.66 && fCam.items.length === 1 && fCam.items[0].expenseId === nfId && fCam.about && fCam.about.name === 'Netflix'
+    && /logos\/netflix\.png$/.test(fCam.about.logo) && fCam.auto === true,
+    'Camilo: only his share of Netflix ($7.66), one item, about = Netflix + logo', fCam && { a: fCam.amount, n: fCam.items.length });
+  const saraNow = owes(await groupExpenses(APTO), sara.uid, ana.uid, members);
+  check(fSara && Math.abs(fSara.amount - Math.min(saraNow, saraCarry + 7.66)) < 0.011 && fSara.items.some((i) => i.expenseId === nfId)
+    && fSara.about.withPending === true && fCam.about.withPending === false,
+    `Sara: her pending request is carried over + Netflix (${fSara && money(fSara.amount)})`);
+  const saraOld = saraPend ? (await saraPend.ref.get()).data() : {};
+  check(!saraPend || saraOld.status === 'cancelled', "Sara's previous request was replaced (cancelled)");
+  const nfMails = await mails((m) => m.kind === 'invoice' && (m.html || '').includes('Cobro automático de Ana · Netflix'), 2);
+  const nfCam = nfMails.find((m) => m.to === camilo.email);
+  const nfSara = nfMails.find((m) => m.to === sara.email);
+  check(nfSara && nfSara.subject.startsWith('Ana te cobra Netflix y lo pendiente:'), 'Sara (carried debt): "Netflix y lo pendiente"', nfSara && nfSara.subject);
+  check(nfMails.length === 2 && nfCam && nfCam.html.includes('https://spentshare.com/logos/netflix.png') && nfCam.subject.startsWith('Ana te cobra Netflix: $7.66'),
+    'Netflix invoices: logo at the top, "Ana te cobra Netflix: $7.66"', nfCam && nfCam.subject);
+  check(readOutbox().filter((m) => m.kind === 'expense' && m.expense === nfId).length === 0, 'no shared-expense email for Netflix');
 
   section('Firestore rules (REST as signed-in users)');
   check(await fsRest('GET', `groups/${APTO}/paymentRequests/${req2.requestId}`, tok.camilo) === 200, 'member reads a payment request');

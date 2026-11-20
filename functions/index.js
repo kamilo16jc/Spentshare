@@ -954,6 +954,25 @@ function buildRequestItems(expenses, creditorUid, debtorUid, memberUids) {
   return items;
 }
 
+// What the scoped expenses alone add up to (to know if older debt was carried into the request)
+function freshAmount(items, expenseIds) {
+  const ids = new Set(expenseIds);
+  return items.filter((i) => ids.has(i.expenseId)).reduce((s, i) => s + (i.paidBy === 'to' ? -i.share : i.share), 0);
+}
+
+// Items for a charge limited to some expenses (a fixed expense): what the debtor owes on each one
+function buildScopedItems(expenses, expenseIds, creditorUid, debtorUid, memberUids) {
+  const ids = new Set(expenseIds);
+  return (expenses || []).filter((e) => ids.has(e.id) && e.type !== 'settle' && e.paidByUid === creditorUid).map((e) => {
+    const { shares } = expenseShares(e, memberUids);
+    return {
+      expenseId: e.id, date: expenseDate(e), description: String(e.description || ''),
+      category: e.category || 'other', logo: logoUrlFor(e), total: round2(e.amount),
+      paidBy: 'from', share: round2(shares[debtorUid] || 0),
+    };
+  }).filter((i) => i.share > 0);
+}
+
 // Firestore items (Timestamps) -> template items (Dates)
 function itemsForTemplate(items) {
   return (items || []).map((i) => ({ ...i, date: toDate(i.date) || new Date() }));
@@ -967,7 +986,7 @@ function itemsForTemplate(items) {
  * Throws HttpsError: not-found, permission-denied, invalid-argument, failed-precondition 'no-debt'.
  * @returns {{ok, requestId, number, amount, dueAt (ISO), emailed}}
  */
-async function createPaymentRequest({ groupId, creditorUid, debtorUid, note, dueDays, auto = false, now = new Date() }) {
+async function createPaymentRequest({ groupId, creditorUid, debtorUid, note, dueDays, auto = false, now = new Date(), scope = null }) {
   if (!groupId || typeof groupId !== 'string' || !debtorUid || typeof debtorUid !== 'string' || !creditorUid) {
     throw new HttpsError('invalid-argument', 'groupId and debtorUid required');
   }
@@ -986,9 +1005,35 @@ async function createPaymentRequest({ groupId, creditorUid, debtorUid, note, due
   const cleanNote = typeof note === 'string' ? note.trim().slice(0, 500) : '';
 
   const expenses = await loadExpenses(groupId);
-  const amount = round2(pairNet(expenses, debtorUid, creditorUid, members));
-  if (amount < EPS) throw new HttpsError('failed-precondition', 'no-debt');
-  const items = buildRequestItems(expenses, creditorUid, debtorUid, members);
+  const debt = round2(pairNet(expenses, debtorUid, creditorUid, members));
+  if (debt < EPS) throw new HttpsError('failed-precondition', 'no-debt');
+  let amount = debt;
+  let items;
+  const scoped = !!(scope && Array.isArray(scope.expenseIds) && scope.expenseIds.length);
+  if (scoped) {
+    // Charge for these expenses only (e.g. this month's Netflix), plus what is still unpaid on the
+    // request it replaces (so nothing is lost when the old one is cancelled); never more than the debt.
+    const pendingSnap = await groupRef.collection('paymentRequests')
+      .where('fromUid', '==', creditorUid).where('toUid', '==', debtorUid).where('status', '==', 'pending').get();
+    let carry = 0;
+    const carried = [];
+    pendingSnap.docs.forEach((d) => {
+      const r = d.data();
+      carry += Math.max(0, Number(r.amount || 0) - Number(r.paidAmount || 0));
+      (r.items || []).forEach((i) => carried.push({ ...i, date: toDate(i.date) || now }));
+    });
+    const fresh = buildScopedItems(expenses, scope.expenseIds, creditorUid, debtorUid, members)
+      .filter((i) => !carried.some((c) => c.expenseId === i.expenseId));
+    const freshTotal = fresh.reduce((s, i) => s + (i.paidBy === 'to' ? -i.share : i.share), 0);
+    items = [...carried, ...fresh];
+    amount = round2(Math.min(debt, carry + freshTotal));
+    if (amount < EPS) throw new HttpsError('failed-precondition', 'no-debt');
+  } else {
+    items = buildRequestItems(expenses, creditorUid, debtorUid, members);
+  }
+  // withPending: the request also carries what was still unpaid ("Netflix y lo pendiente")
+  const about = scoped && scope.about && scope.about.name
+    ? { name: String(scope.about.name).slice(0, 80), logo: String(scope.about.logo || ''), withPending: items.length > scope.expenseIds.length || amount > freshAmount(items, scope.expenseIds) + EPS } : null;
 
   const dueAt = new Date(now.getTime() + days * 86400000);
   const currency = group.currency || 'USD';
@@ -1010,6 +1055,8 @@ async function createPaymentRequest({ groupId, creditorUid, debtorUid, note, due
       items: items.map((i) => ({ ...i, date: Timestamp.fromDate(i.date) })),
       remindedAt: null,
       ...(auto ? { auto: true } : {}),
+      ...(scoped ? { scope: 'fixed', expenseIds: scope.expenseIds.slice(0, 20) } : {}),
+      ...(about ? { about } : {}),
     });
     return num;
   });
@@ -1026,7 +1073,7 @@ async function createPaymentRequest({ groupId, creditorUid, debtorUid, note, due
       lang: debtor.lang, invoiceNo: number, requestId: newRef.id, issuedAt: now, dueAt,
       currency, group: { name: group.name || '' },
       from: { name: creditor.name, email: creditor.email }, to: { name: debtor.name },
-      note: cleanNote, items, amount, payTo, auto: !!auto,
+      note: cleanNote, items, amount, payTo, auto: !!auto, about,
     });
     const sent = await sendMail({
       kind: 'invoice', to: debtor.email, lang: mail.lang, ...mail,
@@ -1096,7 +1143,7 @@ async function runPaymentReminders(now = new Date()) {
         issuedAt: toDate(r.createdAt) || now, dueAt: toDate(r.dueAt),
         currency: r.currency || group.currency || 'USD', group: { name: group.name || '' },
         from: { name: creditor.name, email: creditor.email }, to: { name: debtor.name },
-        note: r.note || '', items: itemsForTemplate(r.items), amount: remaining, payTo, auto: !!r.auto,
+        note: r.note || '', items: itemsForTemplate(r.items), amount: remaining, payTo, auto: !!r.auto, about: r.about || null,
       });
       const sent = await sendMail({
         kind: 'reminder', to: debtor.email, lang: mail.lang, ...mail,
@@ -1198,6 +1245,12 @@ async function runRecurringRule(doc, now, result, getGroup) {
   const others = splitUids.filter((u) => u !== payerUid);
   const partner = splitType === 'two' || splitType === 'full' ? others[0] : null;
   const description = String(rule.description || '').trim().slice(0, 80) || 'Gasto fijo';
+  // The payer's automatic request may be set to charge this fixed expense ("Gastos fijos" mode):
+  // then each participant gets a request for their share of it (not the whole balance)
+  const acSnap = await db.doc(`groups/${groupId}/autoCharges/${payerUid}`).get();
+  const ac = acSnap.exists ? acSnap.data() : null;
+  const viaAuto = !!(ac && ac.enabled === true && ac.mode === 'fixed' && Array.isArray(ac.recurringIds) && ac.recurringIds.includes(doc.id));
+
   // "¿De qué es?" (merchantId) wins; otherwise the catalog is matched by the description
   const picked = rule.merchantId ? merchants.LIST.find((m) => m.id === rule.merchantId) : null;
   const cat = picked
@@ -1214,7 +1267,7 @@ async function runRecurringRule(doc, now, result, getGroup) {
     spentAt: Timestamp.fromDate(now),
     recurringId: doc.id,
     ...(noteOf(rule) ? { note: noteOf(rule) } : {}),
-    notify: !rule.sendCharge,   // with a charge, the invoice replaces the shared-expense email
+    notify: !(rule.sendCharge || viaAuto),   // with a charge, the invoice replaces the shared-expense email
     ...(cat ? { merchant: cat.merchant, logoDomain: cat.logoDomain, logoEmoji: cat.logoEmoji, aiEnriched: true } : {}),
   };
 
@@ -1235,7 +1288,25 @@ async function runRecurringRule(doc, now, result, getGroup) {
   if (!created) { result.skipped++; return; }
   result.created++;
 
-  if (rule.sendCharge) {
+  if (viaAuto) {
+    const { shares } = expenseShares(expense, members);
+    const about = { name: description, logo: logoUrlFor(expense) };
+    const acNote = typeof ac.note === 'string' && ac.note.trim() ? ac.note : noteOf(rule);
+    for (const debtorUid of others) {
+      if ((shares[debtorUid] || 0) < EPS) continue;   // the minimum only applies to whole-balance requests
+      try {
+        await createPaymentRequest({
+          groupId, creditorUid: payerUid, debtorUid, note: acNote, dueDays: ac.dueDays, auto: true, now,
+          scope: { expenseIds: [expenseId], about },
+        });
+        result.charges++;
+      } catch (err) {
+        if (err && err.message === 'no-debt') continue;   // already square with the payer
+        result.failed++;
+        console.error(`autoBilling: fixed charge for ${expRef.path} -> ${debtorUid} error`, err);
+      }
+    }
+  } else if (rule.sendCharge) {
     const expenses = await loadExpenses(groupId);
     for (const debtorUid of others) {
       if (round2(pairNet(expenses, debtorUid, payerUid, members)) < EPS) continue;
@@ -1265,6 +1336,7 @@ async function runAutoChargeSettings(doc, now, todayKey, result, getGroup) {
     await doc.ref.update({ enabled: false }).catch(() => {});
     return;
   }
+  if (s.mode === 'fixed') { result.fixedMode = (result.fixedMode || 0) + 1; return; }   // charged when each fixed expense is added
   if (!billingDates.isDueToday(s, now)) { result.notDue++; return; }
   if (s.lastRunKey === todayKey) { result.alreadyRan++; return; }
 

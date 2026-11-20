@@ -156,6 +156,9 @@
       overdue: 'Vencido',
       wasDue: d => `venció el ${d}`,
       autoYou: F => `Cobro automático de ${F}`,
+      autoAbout: (F, x) => `Cobro automático de ${F} · ${x}`,
+      invoiceSubjectAbout: (F, x, amt, due) => `${F} te cobra ${x}: ${amt}${due ? ` · vence el ${due}` : ''}`,
+      andPending: x => `${x} y lo pendiente`,
       autoSetBy: F => `${F} programó este cobro automático en SpentShare.`,
       days: n => `${n} ${n === 1 ? 'día' : 'días'}`,
       noteBy: F => `${F}, al enviarte el cobro`,
@@ -298,6 +301,9 @@
       overdue: 'Overdue',
       wasDue: d => `was due ${d}`,
       autoYou: F => `${F}’s automatic request`,
+      autoAbout: (F, x) => `${F}’s automatic request · ${x}`,
+      invoiceSubjectAbout: (F, x, amt, due) => `${F} is requesting ${x}: ${amt}${due ? ` · due ${due}` : ''}`,
+      andPending: x => `${x} and what’s still pending`,
       autoSetBy: F => `${F} set up this automatic request in SpentShare.`,
       days: n => `${n} ${n === 1 ? 'day' : 'days'}`,
       noteBy: F => `${F}, with the request`,
@@ -456,6 +462,13 @@
     const style = `display:block;margin:0 auto;border:0;outline:none;width:${size}px;height:${size}px`;
     return `<!--[if mso]><img src="${base}${name}.png" width="${size}" height="${size}" alt="${esc(alt)}" style="${style}"><![endif]-->`
       + `<!--[if !mso]><!--><img src="${base}${name}.gif" width="${size}" height="${size}" alt="${esc(alt)}" style="${style}"><!--<![endif]-->`;
+  }
+
+  // Logo del comercio en el encabezado morado (cobro de un gasto fijo), en lugar de la animación
+  function logoHero(src, alt) {
+    return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;border-collapse:separate"><tr>
+      <td width="88" height="88" align="center" valign="middle" bgcolor="#FFFFFF" style="width:88px;height:88px;border-radius:26px;background-color:#FFFFFF">
+        <img src="${esc(src)}" width="60" height="60" alt="${esc(alt || '')}" style="display:block;border:0;width:60px;height:60px;margin:0 auto"></td></tr></table>`;
   }
 
   // full-btn del diseño: morado (principal) o lavanda (secundario)
@@ -791,6 +804,7 @@
    *   amount? (si falta se calcula), payTo?[{type, value}] ("Cómo me pagan" de quien cobra),
    *   reminder? (true: recordatorio de un cobro vencido; amount = lo que falta por pagar),
    *   auto? (true: cobro automático que programó quien cobra),
+   *   about? {name, logo?} (cobro de un gasto fijo: su nombre y logo van arriba),
    *   appUrl?, assetBase?, timeZone?
    */
   function renderInvoice(d) {
@@ -813,7 +827,8 @@
 
     const reminder = !!d.reminder;
     const auto = !!d.auto;
-    const subject = (reminder ? L.remindPrefix : '') + L.invoiceSubject(F, amt, dueShort);
+    const about = d.about && d.about.name ? { ...d.about, name: d.about.withPending ? L.andPending(d.about.name) : d.about.name } : null;
+    const subject = (reminder ? L.remindPrefix : '') + (about ? L.invoiceSubjectAbout(F, about.name, amt, dueShort) : L.invoiceSubject(F, amt, dueShort));
     const preheader = L.invoicePre(d.invoiceNo, g, items.length);
 
     // mini-pill del diseño, con el punto lima que late
@@ -829,8 +844,8 @@
       </td></tr></table>`;
 
     const hero = `
-      ${animatedImage(base, 'cobro', L.invoiceImg, 120)}
-      <div class="ss-a ss-d1">${heroEyebrow(esc(reminder ? L.remindYou(F) : auto ? L.autoYou(F) : L.sentYou(F)))}</div>
+      ${about && about.logo ? logoHero(about.logo, d.about.name) : animatedImage(base, 'cobro', L.invoiceImg, 120)}
+      <div class="ss-a ss-d1">${heroEyebrow(esc(reminder ? L.remindYou(F) : auto && about ? L.autoAbout(F, about.name) : auto ? L.autoYou(F) : L.sentYou(F)))}</div>
       <div class="ss-a ss-d2">${heroAmount(amount, cur)}</div>
       <div class="ss-a ss-d3">${pill}</div>`;
 

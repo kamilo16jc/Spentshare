@@ -188,6 +188,7 @@ document.addEventListener('click', e => {
   if (el.dataset.category || el.dataset.donut) { categoryDetail(el.dataset.category || el.dataset.donut); return; }
   if (el.dataset.group !== undefined) { enterGroup(el.dataset.group, el); return; }
   if (el.dataset.merchant) { pickMerchant(el.dataset.merchant); return; }
+  if (el.dataset.fixed) { toggleFixed(el.dataset.fixed); return; }
   if (el.dataset.choice) { setCategory(el.dataset.choice, true); return; }
   if (el.dataset.participant) {
     const id = el.dataset.participant, sel = S.draft.split;

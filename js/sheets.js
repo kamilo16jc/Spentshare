@@ -319,6 +319,7 @@ function autoPick(el) {
   d[key] = val;
   if (key === 'frequency') { d.day = d.orig && d.orig.frequency === val ? d.orig.day : defaultDay(val); $('#sched-box').innerHTML = scheduleHtml(d); }
   else $$(`[data-pick="${key}"]`).forEach(b => { const on = b === el; b.classList.toggle('active', on); b.setAttribute('aria-pressed', String(on)); });
+  if (key === 'mode') { const box = $('#mode-box'); if (box) box.innerHTML = modeHtml(); }
   autoRefresh();
 }
 function autoRefresh() { const p = $('#auto-preview'); if (p && S.auto) p.innerHTML = S.auto.kind === 'charge' ? autoPreview() : recPreview(); }
@@ -328,15 +329,16 @@ function autoChargeSheet() {
   if (!S.group) return;
   const saved = S.autoCharges[uid()] || null;
   const freq = saved && FREQS.includes(saved.frequency) ? saved.frequency : 'monthly';
-  S.auto = { kind: 'charge', enabled: saved ? !!saved.enabled : true, frequency: freq, day: saved ? saved.day : defaultDay(freq), dueDays: (saved && saved.dueDays) || 7, minAmount: (saved && saved.minAmount) || 0, orig: saved ? { frequency: saved.frequency, day: saved.day } : null };
-  const c = CURRENCIES[cur()];
+  const mode = saved ? (saved.mode === 'fixed' ? 'fixed' : 'balance') : (myFixed().length ? 'fixed' : 'balance');
+  S.auto = { kind: 'charge', enabled: saved ? !!saved.enabled : true, mode, recurringIds: ((saved && saved.recurringIds) || []).slice(), frequency: freq, day: saved ? saved.day : defaultDay(freq), dueDays: (saved && saved.dueDays) || 7, minAmount: (saved && saved.minAmount) || 0, orig: saved ? { frequency: saved.frequency, day: saved.day } : null };
   openSheet(t('auto.chargeTitle'), `${groupContext()}<p class="sheet-intro" style="margin-top:16px">${t('auto.chargeIntro')}</p>
     <form id="auto-form" novalidate>
     <div class="menu-list"><button type="button" class="menu-row" data-action="auto-toggle" role="switch" aria-checked="${S.auto.enabled}">${icon('clock')}<span>${t('auto.enable')}</span><i class="switch ${S.auto.enabled ? 'on' : ''}" aria-hidden="true"></i></button></div>
     <div id="auto-fields" class="auto-fields ${S.auto.enabled ? '' : 'is-off'}">
-      <div id="sched-box">${scheduleHtml(S.auto)}</div>
+      <span class="field-label">${t('auto.what')}</span>
+      <div class="pills">${pickPill('mode', 'fixed', t('auto.modeFixed'), S.auto.mode === 'fixed')}${pickPill('mode', 'balance', t('auto.modeBalance'), S.auto.mode === 'balance')}</div>
+      <div id="mode-box">${modeHtml()}</div>
       ${dueHtml(S.auto)}
-      <div class="form-row"><div class="field"><label for="auto-min">${t('auto.min')}</label><input id="auto-min" inputmode="decimal" value="${S.auto.minAmount || ''}" placeholder="${c.symbol}0" autocomplete="off"></div><div></div></div>
       <div class="field"><label for="auto-note">${t('auto.noteLbl')}</label><input id="auto-note" maxlength="140" value="${esc((saved && saved.note) || '')}" placeholder="${esc(t('auto.notePh'))}" autocomplete="off"></div>
     </div>
     <div class="auto-preview" id="auto-preview" aria-live="polite">${autoPreview()}</div>
@@ -344,9 +346,42 @@ function autoChargeSheet() {
     <div class="submit-holder"><button class="full-btn" type="submit">${t('auto.save')}</button></div>
     <p class="notice-inline">${t('auto.foot')}</p></form>`, { name: 'auto-charge' });
 }
+// "¿Qué se cobra?": mis gastos fijos (los que pago yo) o todo el saldo
+const myFixed = () => S.recurring.filter(r => r.payerUid === uid() && r.active !== false);
+function modeHtml() {
+  const d = S.auto, c = CURRENCIES[cur()];
+  if (d.mode === 'balance') {
+    return `<div id="sched-box">${scheduleHtml(d)}</div>
+      <div class="form-row"><div class="field"><label for="auto-min">${t('auto.min')}</label><input id="auto-min" inputmode="decimal" value="${d.minAmount || ''}" placeholder="${c.symbol}0" autocomplete="off"></div><div></div></div>`;
+  }
+  const mine = myFixed();
+  if (!mine.length) return `<p class="auto-hint">${t('auto.noFixed')}</p><button type="button" class="full-btn secondary" data-action="recurring-new" style="margin-bottom:18px">${icon('plus')} ${t('rec.add')}</button>`;
+  return `<span class="field-label">${t('auto.whichFixed')}</span><div class="fixed-pick">${mine.map(r => {
+    const on = d.recurringIds.includes(r.id);
+    return `<button type="button" class="fixed-choice ${on ? 'active' : ''}" data-fixed="${r.id}" aria-pressed="${on}">${expenseIcon(r)}<span class="fixed-copy"><strong>${esc(r.description)}</strong><span>${money(r.amount)} · ${esc(scheduleLabel(r))}</span></span><span class="fixed-check">${icon('check', 'small-ico')}</span></button>`;
+  }).join('')}</div><p class="auto-hint">${t('auto.fixedHint')}</p>`;
+}
+function toggleFixed(id) {
+  const d = S.auto; if (!d) return;
+  d.recurringIds = d.recurringIds.includes(id) ? d.recurringIds.filter(x => x !== id) : [...d.recurringIds, id];
+  $$('[data-fixed]').forEach(b => { const on = d.recurringIds.includes(b.dataset.fixed); b.classList.toggle('active', on); b.setAttribute('aria-pressed', String(on)); });
+  autoRefresh();
+}
+// Logo chico para la vista previa
+const smallLogo = r => { const src = merchantLogo(merchantOf(r)); return src ? `<img src="${src}" alt="">` : `<span class="auto-dot"></span>`; };
+function fixedPreview() {
+  const d = S.auto, sel = myFixed().filter(r => d.recurringIds.includes(r.id));
+  if (!sel.length) return `<p>${t('auto.errFixed')}</p>`;
+  return `<p>${t('auto.fixedPreview')}</p>${sel.map(r => {
+    const split = (r.splitUids || []).filter(u => S.members.some(m => m.uid === u)), share = (Number(r.amount) || 0) / Math.max(split.length, 1);
+    const others = split.filter(u => u !== uid());
+    return `<div class="auto-fixed-line">${smallLogo(r)}<span><strong>${esc(r.description)}</strong> · ${esc(whenLabel(toDate(r.nextRunAt)))}<br>${others.length ? others.map(u => `${esc(firstName(nameOf(u)))} <b class="num">${money(share)}</b>`).join(' · ') : t('auto.nobody')}</span></div>`;
+  }).join('')}`;
+}
 function autoPreview() {
   const d = S.auto;
   if (!d.enabled) return `<p>${t('auto.offNote')}</p>`;
+  if (d.mode === 'fixed') return fixedPreview();
   const raw = (($('#auto-min') || {}).value || '').trim();
   const min = raw ? parseAmount(raw) : Number(d.minAmount) || 0;
   const list = autoChargeTargets(Number.isFinite(min) ? min : 0);
@@ -356,12 +391,14 @@ function autoPreview() {
   return `<p class="auto-next">${icon('calendar', 'small-ico')} <span>${t('auto.next', whenLabel(firstRunDate(d)))}</span></p>${people}`;
 }
 async function submitAuto(form) {
-  const d = S.auto, raw = $('#auto-min').value.trim();
+  const d = S.auto, minEl = $('#auto-min'), raw = minEl ? minEl.value.trim() : String(d.minAmount || '');
   const min = raw ? parseAmount(raw) : 0;
+  const ids = d.recurringIds.filter(id => myFixed().some(r => r.id === id));
+  if (d.enabled && d.mode === 'fixed' && !ids.length) return formError('auto-error', t('auto.errFixed'));
   if (!Number.isFinite(min) || min < 0 || min > 1e9) return formError('auto-error', t('auto.errMin'));
   const b = $('button[type="submit"]', form); if (b.disabled) return;
   formError('auto-error', '');
-  const data = { enabled: !!d.enabled, frequency: d.frequency, day: Number(d.day) || 1, minAmount: round2(min), dueDays: Number(d.dueDays) || 7, note: $('#auto-note').value.trim().slice(0, 140) };
+  const data = { enabled: !!d.enabled, mode: d.mode, recurringIds: ids, frequency: d.frequency, day: Number(d.day) || 1, minAmount: round2(min), dueDays: Number(d.dueDays) || 7, note: $('#auto-note').value.trim().slice(0, 140) };
   try { await Promise.all([buttonCheck(b), saveAutoCharge(data)]); }
   catch (e) { console.error(e); b.disabled = false; b.innerHTML = t('auto.save'); return formError('auto-error', t('err.save')); }
   closeSheet(); toast(data.enabled ? t('auto.saved') : t('auto.savedOff'));
@@ -438,7 +475,10 @@ function pickMerchant(id) {
   showTitleLogo(m || merchantFor(title ? title.value : ''));
 }
 function recChargeHtml() {
-  const d = S.auto;
+  const d = S.auto, ac = S.autoCharges[uid()];
+  if (d.id && d.payer === uid() && ac && ac.enabled && ac.mode === 'fixed' && (ac.recurringIds || []).includes(d.id)) {
+    return `<p class="auto-hint">${icon('clock', 'small-ico')} ${t('rec.viaAuto')} <button type="button" class="text-btn inline-link" data-action="auto-charge">${t('auto.chargeTitle')}</button></p>`;
+  }
   if (d.payer !== uid()) return `<p class="auto-hint">${t('rec.notifyHint')} ${t('rec.onlyPayer')}</p>`;
   return `<div class="menu-list" style="margin-top:4px"><button type="button" class="menu-row" data-action="rec-charge-toggle" role="switch" aria-checked="${d.sendCharge}">${icon('send')}<span>${t('rec.sendCharge')}</span><i class="switch ${d.sendCharge ? 'on' : ''}" aria-hidden="true"></i></button></div><p class="auto-hint" style="margin-top:10px">${d.sendCharge ? t('rec.sendChargeHint') : t('rec.notifyHint')}</p>${d.sendCharge ? dueHtml(d) : ''}`;
 }

@@ -1,6 +1,6 @@
-// v27: gasto fijo con selector "¿De qué es?" (logos).
+// v28: cobro automático por gasto fijo (cada uno su parte, con el logo).
 // Cambiar el número en cada publicación.
-const CACHE_NAME = 'spentshare-v27';
+const CACHE_NAME = 'spentshare-v28';
 // Relative paths (resolved against the SW's own location) so the same file
 // works both on GitHub Pages (/Spentshare/) and on the custom domain (root).
 const ASSETS = [

@@ -277,3 +277,16 @@
 .merchant-tile img{width:34px;height:34px;object-fit:contain}
 .merchant-choice.active .merchant-tile{border-color:var(--purple);transform:translateY(-2px)}
 .merchant-name{max-width:62px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Cobro automático: "¿Qué se cobra?" — elegir gastos fijos */
+.fixed-pick{display:flex;flex-direction:column;gap:8px;margin:2px 0 8px}
+.fixed-choice{display:flex;align-items:center;gap:11px;width:100%;text-align:left;background:#fff;border:1.5px solid var(--line);border-radius:18px;padding:10px 12px;transition:border-color .2s,background .2s}
+.fixed-choice.active{border-color:var(--purple);background:#F7F4FF}
+.fixed-copy{flex:1;min-width:0;font-size:12.5px;color:var(--muted);line-height:1.4}
+.fixed-copy strong{display:block;font-size:14px;color:var(--ink);font-weight:650;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fixed-check{width:24px;height:24px;border-radius:50%;border:1.5px solid #D6CDE6;display:grid;place-items:center;color:transparent;flex-shrink:0}
+.fixed-check .small-ico{width:14px;height:14px}
+.fixed-choice.active .fixed-check{background:var(--purple);border-color:var(--purple);color:#fff}
+.auto-fixed-line{display:flex;align-items:flex-start;gap:9px;margin-top:8px}
+.auto-fixed-line img{width:22px;height:22px;border-radius:6px;background:#fff;object-fit:contain;flex-shrink:0;margin-top:1px}
+.auto-dot{width:10px;height:10px;border-radius:4px;background:#C9BCEB;flex-shrink:0;margin:6px 6px 0}
+.inline-link{display:inline;padding:0;min-height:0;font-size:13px}
