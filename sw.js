@@ -1,5 +1,6 @@
-// v24: sin parpadeo al cambiar de pantalla. Cambiar el número en cada publicación.
-const CACHE_NAME = 'spentshare-v24';
+// v25: la caché nueva se llena con archivos frescos (no los de la memoria del navegador).
+// Cambiar el número en cada publicación.
+const CACHE_NAME = 'spentshare-v25';
 // Relative paths (resolved against the SW's own location) so the same file
 // works both on GitHub Pages (/Spentshare/) and on the custom domain (root).
 const ASSETS = [
@@ -33,7 +34,9 @@ self.addEventListener('install', e => {
     caches.open(CACHE_NAME).then(cache =>
       // Add each asset independently so one 404 can't abort the whole install
       // (which would leave the old service worker serving stale files forever).
-      Promise.all(ASSETS.map(url => cache.add(url).catch(() => null)))
+      // cache:'reload' = pedirlo al servidor, no a la memoria del navegador: GitHub Pages deja
+      // cada archivo 10 min en esa memoria y la caché nueva quedaba con JS/CSS viejos mezclados.
+      Promise.all(ASSETS.map(url => cache.add(new Request(url, { cache: 'reload' })).catch(() => null)))
     )
   );
   self.skipWaiting();
@@ -81,7 +84,9 @@ self.addEventListener('fetch', e => {
   // Static assets: cache first + background refresh (stale-while-revalidate)
   e.respondWith(
     caches.match(e.request).then(cached => {
-      const network = fetch(e.request)
+      // los de este sitio se revalidan con el servidor (304 si no cambiaron)
+      const sameOrigin = new URL(url).origin === self.location.origin;
+      const network = fetch(sameOrigin ? new Request(e.request, { cache: 'no-cache' }) : e.request)
         .then(res => {
           if (res && res.ok) {
             const clone = res.clone();
