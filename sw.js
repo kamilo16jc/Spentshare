@@ -1,6 +1,6 @@
-// v29: lo automático es privado (cada quien ve solo lo suyo).
+// v30: la app busca la versión nueva al volver a ella; listas que fallan ya no quedan vacías en silencio.
 // Cambiar el número en cada publicación.
-const CACHE_NAME = 'spentshare-v29';
+const CACHE_NAME = 'spentshare-v30';
 // Relative paths (resolved against the SW's own location) so the same file
 // works both on GitHub Pages (/Spentshare/) and on the custom domain (root).
 const ASSETS = [

@@ -3,6 +3,17 @@
 'use strict';
 
 let groupUnsubs = [];
+// Una lectura en vivo que falla NUNCA debe dejar la lista vacía en silencio. Si es por permisos,
+// casi siempre es una versión vieja de la app con reglas nuevas: buscar la nueva y recargar.
+function listenFail(what, reset) {
+  return err => {
+    console.error(what + ' listener', err);
+    if (reset) reset();
+    refresh();
+    if (err && err.code === 'permission-denied' && window.ssUpdateApp) window.ssUpdateApp(what);
+    else if (typeof toast === 'function') toast(t('err.load'), 'info');
+  };
+}
 function stopGroupListeners() { groupUnsubs.forEach(u => { try { u(); } catch (e) {} }); groupUnsubs = []; }
 const db = () => window._db;
 const col = path => window._col(db(), path);
@@ -65,32 +76,32 @@ function openGroup(gid) {
     S.expenses = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     S.groupNets[gid] = netOf(uid(), S.expenses);
     refresh();
-  }, err => { console.error('expenses listener', err); S.expenses = S.expenses || []; refresh(); }));
+  }, listenFail('expenses', () => { S.expenses = S.expenses || []; })));
   groupUnsubs.push(window._onSnap(col(`groups/${gid}/budgets`), snap => {
     S.budgets = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       .sort((a, b) => ((b.createdAt && b.createdAt.seconds) || 0) - ((a.createdAt && a.createdAt.seconds) || 0));
     refresh();
-  }, err => console.error('budgets listener', err)));
+  }, listenFail('budgets')));
   groupUnsubs.push(window._onSnap(window._query(col(`groups/${gid}/paymentRequests`), window._where('status', '==', 'pending')), snap => {
     S.requests = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     refresh();
-  }, () => { S.requests = []; }));
+  }, listenFail('paymentRequests', () => { S.requests = []; })));
   // Automático: SOLO lo mío (mi cobro automático y los gastos fijos que yo creé). Es privado:
   // los demás ven el gasto cuando se anota y el cobro cuando se envía.
   const me = uid();
   groupUnsubs.push(window._onSnap(ref(`groups/${gid}/autoCharges`, me), snap => {
     S.autoCharges = snap.exists() ? { [me]: snap.data() } : {};
     refresh();
-  }, () => { S.autoCharges = {}; }));
+  }, listenFail('autoCharges', () => { S.autoCharges = {}; })));
   groupUnsubs.push(window._onSnap(window._query(col(`groups/${gid}/recurring`), window._where('createdByUid', '==', me)), snap => {
     S.recurring = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       .sort((a, b) => (b.active === false ? 0 : 1) - (a.active === false ? 0 : 1) || ((toDate(a.nextRunAt) || 0) - (toDate(b.nextRunAt) || 0)));
     refresh();
-  }, () => { S.recurring = []; }));
+  }, listenFail('recurring', () => { S.recurring = []; })));
   groupUnsubs.push(window._onSnap(col(`groups/${gid}/members`), snap => {
     S.meta = {}; snap.docs.forEach(d => { S.meta[d.id] = d.data(); });
     refresh();
-  }, () => {}));
+  }, listenFail('members')));
 }
 
 function leftGroup(gid) {

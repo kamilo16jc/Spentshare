@@ -201,7 +201,7 @@ const TX = {
 
     'err.amount': 'Revisa el importe.', 'err.title': 'Escribe en qué lo gastaron.', 'err.split': 'Elige al menos una persona.',
     'err.save': 'No se pudo guardar. Revisa tu conexión.', 'err.email': 'Revisa el correo.', 'err.name': 'Escribe tu nombre.', 'err.image': 'Elige una imagen.',
-    'err.groupName': 'Ponle un nombre al grupo.',
+    'err.groupName': 'Ponle un nombre al grupo.', 'err.load': 'No se pudo cargar todo. Cierra y abre la app.',
 
     'cat.food': 'Comida', 'cat.drinks': 'Bebidas', 'cat.pets': 'Mascotas', 'cat.shopping': 'Compras', 'cat.gifts': 'Regalos', 'cat.kids': 'Niños',
     'cat.transport': 'Transporte', 'cat.travel': 'Viajes', 'cat.health': 'Salud', 'cat.home': 'Hogar', 'cat.utilities': 'Servicios', 'cat.education': 'Educación',
@@ -381,7 +381,7 @@ const TX = {
 
     'err.amount': 'Check the amount.', 'err.title': 'Say what it was for.', 'err.split': 'Choose at least one person.',
     'err.save': 'Couldn’t save. Check your connection.', 'err.email': 'Check the email.', 'err.name': 'Type your name.', 'err.image': 'Pick an image.',
-    'err.groupName': 'Give the group a name.',
+    'err.groupName': 'Give the group a name.', 'err.load': 'Couldn’t load everything. Close and reopen the app.',
 
     'cat.food': 'Food', 'cat.drinks': 'Drinks', 'cat.pets': 'Pets', 'cat.shopping': 'Shopping', 'cat.gifts': 'Gifts', 'cat.kids': 'Kids',
     'cat.transport': 'Transport', 'cat.travel': 'Travel', 'cat.health': 'Health', 'cat.home': 'Home', 'cat.utilities': 'Utilities', 'cat.education': 'Education',

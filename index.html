@@ -100,19 +100,36 @@
 <script src="js/app.js"></script>
 
 <script>
-if ('serviceWorker' in navigator && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
-  // Al activarse un service worker nuevo, recarga una vez para usar el código nuevo.
-  let _swRefreshing = false;
-  const _hadController = !!navigator.serviceWorker.controller;
+// Versión nueva de la app: se busca al abrir, al volver a la app (teléfono) y cada 30 min.
+// Antes solo al abrir: una app que quedaba abierta seguía con el código viejo y, si cambiaban
+// las reglas, sus listas quedaban vacías. Al activarse un service worker nuevo recarga una vez.
+(function () {
+  const hasSW = 'serviceWorker' in navigator && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+  let refreshing = false;
+  const reloadOnce = why => {
+    if (refreshing) return;
+    const last = Number(sessionStorage.getItem('ss_reload_at') || 0);
+    if (Date.now() - last < 5 * 60 * 1000) {   // ya se recargó hace poco: avisar en vez de recargar en bucle
+      console.warn('SpentShare: lectura rechazada otra vez', why);
+      if (typeof toast === 'function' && typeof t === 'function') toast(t('err.load'), 'info');
+      return;
+    }
+    sessionStorage.setItem('ss_reload_at', String(Date.now()));
+    refreshing = true; location.reload();
+  };
+  const check = () => (hasSW ? navigator.serviceWorker.getRegistration().then(r => r && r.update()).catch(() => {}) : Promise.resolve());
+  // Lectura rechazada por permisos (ver listenFail en js/data.js): buscar versión nueva; si no llega, recargar una vez
+  window.ssUpdateApp = why => { check().finally(() => setTimeout(() => reloadOnce(why), 3000)); };
+  if (!hasSW) return;
+  const hadController = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (_swRefreshing || !_hadController) return;
-    _swRefreshing = true;
-    window.location.reload();
+    if (refreshing || !hadController) return;
+    refreshing = true; location.reload();
   });
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').then(reg => { reg.update(); }).catch(() => {});
-  });
-}
+  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').then(reg => reg.update()).catch(() => {}); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
+  setInterval(check, 30 * 60 * 1000);
+})();
 </script>
 </body>
 </html>

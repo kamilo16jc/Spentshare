@@ -8,6 +8,41 @@ const admin = require('firebase-admin');
 const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
   .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
 
+// SOLO EMULADOR: estado de lo automático (gastos fijos, gastos que anotaron, cobros automáticos)
+// para diagnosticar. Solo lectura.
+exports.devAutoStatus = onRequest({ region: 'us-east1' }, async (req, res) => {
+  const db = admin.firestore();
+  const ts = v => (v && v.toDate ? v.toDate().toISOString() : v || null);
+  const [rules, allExp, acs, reqs] = await Promise.all([
+    db.collectionGroup('recurring').get(),
+    db.collectionGroup('expenses').get(),
+    db.collectionGroup('autoCharges').get(),
+    db.collectionGroup('paymentRequests').get(),
+  ]);
+  const since = Date.now() - 3 * 86400000;
+  const recent = d => { const c = d.data().createdAt; return c && c.toMillis && c.toMillis() > since; };
+  const recExp = { docs: allExp.docs.filter(d => d.data().recurringId || recent(d)) };
+  const autoReqs = { docs: reqs.docs.filter(d => d.data().auto || recent(d)) };
+  const groups = {};
+  for (const d of [...rules.docs, ...recExp.docs, ...acs.docs]) {
+    const g = d.ref.parent.parent.id;
+    if (!groups[g]) { const gd = (await db.doc(`groups/${g}`).get()).data() || {}; groups[g] = { name: gd.name, members: gd.memberUids || [], currency: gd.currency }; }
+  }
+  res.json({
+    groups,
+    rules: rules.docs.map(d => { const r = d.data(); return { id: d.id, group: d.ref.parent.parent.id, description: r.description, amount: r.amount, payerUid: r.payerUid, createdByUid: r.createdByUid, splitUids: r.splitUids, sendCharge: r.sendCharge, active: r.active, frequency: r.frequency, day: r.day, merchantId: r.merchantId || null, nextRunAt: ts(r.nextRunAt), lastRunAt: ts(r.lastRunAt), runs: r.runs, createdAt: ts(r.createdAt) }; }),
+    recurringExpenses: recExp.docs.map(d => { const e = d.data(); return { id: d.id, group: d.ref.parent.parent.id, description: e.description, amount: e.amount, paidByUid: e.paidByUid, createdByUid: e.createdByUid, splitUids: e.splitUids, split: e.split, splitWithUid: e.splitWithUid || null, notify: e.notify, type: e.type, recurringId: e.recurringId || null, requestId: e.requestId || null, createdAt: ts(e.createdAt), spentAt: ts(e.spentAt), merchant: e.merchant || null }; }),
+    autoCharges: acs.docs.map(d => { const a = d.data(); return { uid: d.id, group: d.ref.parent.parent.id, enabled: a.enabled, mode: a.mode || 'balance', recurringIds: a.recurringIds || [], frequency: a.frequency, day: a.day, lastRunKey: a.lastRunKey || null }; }),
+    autoRequests: autoReqs.docs.map(d => { const r = d.data(); return { id: d.id, group: d.ref.parent.parent.id, number: r.number, fromUid: r.fromUid, toUid: r.toUid, amount: r.amount, status: r.status, auto: !!r.auto, scope: r.scope || null, about: r.about || null, createdAt: ts(r.createdAt), items: (r.items || []).length }; }),
+    people: await (async () => {
+      const uids = [...new Set(Object.values(groups).flatMap(g => g.members))];
+      const out = {};
+      for (const u of uids) { const p = (await db.doc(`users/${u}`).get()).data() || {}; out[u] = { name: p.name || '', hasEmail: !!p.email, lang: p.lang || null }; }
+      return out;
+    })(),
+  });
+});
+
 exports.devMerchantStats = onRequest({ region: 'us-east1' }, async (req, res) => {
   const db = admin.firestore();
   const [cacheSnap, expSnap] = await Promise.all([
