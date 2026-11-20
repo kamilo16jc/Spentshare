@@ -248,3 +248,13 @@
 .weekday-pills .pill{padding:9px 12px}
 .auto-link{margin:12px auto 0;padding-left:0}
 #recurring-form #sched-box{margin-top:22px}
+/* Entrada: el logo 3D es una sola imagen (las ~30 capas de CSS 3D parpadeaban al flotar) */
+.auth-logo{position:absolute;left:50%;top:48%;width:196px;transform:translate(-50%,-50%)}
+.auth-logo-tilt{transform:perspective(700px) rotateX(var(--tilt-x,0deg)) rotateY(var(--tilt-y,0deg));transition:transform .55s cubic-bezier(.22,1,.36,1)}
+.auth-scene.is-touching{--tilt-x:6deg;--tilt-y:-6deg}
+.auth-logo picture,.auth-logo-img{display:block;width:100%;height:auto}
+.auth-logo-img{animation:logoFloat 6s ease-in-out infinite;will-change:transform;-webkit-user-drag:none;user-select:none}
+.auth-scene.is-paused .auth-logo-img{animation-play-state:paused}
+@keyframes logoFloat{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(0,-7px,0)}}
+.boot-logo{animation:logoFloat 3.2s ease-in-out infinite;will-change:transform}
+@media(prefers-reduced-motion:reduce){.auth-logo-img,.boot-logo{animation:none}.auth-logo-tilt{transition:none}}

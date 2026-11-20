@@ -310,7 +310,6 @@ function groupsPage() {
 }
 
 // ───────────────────────── entrada (con invitación pendiente) ─────────────────────────
-function authOrbit(v) { return `<span class="auth-ring auth-ring--${v}">${Array.from({ length: 6 }, (_, i) => `<span class="auth-ring-rim" style="--rim-depth:${-3 + i * 1.2}px"></span>`).join('')}</span>`; }
 function inviteBanner(j) {
   const th = THEMES.find(x => x.id === j.t) || THEMES[0];
   const n = Number(j.n) || 1;
@@ -318,7 +317,9 @@ function inviteBanner(j) {
 }
 function auth() {
   const signup = S.authMode === 'signup', j = pendingJoin();
-  const scene = `<div class="auth-scene" id="auth-scene" aria-hidden="true"><div class="auth-ground-shadow"></div><div class="auth-object-position"><div class="auth-object-float">${authOrbit('one')}${authOrbit('two')}<div class="auth-mark-3d">${Array.from({ length: 16 }, (_, i) => `<span class="auth-mark-layer" style="--layer-depth:${-9 + i * 1.4}px"></span>`).join('')}<span class="auth-mark-face">${icon('logo')}</span></div></div></div></div>`;
+  // Logo 3D = una sola imagen (brand/logo-3d-*.webp). Antes eran ~30 capas en CSS 3D con los anillos
+  // atravesando el cuadro: al flotar, el navegador reordenaba las capas en cada cuadro y parpadeaba.
+  const scene = `<div class="auth-scene" id="auth-scene" aria-hidden="true"><div class="auth-ground-shadow"></div><div class="auth-logo"><div class="auth-logo-tilt"><picture><source type="image/webp" srcset="brand/logo-3d-392.webp 2x, brand/logo-3d-588.webp 3x"><img class="auth-logo-img" src="brand/logo-3d-392.png" alt="" width="196" height="148" decoding="async"></picture></div></div></div>`;
   const title = j ? (signup ? t('auth.joinSignupH') : t('auth.joinLoginH')) : (signup ? t('auth.signupH') : t('auth.loginH'));
   const sub = j ? t('auth.joinP') : (signup ? t('auth.signupP') : t('auth.loginP'));
   return `<div class="auth-page page ${j ? 'has-invite' : ''}">${j ? inviteBanner(j) : scene}<div class="auth-title"><h1>${title}</h1><p>${sub}</p></div>
@@ -334,11 +335,12 @@ function auth() {
 let authSceneObserver = null;
 function mountAuthScene() {
   const scene = $('#auth-scene'); if (!scene) return;
-  const reset = () => { ['--mark-rx', '--mark-ry', '--mark-rz'].forEach(k => scene.style.removeProperty(k)); scene.classList.remove('is-touching'); };
+  // Con el mouse se inclina un poco (una sola imagen: no hay capas que se crucen)
+  const reset = () => { ['--tilt-x', '--tilt-y'].forEach(k => scene.style.removeProperty(k)); scene.classList.remove('is-touching'); };
   scene.addEventListener('pointermove', e => {
     if (e.pointerType !== 'mouse' || !canAnimate()) return;
     const r = scene.getBoundingClientRect(), x = Math.max(-1, Math.min(1, ((e.clientX - r.left) / r.width - .5) * 2)), y = Math.max(-1, Math.min(1, ((e.clientY - r.top) / r.height - .5) * 2));
-    scene.style.setProperty('--mark-rx', (17 - y * 9) + 'deg'); scene.style.setProperty('--mark-ry', (-26 + x * 15) + 'deg'); scene.style.setProperty('--mark-rz', (-12 + x * 3) + 'deg');
+    scene.style.setProperty('--tilt-x', (-y * 8).toFixed(1) + 'deg'); scene.style.setProperty('--tilt-y', (x * 10).toFixed(1) + 'deg');
   });
   scene.addEventListener('pointerleave', reset);
   scene.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse' && canAnimate()) scene.classList.add('is-touching'); });

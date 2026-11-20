@@ -45,3 +45,14 @@ for s in (192, 512):
 save(place(180, 0.84, IVORY), 'apple-touch-icon.png', opaque=True)
 for s in (32, 48):
     save(place(s, 1.0), f'favicon-{s}.png')
+
+# Logo 3D de la pantalla de entrada (se ve a 196 px de ancho; 2x y 3x para pantallas densas).
+# Antes era un logo armado con ~30 capas de CSS 3D que parpadeaban al flotar.
+for w in (392, 588):
+    h = round(logo.height * w / logo.width)
+    img = logo.resize((w, h), Image.LANCZOS)
+    path = os.path.join(ROOT, 'brand', f'logo-3d-{w}.webp')
+    img.save(path, quality=88, method=6)
+    print(f'brand/logo-3d-{w}.webp       {w}x{h}  {os.path.getsize(path) // 1024} KB')
+    if w == 392:
+        save(img, os.path.join('brand', 'logo-3d-392.png'))
