@@ -262,3 +262,7 @@
 #main.static .page,#main.static .group-tile,#main.static .mosaic-action,#main.static .progress>span,#main.static .bar,#main.static .invite-banner{animation:none}
 /* "Cargando…" solo aparece si la carga tarda más de medio segundo */
 .designed-empty.is-loading{animation:fadeIn .25s .5s both}
+/* Comentario opcional de un gasto (gastos fijos) */
+.note-box{background:#F3EFFF;border:1px solid #E4DBFF;border-radius:16px;padding:12px 15px;margin:-8px 0 18px}
+.note-box span{display:block;font-size:12px;font-weight:600;color:#7C6F94;margin-bottom:4px}
+.note-box p{margin:0;font-size:14px;line-height:1.5;color:var(--ink)}

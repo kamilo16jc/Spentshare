@@ -229,8 +229,8 @@ let E;   // window.SSEmails, se carga sin caché para ver siempre la versión ac
 const DATA = {
   USD: {
     items: [
-      { date: '2026-11-03T18:10:00-06:00', description: 'Mercado de la semana', category: 'food', paidBy: 'from', total: 86, share: 43 },
-      { date: '2026-11-08T09:30:00-06:00', description: 'Luz de octubre', category: 'utilities', paidBy: 'from', total: 62, share: 31 },
+      { date: '2026-11-03T18:10:00-06:00', description: 'Mercado en Aldi', category: 'food', logo: '/logos/aldi.png', paidBy: 'from', total: 86, share: 43 },
+      { date: '2026-11-08T09:30:00-06:00', description: 'ComEd · luz de octubre', category: 'utilities', logo: '/logos/comed.png', paidBy: 'from', total: 62, share: 31 },
       { date: '2026-11-12T21:05:00-06:00', description: 'Pizza del viernes', category: 'food', paidBy: 'to', total: 57, share: 28.5 },
     ],
     partial: 30,
@@ -238,8 +238,8 @@ const DATA = {
   },
   COP: {
     items: [
-      { date: '2026-11-03T18:10:00-06:00', description: 'Mercado de la semana', category: 'food', paidBy: 'from', total: 186000, share: 93000 },
-      { date: '2026-11-08T09:30:00-06:00', description: 'Luz de octubre', category: 'utilities', paidBy: 'from', total: 124000, share: 62000 },
+      { date: '2026-11-03T18:10:00-06:00', description: 'Mercado en Aldi', category: 'food', logo: '/logos/aldi.png', paidBy: 'from', total: 186000, share: 93000 },
+      { date: '2026-11-08T09:30:00-06:00', description: 'ComEd · luz de octubre', category: 'utilities', logo: '/logos/comed.png', paidBy: 'from', total: 124000, share: 62000 },
       { date: '2026-11-12T21:05:00-06:00', description: 'Pizza del viernes', category: 'food', paidBy: 'to', total: 114000, share: 57000 },
     ],
     partial: 50000,
@@ -261,7 +261,7 @@ const APP = {
     payTitle: 'Una cuenta menos', payAmt: 'Vas a registrar un pago de', partial: 'pago parcial', method: '¿Cómo lo pagaste?',
     notice: 'Registrar un pago actualiza las cuentas del grupo. No envía dinero a otra persona.', paid: 'Registrar pago',
     toastReq: 'Cobro enviado. Camilo lo recibe por correo.', toastPay: 'Pago registrado. Les llegó el recibo a los dos.',
-    addExp: '+ Gasto', expTitle: 'Nuevo gasto', expAmt: '¿Cuánto fue?', expDescLbl: 'Descripción', expDesc: 'Mercado de la semana',
+    addExp: '+ Gasto', expTitle: 'Nuevo gasto', expAmt: '¿Cuánto fue?', expDescLbl: 'Descripción', expDesc: 'Mercado en Aldi', expNote: 'Incluye lo de la lista del grupo',
     expCat: 'Comida', expSplitLbl: '¿Cómo se divide?', expSplit: 'Entre todos (3)', expSave: 'Guardar gasto',
     toastExp: 'Gasto guardado. Le avisamos a Camilo y a Sara.',
     cfgTitle: 'Cómo me pagan', cfgIntro: 'Solo lo ven las personas de tus grupos cuando te van a pagar. SpentShare nunca mueve dinero.',
@@ -284,7 +284,7 @@ const APP = {
     payTitle: 'One less debt', payAmt: 'You’re recording a payment of', partial: 'partial payment', method: 'How did you pay?',
     notice: 'Recording a payment updates the group’s balances. It doesn’t send money.', paid: 'Record payment',
     toastReq: 'Request sent. Camilo gets it by email.', toastPay: 'Payment recorded. You both got the receipt.',
-    addExp: '+ Expense', expTitle: 'New expense', expAmt: 'How much was it?', expDescLbl: 'Description', expDesc: 'Weekly groceries',
+    addExp: '+ Expense', expTitle: 'New expense', expAmt: 'How much was it?', expDescLbl: 'Description', expDesc: 'Groceries at Aldi', expNote: 'Includes everything on the group list',
     expCat: 'Food', expSplitLbl: 'How do you split it?', expSplit: 'Between everyone (3)', expSave: 'Save expense',
     toastExp: 'Expense saved. Camilo and Sara got a heads-up.',
     cfgTitle: 'How people pay me', cfgIntro: 'Only people in your groups see this when they pay you. SpentShare never moves money.',
@@ -339,7 +339,7 @@ function build() {
     const X = D.exp;
     return E.renderExpense({
       ...common, expenseId: 'exp_42', date: '2026-11-19T19:30:00-06:00',
-      description: APP[S.appLang].expDesc, category: 'food', total: X.total,
+      description: APP[S.appLang].expDesc, category: 'food', logo: '/logos/aldi.png', note: APP[S.appLang].expNote, total: X.total,
       paidBy: { name: ANA.name, uid: 'ana' }, splitType: 'all',
       splits: [
         { name: ANA.name, share: X.share, isPayer: true },

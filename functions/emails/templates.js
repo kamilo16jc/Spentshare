@@ -159,6 +159,7 @@
       autoSetBy: F => `${F} programó este cobro automático en SpentShare.`,
       days: n => `${n} ${n === 1 ? 'día' : 'días'}`,
       noteBy: F => `${F}, al enviarte el cobro`,
+      noteExpBy: A => `${A}, en el gasto`,
       mFrom: 'De', mTo: 'Para', mNo: 'Cobro n.º', mGroup: 'Grupo', mIssued: 'Emitido', mDue: 'Vence', mNoDue: 'Sin fecha',
       includes: 'Qué incluye',
       youPaid: 'pagaste tú', paidBy: F => `pagó ${F}`,
@@ -300,6 +301,7 @@
       autoSetBy: F => `${F} set up this automatic request in SpentShare.`,
       days: n => `${n} ${n === 1 ? 'day' : 'days'}`,
       noteBy: F => `${F}, with the request`,
+      noteExpBy: A => `${A}, on the expense`,
       mFrom: 'From', mTo: 'To', mNo: 'Request no.', mGroup: 'Group', mIssued: 'Issued', mDue: 'Due', mNoDue: 'No due date',
       includes: 'What’s included',
       youPaid: 'you paid', paidBy: F => `paid by ${F}`,
@@ -472,6 +474,31 @@
   function card(inner, pad) {
     return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate;background-color:${C.paper};border:1px solid ${C.line};border-radius:22px">
       <tr><td style="padding:${pad || '4px 16px'}">${inner}</td></tr></table>`;
+  }
+
+  // Cuadro del gasto (como en la app): el logo del comercio si lo hay; si no, el color de la categoría
+  function catTile(category, logo) {
+    const [cbg, cfg] = CAT_COLORS[category] || CAT_COLORS.other;
+    const inner = logo
+      ? `<img src="${esc(logo)}" width="30" height="30" alt="" style="display:block;border:0;width:30px;height:30px;margin:0 auto">`
+      : `<div style="width:12px;height:12px;border-radius:4px;background-color:${cfg};font-size:0;line-height:0;margin:0 auto">&nbsp;</div>`;
+    const bg = logo ? C.paper : cbg;
+    return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate"><tr>
+            <td width="44" height="44" align="center" valign="middle" bgcolor="${bg}" style="width:44px;height:44px;border-radius:14px;background-color:${bg};${logo ? `border:1px solid ${C.line};` : ''}">${inner}</td></tr></table>`;
+  }
+
+  // Burbuja con la nota o el comentario de alguien (opcional)
+  function noteBubble(name, text, by) {
+    return `
+      <div class="ss-a ss-d3" style="margin-bottom:18px;padding:0 2px">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+          <td width="38" valign="top" style="padding-top:2px">${avatar(name, 36)}</td>
+          <td valign="top" style="padding-left:10px">
+            <div style="background-color:${C.lavender};border-radius:4px 18px 18px 18px;padding:12px 15px;${font(15, 500, C.ink, BODY, 'line-height:22px;')}">${esc(text)}</div>
+            <div style="margin-top:6px;${font(12, 500, C.muted)}">${esc(by)}</div>
+          </td>
+        </tr></table>
+      </div>`;
   }
 
   function sectionHead(text) {
@@ -760,7 +787,7 @@
    *   currency, group{name},
    *   from{name,email}  -> quien cobra
    *   to{name}          -> quien debe (destinatario)
-   *   note?, items[{date, description, category, paidBy:'from'|'to', total, share}],
+   *   note?, items[{date, description, category, logo?, paidBy:'from'|'to', total, share}],
    *   amount? (si falta se calcula), payTo?[{type, value}] ("Cómo me pagan" de quien cobra),
    *   reminder? (true: recordatorio de un cobro vencido; amount = lo que falta por pagar),
    *   auto? (true: cobro automático que programó quien cobra),
@@ -807,16 +834,7 @@
       <div class="ss-a ss-d2">${heroAmount(amount, cur)}</div>
       <div class="ss-a ss-d3">${pill}</div>`;
 
-    const note = d.note ? `
-      <div class="ss-a ss-d3" style="margin-bottom:18px;padding:0 2px">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-          <td width="38" valign="top" style="padding-top:2px">${avatar(d.from.name, 36)}</td>
-          <td valign="top" style="padding-left:10px">
-            <div style="background-color:${C.lavender};border-radius:4px 18px 18px 18px;padding:12px 15px;${font(15, 500, C.ink, BODY, 'line-height:22px;')}">${esc(d.note)}</div>
-            <div style="margin-top:6px;${font(12, 500, C.muted)}">${esc(L.noteBy(F))}</div>
-          </td>
-        </tr></table>
-      </div>` : '';
+    const note = d.note ? noteBubble(d.from.name, d.note, L.noteBy(F)) : '';
 
     const meta = (l1, v1, l2, v2, first) => {
       const border = first ? '' : `border-top:1px solid ${C.row};`;
@@ -834,16 +852,10 @@
     // filas como la lista de gastos de la app: cuadro de categoría, título, detalle, monto
     const lines = items.map((i, k) => {
       const mine = i.paidBy === 'to';
-      const [cbg, cfg] = CAT_COLORS[i.category] || CAT_COLORS.other;
       const who = mine ? L.youPaid : L.paidBy(F);
       const border = k ? `border-top:1px solid ${C.row};` : '';
       return `<tr>
-        <td width="44" valign="middle" style="padding:15px 0;${border}">
-          <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate"><tr>
-            <td width="44" height="44" align="center" valign="middle" bgcolor="${cbg}" style="width:44px;height:44px;border-radius:14px;background-color:${cbg}">
-              <div style="width:12px;height:12px;border-radius:4px;background-color:${cfg};font-size:0;line-height:0;margin:0 auto">&nbsp;</div>
-            </td></tr></table>
-        </td>
+        <td width="44" valign="middle" style="padding:15px 0;${border}">${catTile(i.category, i.logo)}</td>
         <td valign="middle" style="padding:15px 10px 15px 12px;${border}">
           <div style="${font(14, 650, C.ink, BODY, 'line-height:19px;')}">${esc(i.description)}</div>
           <div style="margin-top:4px;${font(12, 500, C.muted)}">${esc(L.cats[i.category] || L.cats.other)} · ${esc(who)} · ${esc(fmtDate(L, i.date, tz, { year: false })).replace(/ /g, '&nbsp;')}</div>
@@ -933,7 +945,7 @@
   /**
    * @param {object} d
    *   lang ('es'|'en', idioma de quien lo recibe), currency, group{name}, expenseId?,
-   *   date, description, category, total,
+   *   date, description, category, total, logo? (URL del logo del comercio), note? (comentario opcional),
    *   paidBy{name, uid?}, addedBy{name}? (si no, quien pagó),
    *   splitType 'all'|'two'|'full'|'solo'|'custom' ('custom': "entre N" = quienes tienen parte > 0),
    *   splits[{name, share, isPayer?, isYou?}],
@@ -979,16 +991,10 @@
       <div class="ss-a ss-d3" style="margin-top:6px;${font(14, 500, C.heroSoft)}">${esc(iPaid ? L.expHeroSubPayer : L.expHeroSub(total))}</div>`;
 
     // la fila del gasto, como en la lista de la app
-    const [cbg, cfg] = CAT_COLORS[d.category] || CAT_COLORS.other;
     const meta = [L.cats[d.category] || L.cats.other, fmtDate(L, d.date, tz, { year: false }), L.paidByMeta(P)]
       .concat(A !== P ? [L.addedByMeta(A)] : []).map(esc).join(' · ');
     const expenseCard = card(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-      <td width="44" valign="middle" style="padding:16px 0">
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate"><tr>
-          <td width="44" height="44" align="center" valign="middle" bgcolor="${cbg}" style="width:44px;height:44px;border-radius:14px;background-color:${cbg}">
-            <div style="width:12px;height:12px;border-radius:4px;background-color:${cfg};font-size:0;line-height:0;margin:0 auto">&nbsp;</div>
-          </td></tr></table>
-      </td>
+      <td width="44" valign="middle" style="padding:16px 0">${catTile(d.category, d.logo)}</td>
       <td valign="middle" style="padding:16px 10px 16px 12px">
         <div style="${font(15, 650, C.ink, BODY, 'line-height:20px;')}">${esc(d.description)}</div>
         <div style="margin-top:4px;${font(12, 500, C.muted, BODY, 'line-height:17px;')}">${meta}</div>
@@ -1048,7 +1054,9 @@
         ${payOptions(L, lang, { methods: d.payTo, amount: after, cur, note: `SpentShare · ${g}`, copyLink: t => `${settleLink}&via=${t}` })}
       </div>` : '';
 
+    const comment = d.note ? noteBubble(A, d.note, L.noteExpBy(A)) : '';
     const body = `
+      ${comment}
       <div class="ss-a ss-d3">${expenseCard}</div>
 
       <div class="ss-a ss-d4" style="margin-top:26px">
@@ -1075,6 +1083,7 @@
       `SpentShare · ${L.expHeader}`,
       '',
       L.tExp(A, d.description, total, cur, g),
+      d.note ? L.tNote(A, d.note) : null,
       `${L.howSplit}: ${splitTxt}`,
       ...splits.map(s => `- ${firstName(s.name)}${s.isYou ? ` (${L.you})` : ''}: ${fmtMoney(s.share, cur)}`),
       iPaid ? L.tOwed(fmtMoney(owedToMe, cur)) : L.tShare(fmtMoney(me.share, cur)),

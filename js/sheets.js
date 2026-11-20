@@ -179,6 +179,7 @@ function detailSheet(id, gidHint) {
   const reparto = parts.length <= 1 ? (e.paidByUid in sh ? t('detail.solo') : t('detail.refund')) : t('detail.equal', parts.length);
   openSheet(t('detail.title'), `${groupContext()}<div class="detail-hero">${expenseIcon(e)}<h3>${esc(e.description)}</h3><span class="num">${money(e.amount)}</span><p>${fmtLong(d)}</p></div>
     <div class="detail-lines">${line(t('detail.paid'), esc(nameOf(e.paidByUid, e.paidBy)))}${line(t('detail.category'), esc(catName(e.category)))}${line(t('detail.split'), reparto)}${parts.map(([u, v]) => `<div class="detail-line"><span>${esc(u === uid() ? t('youCap') : firstName(nameOf(u)))}</span><strong class="num">${money(v)}</strong></div>`).join('')}${by ? line(t('detail.by'), esc(by)) : ''}</div>
+    ${e.note ? `<div class="note-box"><span>${t('detail.note')}</span><p>${esc(e.note)}</p></div>` : ''}
     <button class="full-btn secondary" data-action="close">${t('btn.done')}</button><button class="text-btn danger-link" data-action="delete-expense" data-id="${e.id}">${icon('trash', 'small-ico')} ${t('detail.delete')}</button>`, { name: 'detail', args: [id] });
 }
 
@@ -382,6 +383,7 @@ function recurringSheet(id) {
     <span class="field-label">${t('add.category')}</span><div class="category-choices scroll">${cats}</div>
     <div class="field"><label for="expense-payer">${t('add.paid')}</label><div class="select-wrap"><select id="expense-payer">${S.members.map(m => `<option value="${m.uid}" ${m.uid === payer ? 'selected' : ''}>${esc(m.uid === uid() ? t('youCap') : firstName(m.name))}</option>`).join('')}</select>${icon('down')}</div></div>
     ${participantsHtml()}
+    <div class="field"><label for="rec-note">${t('rec.noteLbl')}</label><input id="rec-note" maxlength="140" value="${esc((r && r.note) || '')}" placeholder="${esc(t('rec.notePh'))}" autocomplete="off"></div>
     <div id="sched-box">${scheduleHtml(S.auto)}</div>
     <div id="rec-charge">${recChargeHtml()}</div>
     <div class="auto-preview" id="auto-preview" aria-live="polite">${recPreview()}</div>
@@ -410,7 +412,8 @@ async function submitRecurring(form) {
   if (!S.draft.split.length) return formError('rec-error', t('err.split'));
   const b = $('button[type="submit"]', form); if (b.disabled) return;
   formError('rec-error', '');
-  const data = { description: title, amount: round2(amount), category: S.draft.category, payerUid: payer, splitUids: [...S.draft.split], frequency: d.frequency, day: Number(d.day) || 1, sendCharge: payer === uid() && !!d.sendCharge, dueDays: Number(d.dueDays) || 7 };
+  const note = ($('#rec-note') || {}).value || '';   // opcional: puede quedar vacío
+  const data = { description: title, amount: round2(amount), category: S.draft.category, payerUid: payer, splitUids: [...S.draft.split], frequency: d.frequency, day: Number(d.day) || 1, sendCharge: payer === uid() && !!d.sendCharge, dueDays: Number(d.dueDays) || 7, note: note.trim().slice(0, 140) };
   const r = d.id && S.recurring.find(x => x.id === d.id);
   // fecha de la próxima vez: nueva si es nuevo o si cambió cuándo se repite (si está pausado, al reanudar)
   if (!r) Object.assign(data, { active: true, nextRunAt: window._Timestamp.fromDate(firstRunDate(data)) });
@@ -429,6 +432,7 @@ function recurringReadOnly(r) {
   const nx = toDate(r.nextRunAt), who = u => u === uid() ? t('youCap') : firstName(nameOf(u));
   openSheet(t('rec.title'), `${groupContext()}<div class="detail-hero">${expenseIcon(r)}<h3>${esc(r.description)}</h3><span class="num">${money(r.amount)}</span><p>${esc(scheduleLabel(r))}</p></div>
     <div class="detail-lines"><div class="detail-line"><span>${t('rec.paidBy')}</span><strong>${esc(who(r.payerUid))}</strong></div><div class="detail-line"><span>${t('rec.split')}</span><strong>${esc((r.splitUids || []).map(who).join(', '))}</strong></div><div class="detail-line"><span>${t('rec.when')}</span><strong>${r.active === false ? t('auto.paused') : esc(whenLabel(nx))}</strong></div><div class="detail-line"><span>${t('rec.charges')}</span><strong>${r.sendCharge ? t('rec.yes') : t('rec.no')}</strong></div></div>
+    ${r.note ? `<div class="note-box"><span>${t('detail.note')}</span><p>${esc(r.note)}</p></div>` : ''}
     <p class="notice-inline">${t('rec.notMine', esc(firstName(nameOf(r.createdByUid))))}</p>`);
 }
 

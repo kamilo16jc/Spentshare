@@ -194,6 +194,7 @@ async function main() {
   const e08Ana = e08.find((m) => m.to === ana.email);
   const e08Cam = e08.find((m) => m.to === camilo.email);
   check(e08Ana && e08Ana.html.includes('between 2') && e08Cam && e08Cam.html.includes('entre 2'), 'custom split label: "between 2" (en) / "entre 2" (es)');
+  check(e08Ana && e08Ana.html.includes('https://spentshare.com/logos/target.png'), 'expense email shows the merchant logo (Target, from the app catalog)');
 
   section('sendPaymentRequest (Ana asks Camilo) — invoice to the debtor');
   const exp1 = await groupExpenses(APTO);
@@ -382,6 +383,7 @@ async function main() {
   `expense ${recId} (deterministic id), notify:false, like a client expense`, recSnap.exists ? { notify: re.notify, split: re.split } : 'missing');
   const recCount = (await db.collection(`groups/${APTO}/expenses`).where('recurringId', '==', RECURRING.internet).get()).size;
   check(recCount === 1, 'exactly one expense for the rule', recCount);
+  check(re.note === 'Plan de 500 megas', "the rule's optional comment is on the expense", re.note);
   const gymRuns = (await db.collection(`groups/${APTO}/expenses`).where('recurringId', '==', RECURRING.gym).get()).size;
   check(gymRuns === 0, 'paused rule ("Gimnasio") never runs');
   const leftRule = (await db.doc(`groups/${TRIP}/recurring/r_left`).get()).data() || {};
@@ -404,7 +406,7 @@ async function main() {
   const aTrip = autoReqs.find((r) => r.group === TRIP && r.fromUid === camilo.uid && r.toUid === ana.uid);
   const aptoNow = await groupExpenses(APTO);
   check(autoReqs.length === 3, 'three auto:true requests', autoReqs.map((r) => `${r.group} ${r.fromUid}->${r.toUid}`));
-  check(aCam && aCam.status === 'pending' && aCam.note === 'Internet' && Math.abs(aCam.amount - owes(aptoNow, camilo.uid, ana.uid, members)) < 0.011,
+  check(aCam && aCam.status === 'pending' && aCam.note === 'Plan de 500 megas' && Math.abs(aCam.amount - owes(aptoNow, camilo.uid, ana.uid, members)) < 0.011,
     `Internet charge Ana -> Camilo for the real balance (${aCam && money(aCam.amount)})`);
   check(aSara && aSara.status === 'pending' && Math.abs(aSara.amount - owes(aptoNow, sara.uid, ana.uid, members)) < 0.011,
     `Internet charge Ana -> Sara (${aSara && money(aSara.amount)})`);
@@ -423,6 +425,8 @@ async function main() {
   check(amCam && amCam.lang === 'es' && amCam.html.includes('Cobro automático de Ana') && amCam.html.includes('Ana programó este cobro automático en SpentShare.'),
     'Camilo: Spanish, "Cobro automático de Ana" + "programó este cobro automático"', amCam && amCam.subject);
   check(amSara && amSara.lang === 'es' && amSara.html.includes('Cobro automático de Ana'), 'Sara: Spanish automatic wording', amSara && amSara.subject);
+  check(amCam && amCam.html.includes('Plan de 500 megas'), "Camilo's automatic invoice shows the rule's comment", amCam && amCam.subject);
+  check(readOutbox().some((m) => m.kind === 'invoice' && /https:\/\/spentshare\.com\/logos\/[a-z0-9]+\.png/.test(m.html)), "invoice items show merchant logos (app catalog)");
   check(amAna && amAna.lang === 'en' && amAna.html.includes('Camilo’s automatic request') && amAna.html.includes('Camilo set up this automatic request in SpentShare.'),
     'Ana: English, "Camilo’s automatic request"', amAna && amAna.subject);
   await sleep(1500);

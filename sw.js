@@ -1,6 +1,6 @@
-// v25: la caché nueva se llena con archivos frescos (no los de la memoria del navegador).
+// v26: comentario opcional en gastos fijos; logos en los correos.
 // Cambiar el número en cada publicación.
-const CACHE_NAME = 'spentshare-v25';
+const CACHE_NAME = 'spentshare-v26';
 // Relative paths (resolved against the SW's own location) so the same file
 // works both on GitHub Pages (/Spentshare/) and on the custom domain (root).
 const ASSETS = [

@@ -398,6 +398,7 @@ async function handleExpenseCreated(groupId, expenseId, data) {
     const mail = emails.renderExpense({
       lang: p.lang, currency, group: { name: group.name || '' }, expenseId,
       date: expenseDate(data), description: data.description || '', category: data.category || 'other',
+      logo: logoUrlFor(data), note: noteOf(data),
       total: amount, paidBy: { name: payer.name, uid: payerUid }, addedBy: { name: addedBy.name },
       splitType,
       splits: splits.map((s) => ({ name: s.name, share: s.share, isPayer: s.isPayer, isYou: s.uid === uid })),
@@ -940,7 +941,7 @@ function buildRequestItems(expenses, creditorUid, debtorUid, memberUids) {
       const { shares } = expenseShares(e, memberUids);
       const base = {
         expenseId: e.id, date: expenseDate(e), description: String(e.description || ''),
-        category: e.category || 'other', total: round2(e.amount),
+        category: e.category || 'other', logo: logoUrlFor(e), total: round2(e.amount),
       };
       if (e.paidByUid === creditorUid && shares[debtorUid] > 0) {
         items.push({ ...base, paidBy: 'from', share: round2(shares[debtorUid]) });
@@ -1142,6 +1143,20 @@ if (IS_EMULATOR) {
 // sends count as "pending" for (b).
 // ───────────────────────────────────────────────────────────
 
+// Logo of what the expense is, for the emails: the app's own copy for catalog merchants
+// (https://spentshare.com/logos/<id>.png); for a domain the AI found, Google's favicon (PNG).
+// '' when there is nothing to show (the email falls back to the category color).
+function logoUrlFor(e) {
+  if (!e || e.type === 'settle') return '';
+  const m = (e.logoDomain && merchants.byDomain(e.logoDomain)) || merchants.find(e.merchant || e.description || '');
+  if (m && m.logo) return `https://spentshare.com/logos/${m.id}.png`;
+  const domain = String(e.logoDomain || (m && m.domain) || '').trim().toLowerCase();
+  if (/^[a-z0-9.-]+\.[a-z]{2,}$/.test(domain)) return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`;
+  return '';
+}
+// Optional comment on an expense (recurring expenses carry the rule's note)
+const noteOf = (e) => (typeof (e && e.note) === 'string' ? e.note.trim().slice(0, 300) : '');
+
 // Merchant-catalog fields for a description (no AI): null when the catalog doesn't know it
 function catalogFields(description) {
   const m = merchants.find(description);
@@ -1194,6 +1209,7 @@ async function runRecurringRule(doc, now, result, getGroup) {
     createdAt: FieldValue.serverTimestamp(),
     spentAt: Timestamp.fromDate(now),
     recurringId: doc.id,
+    ...(noteOf(rule) ? { note: noteOf(rule) } : {}),
     notify: !rule.sendCharge,   // with a charge, the invoice replaces the shared-expense email
     ...(cat ? { merchant: cat.merchant, logoDomain: cat.logoDomain, logoEmoji: cat.logoEmoji, aiEnriched: true } : {}),
   };
@@ -1221,7 +1237,7 @@ async function runRecurringRule(doc, now, result, getGroup) {
       if (round2(pairNet(expenses, debtorUid, payerUid, members)) < EPS) continue;
       try {
         await createPaymentRequest({
-          groupId, creditorUid: payerUid, debtorUid, note: description, dueDays: rule.dueDays, auto: true, now,
+          groupId, creditorUid: payerUid, debtorUid, note: noteOf(rule), dueDays: rule.dueDays, auto: true, now,
         });
         result.charges++;
       } catch (err) {
