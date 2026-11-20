@@ -41,7 +41,7 @@ function expenseRow(e) {
   const sh = shares(e), n = Object.keys(sh).length;
   const small = n <= 1 ? (e.paidByUid in sh ? t('row.solo') : t('row.refund')) : t('row.perPerson', money(e.amount / n));
   const who = firstName(nameOf(e.paidByUid, e.paidBy));
-  return `<button class="expense" data-expense="${e.id}" aria-label="${esc(e.description)}, ${money(e.amount)}">${expenseIcon(e)}<span class="expense-copy"><span class="expense-title">${esc(e.description)}</span><span class="expense-meta">${esc(who)} · ${fmtDay(d)}${today ? ' · ' + t('today') : ''}</span></span><span class="expense-value"><span class="num">${money(e.amount)}</span><small>${small}</small></span></button>`;
+  return `<button class="expense" data-expense="${e.id}" aria-label="${esc(e.description)}, ${money(e.amount)}">${expenseIcon(e)}<span class="expense-copy"><span class="expense-title">${esc(e.description)}</span><span class="expense-meta">${esc(who)} · ${fmtDay(d)}${today ? ' · ' + t('today') : ''}${e.recurringId ? ' · ' + t('row.fixed') : ''}</span></span><span class="expense-value"><span class="num">${money(e.amount)}</span><small>${small}</small></span></button>`;
 }
 
 function emptyIllustration(kind = 'plan') {
@@ -95,7 +95,20 @@ function home() {
   const recent = [...list].sort((a, b) => expDate(b) - expDate(a)).slice(0, 3);
   return `<div class="page">${top}${card}${rows}
     <section class="section"><div class="section-head"><h2>${t('home.recent')}</h2><button class="text-btn" data-page="activity">${t('btn.seeAll')}</button></div><div class="expense-list">${recent.map(expenseRow).join('')}</div></section>
+    ${autoSection()}
     <section class="section"><div class="section-head"><h2>${t('home.month')}</h2><button class="text-btn" data-page="stats">${t('btn.seeDetail')}</button></div>${budgetMini()}</section></div>`;
+}
+
+// Automático: mi cobro periódico + los gastos fijos del grupo
+function autoSection() {
+  const mine = S.autoCharges[uid()], on = !!(mine && mine.enabled);
+  const next = on ? firstRunDate(mine) : null;
+  const charge = `<button class="auto-row" data-action="auto-charge"><span class="auto-icon ${on ? 'on' : ''}">${icon('clock')}</span><span class="auto-copy"><strong>${t('auto.chargeTitle')}</strong><span>${on ? esc(scheduleLabel(mine)) + (next ? ' · ' + t('auto.nextShort', fmtDay(next)) : '') : t('auto.rowOff')}</span></span><span class="auto-state ${on ? 'on' : ''}">${on ? t('auto.on') : t('auto.off')}</span></button>`;
+  const recs = S.recurring.map(r => {
+    const active = r.active !== false, nx = toDate(r.nextRunAt);
+    return `<button class="auto-row" data-action="recurring" data-id="${r.id}">${expenseIcon({ category: r.category, description: r.description })}<span class="auto-copy"><strong>${esc(r.description)}</strong><span><b class="num">${money(r.amount)}</b> · ${esc(scheduleLabel(r))}${active && nx ? ' · ' + t('auto.nextShort', fmtDay(nx)) : ''}</span></span>${active ? icon('chevron', 'small-ico') : `<span class="auto-state">${t('auto.paused')}</span>`}</button>`;
+  }).join('');
+  return `<section class="section"><div class="section-head"><h2>${t('auto.section')}</h2><button class="text-btn" data-action="recurring-new">${icon('plus', 'small-ico')} ${t('rec.add')}</button></div><div class="auto-list">${charge}${recs}</div></section>`;
 }
 
 function budgetMini() {

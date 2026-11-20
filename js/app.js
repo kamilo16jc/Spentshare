@@ -113,6 +113,16 @@ const actions = {
     if (!confirmTap(el, t('req.cancelConfirm'))) return;
     try { await cancelRequest(S.reqDraft.requestId); closeSheet(); toast(t('req.cancelled')); } catch (e) { console.error(e); formError('req-error', t('err.save')); }
   },
+  'auto-charge': autoChargeSheet,
+  'auto-toggle': el => { const d = S.auto; if (!d) return; d.enabled = !d.enabled; el.setAttribute('aria-checked', String(d.enabled)); $('.switch', el).classList.toggle('on', d.enabled); $('#auto-fields').classList.toggle('is-off', !d.enabled); autoRefresh(); },
+  'recurring-new': () => recurringSheet(),
+  recurring: el => recurringSheet(el.dataset.id),
+  'rec-charge-toggle': () => { if (!S.auto) return; S.auto.sendCharge = !S.auto.sendCharge; $('#rec-charge').innerHTML = recChargeHtml(); },
+  'recurring-pause': toggleRecurring,
+  'recurring-delete': async el => {
+    if (!confirmTap(el, t('rec.deleteConfirm'))) return;
+    try { await deleteRecurring(S.auto.id); closeSheet(); toast(t('rec.deleted')); } catch (e) { console.error(e); formError('rec-error', t('err.save')); }
+  },
   'copy-pay': el => showCopied(el.dataset.type, el.dataset.value),
   'settle-edit-amount': el => { $('#settle-amount-field').hidden = false; el.hidden = true; $('#settle-amount').focus(); },
   'budget-stats': () => { closeSheet(); go('stats'); },
@@ -183,6 +193,7 @@ document.addEventListener('click', e => {
     S.draft.split = sel.includes(id) ? sel.filter(x => x !== id) : S.members.map(m => m.uid).filter(x => sel.includes(x) || x === id);
     updateSplitPreview(); return;
   }
+  if (el.dataset.pick) { autoPick(el); return; }
   if (el.dataset.due) { S.reqDraft.due = Number(el.dataset.due); $$('[data-due]').forEach(b => { const on = b === el; b.classList.toggle('active', on); b.setAttribute('aria-pressed', String(on)); }); return; }
   if (el.dataset.theme && S.groupDraft) { S.groupDraft.theme = el.dataset.theme; updateGroupPreview(); return; }
   if (el.dataset.cover && S.groupDraft) { S.groupDraft.cover = el.dataset.cover; updateGroupPreview(); return; }
@@ -202,7 +213,8 @@ document.addEventListener('input', e => {
   const id = e.target.id;
   if (id === 'search-expenses') { S.act.query = e.target.value; $('#activity-results').innerHTML = activityResults(); return; }
   if (id === 'expense-amount') { updateSplitPreview(); return; }
-  if (id === 'expense-title' && S.draft && !S.draft.manualCat) { const k = guessCategory(e.target.value); if (k) setCategory(k, false); return; }
+  if (id === 'expense-title' && S.draft) { titleMerchant(e.target.value); return; }
+  if (id === 'auto-min') { autoRefresh(); return; }
   if (id === 'settle-amount') { const v = parseAmount(e.target.value); $('#settle-total').textContent = money(Number.isFinite(v) ? v : 0); return; }
   if (id === 'group-name' && S.groupDraft) { S.groupDraft.name = e.target.value; updateGroupPreview(); }
 });
@@ -216,6 +228,8 @@ document.addEventListener('keydown', e => {
   }
 });
 document.addEventListener('change', e => {
+  if (e.target.id === 'auto-day' && S.auto) { S.auto.day = Number(e.target.value) || 1; autoRefresh(); return; }
+  if (e.target.id === 'expense-payer' && S.auto && S.auto.kind === 'recurring') { S.auto.payer = e.target.value; $('#rec-charge').innerHTML = recChargeHtml(); return; }
   if (e.target.id === 'receiptFile') { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) scanReceiptFile(f); }
   if (e.target.id === 'avatarFile') {
     const f = e.target.files && e.target.files[0]; e.target.value = '';
@@ -233,6 +247,8 @@ document.addEventListener('submit', async e => {
   if (f.id === 'invite-form') return submitInvite(f);
   if (f.id === 'pay-form') return submitPayMethods(f);
   if (f.id === 'budget-form') return submitBudget(f);
+  if (f.id === 'auto-form') return submitAuto(f);
+  if (f.id === 'recurring-form') return submitRecurring(f);
   if (f.id === 'name-form') {
     const v = $('#name-input').value.trim(); if (!v) return formError('name-error', t('err.name'));
     try { await saveName(v); closeSheet(); render(false); toast(t('profile.nameSaved')); } catch (err) { formError('name-error', t('err.save')); }

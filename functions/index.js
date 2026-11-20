@@ -6,6 +6,8 @@
 //  - onExpenseDelete:  notify group members when someone deletes an expense
 //  - monthlySummary:   scheduled on the 1st of each month, sends per-group PDF recap
 //  - paymentReminders: daily, one reminder per overdue payment request
+//  - autoBilling:      daily 08:00 Chicago — recurring fixed expenses (groups/{g}/recurring)
+//                      and automatic periodic charges of the balance (groups/{g}/autoCharges)
 // Callables:
 //  - sendPaymentRequest / cancelPaymentRequest ("cobros"), sendGroupInvite
 //  - enrichExpense / scanReceipt / parseExpense / parseBudget (Claude)
@@ -25,6 +27,8 @@ const Anthropic = require('@anthropic-ai/sdk');
 const fs = require('fs');
 const path = require('path');
 const emails = require('./emails/templates');
+const merchants = require('./merchants');          // generated catalog (tools/build_merchants.py)
+const billingDates = require('./billing-dates');   // Chicago calendar for autoBilling
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -356,6 +360,7 @@ exports.onExpenseCreate = onDocumentCreated(
 
 // New shared expense -> one email per participant (and the payer), never to who logged it
 async function handleExpenseCreated(groupId, expenseId, data) {
+  if (data.notify === false) return;   // e.g. a recurring expense that sends its own charge
   const amount = Number(data.amount) || 0;
   const payerUid = data.paidByUid;
   if (!payerUid || !(amount > 0)) return;
@@ -953,80 +958,91 @@ function itemsForTemplate(items) {
   return (items || []).map((i) => ({ ...i, date: toDate(i.date) || new Date() }));
 }
 
+/**
+ * Creates a payment request ("cobro") from `creditorUid` to `debtorUid` for what the
+ * debtor owes right now, and emails the invoice to the debtor (in their language, with
+ * the creditor's "Cómo me pagan"). Cancels the creditor's pending request to the same
+ * debtor. Used by the sendPaymentRequest callable and by autoBilling (auto: true).
+ * Throws HttpsError: not-found, permission-denied, invalid-argument, failed-precondition 'no-debt'.
+ * @returns {{ok, requestId, number, amount, dueAt (ISO), emailed}}
+ */
+async function createPaymentRequest({ groupId, creditorUid, debtorUid, note, dueDays, auto = false, now = new Date() }) {
+  if (!groupId || typeof groupId !== 'string' || !debtorUid || typeof debtorUid !== 'string' || !creditorUid) {
+    throw new HttpsError('invalid-argument', 'groupId and debtorUid required');
+  }
+  if (debtorUid === creditorUid) throw new HttpsError('invalid-argument', 'self-request');
+
+  const groupRef = db.doc(`groups/${groupId}`);
+  const group = await loadGroup(groupId);
+  if (!group) throw new HttpsError('not-found', 'Group not found');
+  const members = group.memberUids || [];
+  if (!members.includes(creditorUid)) throw new HttpsError('permission-denied', 'Not a member of this group');
+  if (!members.includes(debtorUid)) throw new HttpsError('invalid-argument', 'debtor-not-member');
+
+  let days = Number(dueDays);
+  if (dueDays == null || !Number.isFinite(days)) days = 7;
+  days = Math.min(60, Math.max(0, Math.round(days)));
+  const cleanNote = typeof note === 'string' ? note.trim().slice(0, 500) : '';
+
+  const expenses = await loadExpenses(groupId);
+  const amount = round2(pairNet(expenses, debtorUid, creditorUid, members));
+  if (amount < EPS) throw new HttpsError('failed-precondition', 'no-debt');
+  const items = buildRequestItems(expenses, creditorUid, debtorUid, members);
+
+  const dueAt = new Date(now.getTime() + days * 86400000);
+  const currency = group.currency || 'USD';
+  const reqCol = groupRef.collection('paymentRequests');
+  const newRef = reqCol.doc();
+
+  // number + cancel the previous pending request(s) for this pair + the new doc, atomically
+  const number = await db.runTransaction(async (tx) => {
+    const g = await tx.get(groupRef);
+    const pending = await tx.get(reqCol.where('fromUid', '==', creditorUid).where('toUid', '==', debtorUid).where('status', '==', 'pending'));
+    const n = Number((((g.data() || {}).seq) || {}).request || 0) + 1;
+    const num = docNumber('F', now, n);
+    pending.docs.forEach((d) => tx.update(d.ref, { status: 'cancelled', cancelledAt: FieldValue.serverTimestamp() }));
+    tx.update(groupRef, { 'seq.request': n });
+    tx.set(newRef, {
+      number: num, fromUid: creditorUid, toUid: debtorUid, amount, currency, note: cleanNote,
+      dueAt: Timestamp.fromDate(dueAt), createdAt: FieldValue.serverTimestamp(),
+      status: 'pending', paidAmount: 0, paidAt: null, settleIds: [],
+      items: items.map((i) => ({ ...i, date: Timestamp.fromDate(i.date) })),
+      remindedAt: null,
+      ...(auto ? { auto: true } : {}),
+    });
+    return num;
+  });
+
+  const [people, payTo] = await Promise.all([
+    loadPeople(group, [creditorUid, debtorUid]),
+    loadPayMethods(groupId, creditorUid),
+  ]);
+  const creditor = people[creditorUid];
+  const debtor = people[debtorUid];
+  let emailed = false;
+  if (debtor.email) {
+    const mail = emails.renderInvoice({
+      lang: debtor.lang, invoiceNo: number, requestId: newRef.id, issuedAt: now, dueAt,
+      currency, group: { name: group.name || '' },
+      from: { name: creditor.name, email: creditor.email }, to: { name: debtor.name },
+      note: cleanNote, items, amount, payTo, auto: !!auto,
+    });
+    const sent = await sendMail({
+      kind: 'invoice', to: debtor.email, lang: mail.lang, ...mail,
+      meta: { group: groupId, request: newRef.id, number, uid: debtorUid, auto: auto ? 'yes' : '' },
+    });
+    emailed = !!sent.ok;
+  }
+  return { ok: true, requestId: newRef.id, number, amount, dueAt: dueAt.toISOString(), emailed };
+}
+
 // Callable: the creditor (caller) asks `debtorUid` for what they owe right now.
 exports.sendPaymentRequest = onCall(
   { secrets: [RESEND_API_KEY] },
   async (req) => {
     if (!req.auth) throw new HttpsError('unauthenticated', 'Login required');
-    const uid = req.auth.uid;
     const { groupId, debtorUid, note, dueDays } = req.data || {};
-    if (!groupId || typeof groupId !== 'string' || !debtorUid || typeof debtorUid !== 'string') {
-      throw new HttpsError('invalid-argument', 'groupId and debtorUid required');
-    }
-    if (debtorUid === uid) throw new HttpsError('invalid-argument', 'self-request');
-
-    const groupRef = db.doc(`groups/${groupId}`);
-    const group = await loadGroup(groupId);
-    if (!group) throw new HttpsError('not-found', 'Group not found');
-    const members = group.memberUids || [];
-    if (!members.includes(uid)) throw new HttpsError('permission-denied', 'Not a member of this group');
-    if (!members.includes(debtorUid)) throw new HttpsError('invalid-argument', 'debtor-not-member');
-
-    let days = Number(dueDays);
-    if (dueDays == null || !Number.isFinite(days)) days = 7;
-    days = Math.min(60, Math.max(0, Math.round(days)));
-    const cleanNote = typeof note === 'string' ? note.trim().slice(0, 500) : '';
-
-    const expenses = await loadExpenses(groupId);
-    const amount = round2(pairNet(expenses, debtorUid, uid, members));
-    if (amount < EPS) throw new HttpsError('failed-precondition', 'no-debt');
-    const items = buildRequestItems(expenses, uid, debtorUid, members);
-
-    const now = new Date();
-    const dueAt = new Date(now.getTime() + days * 86400000);
-    const currency = group.currency || 'USD';
-    const reqCol = groupRef.collection('paymentRequests');
-    const newRef = reqCol.doc();
-
-    // number + cancel the previous pending request(s) for this pair + the new doc, atomically
-    const number = await db.runTransaction(async (tx) => {
-      const g = await tx.get(groupRef);
-      const pending = await tx.get(reqCol.where('fromUid', '==', uid).where('toUid', '==', debtorUid).where('status', '==', 'pending'));
-      const n = Number((((g.data() || {}).seq) || {}).request || 0) + 1;
-      const num = docNumber('F', now, n);
-      pending.docs.forEach((d) => tx.update(d.ref, { status: 'cancelled', cancelledAt: FieldValue.serverTimestamp() }));
-      tx.update(groupRef, { 'seq.request': n });
-      tx.set(newRef, {
-        number: num, fromUid: uid, toUid: debtorUid, amount, currency, note: cleanNote,
-        dueAt: Timestamp.fromDate(dueAt), createdAt: FieldValue.serverTimestamp(),
-        status: 'pending', paidAmount: 0, paidAt: null, settleIds: [],
-        items: items.map((i) => ({ ...i, date: Timestamp.fromDate(i.date) })),
-        remindedAt: null,
-      });
-      return num;
-    });
-
-    const [people, payTo] = await Promise.all([
-      loadPeople(group, [uid, debtorUid]),
-      loadPayMethods(groupId, uid),
-    ]);
-    const creditor = people[uid];
-    const debtor = people[debtorUid];
-    let emailed = false;
-    if (debtor.email) {
-      const mail = emails.renderInvoice({
-        lang: debtor.lang, invoiceNo: number, requestId: newRef.id, issuedAt: now, dueAt,
-        currency, group: { name: group.name || '' },
-        from: { name: creditor.name, email: creditor.email }, to: { name: debtor.name },
-        note: cleanNote, items, amount, payTo,
-      });
-      const sent = await sendMail({
-        kind: 'invoice', to: debtor.email, lang: mail.lang, ...mail,
-        meta: { group: groupId, request: newRef.id, number, uid: debtorUid },
-      });
-      emailed = !!sent.ok;
-    }
-    return { ok: true, requestId: newRef.id, number, amount, dueAt: dueAt.toISOString(), emailed };
+    return createPaymentRequest({ groupId, creditorUid: req.auth.uid, debtorUid, note, dueDays });
   }
 );
 
@@ -1079,7 +1095,7 @@ async function runPaymentReminders(now = new Date()) {
         issuedAt: toDate(r.createdAt) || now, dueAt: toDate(r.dueAt),
         currency: r.currency || group.currency || 'USD', group: { name: group.name || '' },
         from: { name: creditor.name, email: creditor.email }, to: { name: debtor.name },
-        note: r.note || '', items: itemsForTemplate(r.items), amount: remaining, payTo,
+        note: r.note || '', items: itemsForTemplate(r.items), amount: remaining, payTo, auto: !!r.auto,
       });
       const sent = await sendMail({
         kind: 'reminder', to: debtor.email, lang: mail.lang, ...mail,
@@ -1115,6 +1131,202 @@ if (IS_EMULATOR) {
     if (!req.auth) throw new HttpsError('unauthenticated', 'Login required');
     const at = req.data && req.data.now ? new Date(req.data.now) : new Date();
     return runPaymentReminders(isNaN(at) ? new Date() : at);
+  });
+}
+
+// ───────────────────────────────────────────────────────────
+// autoBilling — daily 08:00 America/Chicago
+//  a) recurring fixed expenses:  groups/{g}/recurring/{id}         (active, nextRunAt <= now)
+//  b) automatic balance charges: groups/{g}/autoCharges/{creditor} (enabled, due today)
+// Recurring runs first, so today's fixed expense counts in the balances and the charges it
+// sends count as "pending" for (b).
+// ───────────────────────────────────────────────────────────
+
+// Merchant-catalog fields for a description (no AI): null when the catalog doesn't know it
+function catalogFields(description) {
+  const m = merchants.find(description);
+  if (!m) return null;
+  return { merchant: m.name, logoDomain: m.domain || '', logoEmoji: m.emoji || '', cat: m.cat || null };
+}
+
+async function runRecurringRule(doc, now, result, getGroup) {
+  const rule = doc.data();
+  const ruleRef = doc.ref;
+  const groupId = ruleRef.parent.parent.id;
+  // a rule that can no longer run is switched off (active:false) instead of retried every day
+  const deactivate = async (reason) => {
+    result.deactivated++;
+    console.warn(`autoBilling: recurring ${ruleRef.path} deactivated (${reason})`);
+    await ruleRef.update({ active: false, deactivatedReason: reason }).catch(() => {});
+  };
+  const group = await getGroup(groupId);
+  if (!group) return deactivate('group-deleted');
+  const members = group.memberUids || [];
+  const payerUid = rule.payerUid;
+  if (!payerUid || !members.includes(payerUid)) return deactivate('payer-left');
+  const splitUids = [...new Set((Array.isArray(rule.splitUids) ? rule.splitUids : []).filter((u) => members.includes(u)))];
+  if (!splitUids.length) return deactivate('nobody-left');
+  const amount = round2(rule.amount);
+  const next = billingDates.nextOccurrence(rule, now);
+  if (!(amount > 0) || !next) {
+    result.skipped++;
+    console.warn(`autoBilling: recurring ${ruleRef.path} skipped (invalid amount or frequency)`);
+    return;
+  }
+
+  // one expense per occurrence: the id carries the occurrence's Chicago date
+  const occurrence = toDate(rule.nextRunAt) || now;
+  const expenseId = `rec_${doc.id}_${billingDates.compactKey(occurrence)}`;
+  const expRef = db.doc(`groups/${groupId}/expenses/${expenseId}`);
+  const people = await loadPeople(group, [payerUid, ...splitUids]);
+  const splitType = splitTypeFor(splitUids, payerUid, members);
+  const others = splitUids.filter((u) => u !== payerUid);
+  const partner = splitType === 'two' || splitType === 'full' ? others[0] : null;
+  const description = String(rule.description || '').trim().slice(0, 80) || 'Gasto fijo';
+  const cat = catalogFields(description);
+  const expense = {
+    type: 'expense', amount, description,
+    category: rule.category || (cat && cat.cat) || 'other',
+    paidBy: people[payerUid].name, paidByUid: payerUid,
+    splitUids, split: splitType,
+    ...(partner ? { splitWithUid: partner, splitWith: people[partner].name } : {}),
+    createdByUid: rule.createdByUid || payerUid,
+    createdAt: FieldValue.serverTimestamp(),
+    spentAt: Timestamp.fromDate(now),
+    recurringId: doc.id,
+    notify: !rule.sendCharge,   // with a charge, the invoice replaces the shared-expense email
+    ...(cat ? { merchant: cat.merchant, logoDomain: cat.logoDomain, logoEmoji: cat.logoEmoji, aiEnriched: true } : {}),
+  };
+
+  // expense + advancing the rule in one transaction: retries never duplicate the expense
+  const created = await db.runTransaction(async (tx) => {
+    const [r, ex] = await tx.getAll(ruleRef, expRef);
+    const rd = r.exists ? r.data() : null;
+    if (!rd || rd.active !== true || millis(rd.nextRunAt) > now.getTime()) return null;   // changed meanwhile
+    const advance = { nextRunAt: Timestamp.fromDate(next), lastRunAt: FieldValue.serverTimestamp() };
+    if (ex.exists) {
+      tx.update(ruleRef, advance);
+      return false;
+    }
+    tx.update(ruleRef, { ...advance, runs: FieldValue.increment(1) });
+    tx.create(expRef, expense);
+    return true;
+  });
+  if (!created) { result.skipped++; return; }
+  result.created++;
+
+  if (rule.sendCharge) {
+    const expenses = await loadExpenses(groupId);
+    for (const debtorUid of others) {
+      if (round2(pairNet(expenses, debtorUid, payerUid, members)) < EPS) continue;
+      try {
+        await createPaymentRequest({
+          groupId, creditorUid: payerUid, debtorUid, note: description, dueDays: rule.dueDays, auto: true, now,
+        });
+        result.charges++;
+      } catch (err) {
+        result.failed++;
+        console.error(`autoBilling: charge for ${expRef.path} -> ${debtorUid} error`, err);
+      }
+    }
+  }
+}
+
+async function runAutoChargeSettings(doc, now, todayKey, result, getGroup) {
+  const s = doc.data();
+  const creditorUid = doc.id;   // doc id = the creditor's uid
+  const groupId = doc.ref.parent.parent.id;
+  const group = await getGroup(groupId);
+  const members = group ? group.memberUids || [] : [];
+  if (!group || !members.includes(creditorUid)) {
+    // group deleted or the creditor left: switch it off
+    result.deactivated++;
+    console.warn(`autoBilling: autoCharges ${doc.ref.path} disabled (${group ? 'creditor-left' : 'group-deleted'})`);
+    await doc.ref.update({ enabled: false }).catch(() => {});
+    return;
+  }
+  if (!billingDates.isDueToday(s, now)) { result.notDue++; return; }
+  if (s.lastRunKey === todayKey) { result.alreadyRan++; return; }
+
+  const [expenses, pendingSnap] = await Promise.all([
+    loadExpenses(groupId),
+    db.collection(`groups/${groupId}/paymentRequests`)
+      .where('fromUid', '==', creditorUid).where('status', '==', 'pending').get(),
+  ]);
+  const pendingTo = new Set(pendingSnap.docs.map((d) => d.data().toUid));
+  const threshold = Math.max(Number(s.minAmount) || 0, EPS);
+  for (const debtorUid of members) {
+    if (debtorUid === creditorUid) continue;
+    const debt = round2(pairNet(expenses, debtorUid, creditorUid, members));
+    if (debt + 1e-9 < threshold) { if (debt >= EPS) result.belowMin++; continue; }
+    if (pendingTo.has(debtorUid)) { result.hasPending++; continue; }
+    try {
+      await createPaymentRequest({
+        groupId, creditorUid, debtorUid, note: s.note, dueDays: s.dueDays, auto: true, now,
+      });
+      result.requests++;
+    } catch (err) {
+      result.failed++;
+      console.error(`autoBilling: auto charge ${doc.ref.path} -> ${debtorUid} error`, err);
+    }
+  }
+  await doc.ref.set({ lastRunKey: todayKey, lastRunAt: FieldValue.serverTimestamp() }, { merge: true });
+  result.ran++;
+}
+
+async function runAutoBilling(now = new Date()) {
+  const today = billingDates.dayKey(now);
+  const recurring = { checked: 0, created: 0, skipped: 0, deactivated: 0, charges: 0, failed: 0 };
+  const auto = { checked: 0, ran: 0, notDue: 0, alreadyRan: 0, requests: 0, belowMin: 0, hasPending: 0, deactivated: 0, failed: 0 };
+  // group docs, read once per run (null = deleted)
+  const groups = new Map();
+  const getGroup = async (id) => {
+    if (!groups.has(id)) groups.set(id, await loadGroup(id));
+    return groups.get(id);
+  };
+
+  // index: recurring (active ASC, nextRunAt ASC), collection group
+  const recSnap = await db.collectionGroup('recurring')
+    .where('active', '==', true).where('nextRunAt', '<=', Timestamp.fromDate(now)).get();
+  recurring.checked = recSnap.size;
+  for (const doc of recSnap.docs) {
+    try { await runRecurringRule(doc, now, recurring, getGroup); } catch (err) {
+      recurring.failed++;
+      console.error(`autoBilling: recurring ${doc.ref.path} error`, err);
+    }
+  }
+
+  // index: autoCharges.enabled, collection-group scope (fieldOverrides)
+  const autoSnap = await db.collectionGroup('autoCharges').where('enabled', '==', true).get();
+  auto.checked = autoSnap.size;
+  for (const doc of autoSnap.docs) {
+    try { await runAutoChargeSettings(doc, now, today, auto, getGroup); } catch (err) {
+      auto.failed++;
+      console.error(`autoBilling: autoCharges ${doc.ref.path} error`, err);
+    }
+  }
+  return { today, recurring, auto };
+}
+
+exports.autoBilling = onSchedule(
+  {
+    schedule: '0 8 * * *',
+    timeZone: 'America/Chicago',
+    secrets: [RESEND_API_KEY],
+    timeoutSeconds: 540,
+  },
+  async () => {
+    const result = await runAutoBilling(new Date());
+    console.log('autoBilling', JSON.stringify(result));
+  }
+);
+
+// Emulator only (never deployed): run autoBilling now (or at {now}), from tools/test-emails.mjs
+if (IS_EMULATOR) {
+  exports.devRunAutoBilling = onCall({ timeoutSeconds: 300 }, async (req) => {
+    if (!req.auth) throw new HttpsError('unauthenticated', 'Login required');
+    const at = req.data && req.data.now ? new Date(req.data.now) : new Date();
+    return runAutoBilling(isNaN(at) ? new Date() : at);
   });
 }
 
@@ -1179,11 +1391,28 @@ exports.enrichExpense = onDocumentCreated(
   async (event) => {
     const snap = event.data;
     if (!snap) return;
-    if (IS_EMULATOR) return;   // local emulators: never call the AI
     const data = snap.data() || {};
     if (data.type === 'settle' || data.aiEnriched) return;
     const description = String(data.description || '').trim();
     if (!description) return;
+
+    // 1) Known store in the merchant catalog: no AI call at all
+    const cat = catalogFields(description);
+    if (cat) {
+      try {
+        await snap.ref.update({
+          category: cat.cat || data.category || 'other',
+          merchant: cat.merchant, logoDomain: cat.logoDomain, logoEmoji: cat.logoEmoji,
+          aiEnriched: true,
+        });
+      } catch (err) {
+        console.error('enrichExpense catalog error', err);
+      }
+      return;
+    }
+    if (IS_EMULATOR) return;   // local emulators: never call the AI
+
+    // 2) Otherwise ask Claude (with a cache)
 
     // Cache by normalized description — "Uber", "Éxito" repeat constantly.
     const key = description.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -1438,3 +1667,6 @@ exports.parseBudget = onCall(
     };
   }
 );
+
+// Solo emulador: estadísticas de comercios para el catálogo de logos (nunca se despliega)
+if (IS_EMULATOR) Object.assign(exports, require('./dev-merchant-stats'));

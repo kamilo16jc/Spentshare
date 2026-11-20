@@ -1,5 +1,5 @@
-// v21: UI nueva (morado + lima). Cambiar el número en cada publicación.
-const CACHE_NAME = 'spentshare-v21';
+// v22: catálogo de comercios con logos propios. Cambiar el número en cada publicación.
+const CACHE_NAME = 'spentshare-v22';
 // Relative paths (resolved against the SW's own location) so the same file
 // works both on GitHub Pages (/Spentshare/) and on the custom domain (root).
 const ASSETS = [
@@ -14,6 +14,7 @@ const ASSETS = [
   'js/views.js',
   'js/sheets.js',
   'js/app.js',
+  'functions/merchants.js',
   'icon-192.png',
   'icon-512.png',
   'icon-maskable-192.png',

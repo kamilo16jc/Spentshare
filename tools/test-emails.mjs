@@ -12,14 +12,15 @@ import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { TEST_PASSWORD, PROJECT_ID, USERS, GROUPS } from './seed-emulator.mjs';
+import { TEST_PASSWORD, PROJECT_ID, USERS, GROUPS, RECURRING } from './seed-emulator.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUTBOX = path.join(ROOT, 'functions', '.outbox');
 const require = createRequire(path.join(ROOT, 'functions', 'package.json'));
 const admin = require('firebase-admin');
 const db = admin.firestore(admin.app());   // initialized (emulator-only) by seed-emulator.mjs
-const { FieldValue } = admin.firestore;
+const { FieldValue, Timestamp } = require('firebase-admin/firestore');
+const bd = require('./billing-dates.js');   // functions/billing-dates.js (Chicago calendar)
 
 const FS_HOST = process.env.FIRESTORE_EMULATOR_HOST;
 const AUTH_HOST = process.env.FIREBASE_AUTH_EMULATOR_HOST;
@@ -313,6 +314,129 @@ async function main() {
   check(invNewM && invNewM.lang === 'en' && invNewM.isUser === 'no' && invNewM.subject === 'Ana invited you to “Viaje a Cartagena” on SpentShare'
     && invNewM.html.includes('If you don’t have an account yet'), 'new address: English, "create your account" wording', invNewM && invNewM.subject);
 
+  section('Merchant catalog in enrichExpense (no AI)');
+  await db.doc(`groups/${APTO}/expenses/t_aldi`).set({
+    type: 'expense', amount: 23.4, description: 'Aldi groceries', category: 'other',
+    paidBy: ana.name, paidByUid: ana.uid, splitUids: [ana.uid],
+    createdByUid: ana.uid, createdAt: FieldValue.serverTimestamp(),
+  });
+  const aldi = await waitFor(async () => {
+    const d = (await db.doc(`groups/${APTO}/expenses/t_aldi`).get()).data();
+    return d && d.aiEnriched ? d : null;
+  }, { timeout: 30000 });
+  check(aldi && aldi.logoDomain === 'aldi.com' && aldi.merchant === 'Aldi' && aldi.category === 'food' && aldi.logoEmoji === '🛒',
+    '"Aldi groceries" -> Aldi, aldi.com, food, aiEnriched', aldi && { m: aldi.merchant, d: aldi.logoDomain, c: aldi.category });
+  const laundryDoc = (await db.doc(`groups/${APTO}/expenses/t_laundry`).get()).data() || {};
+  check(!laundryDoc.aiEnriched && !laundryDoc.logoDomain, 'unknown store ("Lavandería") untouched: the AI path never runs in the emulator');
+
+  section('Billing dates (America/Chicago calendar, runs at 08:00)');
+  const iso = (d) => (d ? d.toISOString() : null);
+  const thu = new Date('2026-11-19T20:00:00Z');   // Thursday Nov 19, 2:00 PM Chicago
+  check(iso(bd.nextOccurrence({ frequency: 'weekly', day: 4 }, thu)) === '2026-11-26T14:00:00.000Z', 'weekly Thu, after Thu 08:00 -> next Thu 08:00');
+  check(iso(bd.nextOccurrence({ frequency: 'weekly', day: 4 }, new Date('2026-11-19T12:00:00Z'))) === '2026-11-19T14:00:00.000Z', 'weekly Thu, at 6 AM Thu -> same day 08:00');
+  check(iso(bd.nextOccurrence({ frequency: 'weekly', day: 1 }, thu)) === '2026-11-23T14:00:00.000Z', 'weekly Mon -> Mon Nov 23');
+  check(bd.isDueToday({ frequency: 'weekly', day: 4 }, thu) && !bd.isDueToday({ frequency: 'weekly', day: 5 }, thu), 'weekly is due only on its ISO weekday');
+  check(iso(bd.nextOccurrence({ frequency: 'biweekly' }, new Date('2026-11-02T15:00:00Z'))) === '2026-11-15T14:00:00.000Z', 'biweekly from Nov 2 -> Nov 15');
+  check(iso(bd.nextOccurrence({ frequency: 'biweekly' }, new Date('2026-11-15T15:00:00Z'))) === '2026-12-01T14:00:00.000Z', 'biweekly after Nov 15 08:00 -> Dec 1');
+  check(bd.isDueToday({ frequency: 'biweekly' }, new Date('2026-11-15T18:00:00Z')) && !bd.isDueToday({ frequency: 'biweekly' }, new Date('2026-11-16T18:00:00Z')), 'biweekly is due on the 15th, not the 16th');
+  check(bd.isDueOn({ frequency: 'monthly', day: 31 }, 2027, 2, 28) && iso(bd.nextOccurrence({ frequency: 'monthly', day: 19 }, thu)) === '2026-12-19T14:00:00.000Z', 'monthly: next month same day; short month -> last day');
+  check(iso(bd.nextOccurrence({ frequency: 'monthly', day: 15 }, new Date('2027-03-01T20:00:00Z'))) === '2027-03-15T13:00:00.000Z', 'DST: 08:00 CDT after the March change');
+  check(bd.dayKey(new Date('2026-11-20T05:30:00Z')) === '2026-11-19', 'day key is the Chicago date (11:30 PM Nov 19)');
+
+  section('autoBilling: recurring fixed expense + automatic charges (devRunAutoBilling)');
+  const todayDay = bd.zoneParts(new Date()).d;
+  const minuteAgo = Timestamp.fromDate(new Date(Date.now() - 60000));
+  // test-only fixtures (the seed already has Ana's auto charge, "Internet" and the paused "Gimnasio")
+  const saraOwesCamilo = owes(await groupExpenses(APTO), sara.uid, camilo.uid, members);
+  console.log(`  (Sara owes Camilo ${money(saraOwesCamilo)} in Apartamento 302 — below his minAmount of $100)`);
+  await db.doc(`groups/${APTO}/autoCharges/${camilo.uid}`).set({   // Sara owes Camilo < 100 -> below minAmount
+    enabled: true, frequency: 'monthly', day: todayDay, minAmount: 100, dueDays: 7, note: 'Lo del mes', updatedAt: FieldValue.serverTimestamp(),
+  });
+  await db.doc(`groups/${TRIP}/autoCharges/${camilo.uid}`).set({   // Ana owes Camilo, nothing pending -> request (en)
+    enabled: true, frequency: 'monthly', day: todayDay, minAmount: 10, dueDays: 15, note: 'Lo del viaje', updatedAt: FieldValue.serverTimestamp(),
+  });
+  await db.doc(`groups/${TRIP}/autoCharges/${sara.uid}`).set({   // Sara is not in this group -> disabled
+    enabled: true, frequency: 'weekly', day: 1, minAmount: 0, dueDays: 7, note: '', updatedAt: FieldValue.serverTimestamp(),
+  });
+  await db.doc(`groups/${TRIP}/recurring/r_left`).set({   // the payer left the group -> deactivated, no expense
+    active: true, description: 'Parqueadero', amount: 20000, category: 'transport',
+    payerUid: sara.uid, splitUids: [ana.uid, camilo.uid, sara.uid], frequency: 'monthly', day: todayDay,
+    sendCharge: false, dueDays: 7, createdByUid: sara.uid, createdAt: minuteAgo, nextRunAt: minuteAgo,
+  });
+
+  const rule0 = (await db.doc(`groups/${APTO}/recurring/${RECURRING.internet}`).get()).data() || {};
+  const recId = `rec_${RECURRING.internet}_${bd.compactKey(rule0.nextRunAt.toDate())}`;
+  const runAt = new Date().toISOString();
+  const ab1 = await callFn('devRunAutoBilling', { now: runAt }, tok.ana);
+  const R1 = ab1.result || {};
+  console.log(`  (run 1: ${JSON.stringify(R1)})`);
+  check(R1.recurring && R1.recurring.checked === 2 && R1.recurring.created === 1 && R1.recurring.charges === 2 && R1.recurring.deactivated === 1,
+    'recurring: 1 expense, 2 charges, the rule whose payer left deactivated', ab1.error || R1.recurring);
+  check(R1.auto && R1.auto.requests === 1 && R1.auto.hasPending === 2 && R1.auto.belowMin === 1 && R1.auto.deactivated === 1 && R1.auto.ran === 3,
+    'auto charges: 1 request; skips 2 with a pending request and 1 below minAmount; 1 disabled', R1.auto);
+
+  const recSnap = await db.doc(`groups/${APTO}/expenses/${recId}`).get();
+  const re = recSnap.data() || {};
+  check(recSnap.exists && re.notify === false && re.recurringId === RECURRING.internet && re.amount === 60 && re.split === 'all'
+    && (re.splitUids || []).length === 3 && re.category === 'utilities' && re.paidByUid === ana.uid && re.createdByUid === ana.uid && !!re.spentAt,
+  `expense ${recId} (deterministic id), notify:false, like a client expense`, recSnap.exists ? { notify: re.notify, split: re.split } : 'missing');
+  const recCount = (await db.collection(`groups/${APTO}/expenses`).where('recurringId', '==', RECURRING.internet).get()).size;
+  check(recCount === 1, 'exactly one expense for the rule', recCount);
+  const gymRuns = (await db.collection(`groups/${APTO}/expenses`).where('recurringId', '==', RECURRING.gym).get()).size;
+  check(gymRuns === 0, 'paused rule ("Gimnasio") never runs');
+  const leftRule = (await db.doc(`groups/${TRIP}/recurring/r_left`).get()).data() || {};
+  const leftExp = (await db.collection(`groups/${TRIP}/expenses`).where('recurringId', '==', 'r_left').get()).size;
+  check(leftRule.active === false && leftRule.deactivatedReason === 'payer-left' && leftExp === 0, 'payer left the group -> rule deactivated, no expense', leftRule);
+  const saraTrip = (await db.doc(`groups/${TRIP}/autoCharges/${sara.uid}`).get()).data() || {};
+  check(saraTrip.enabled === false, 'creditor not in the group -> auto charge disabled');
+
+  const rule1 = (await db.doc(`groups/${APTO}/recurring/${RECURRING.internet}`).get()).data() || {};
+  const ahead = rule1.nextRunAt ? (rule1.nextRunAt.toMillis() - Date.parse(runAt)) / 86400000 : 0;
+  check(ahead > 27 && ahead < 32 && bd.zoneParts(rule1.nextRunAt.toDate()).h === 8 && rule1.runs === 1 && !!rule1.lastRunAt,
+    `nextRunAt advanced ~1 month to 08:00 Chicago (${rule1.nextRunAt && rule1.nextRunAt.toDate().toISOString()}), runs 1`);
+  const anaAuto = (await db.doc(`groups/${APTO}/autoCharges/${ana.uid}`).get()).data() || {};
+  check(anaAuto.lastRunKey === bd.dayKey(new Date(runAt)) && !!anaAuto.lastRunAt, 'autoCharges lastRunKey = today (Chicago)', anaAuto.lastRunKey);
+
+  const autoReqs = (await db.collectionGroup('paymentRequests').where('auto', '==', true).get()).docs
+    .map((d) => ({ id: d.id, group: d.ref.parent.parent.id, ...d.data() }));
+  const aCam = autoReqs.find((r) => r.group === APTO && r.fromUid === ana.uid && r.toUid === camilo.uid);
+  const aSara = autoReqs.find((r) => r.group === APTO && r.fromUid === ana.uid && r.toUid === sara.uid);
+  const aTrip = autoReqs.find((r) => r.group === TRIP && r.fromUid === camilo.uid && r.toUid === ana.uid);
+  const aptoNow = await groupExpenses(APTO);
+  check(autoReqs.length === 3, 'three auto:true requests', autoReqs.map((r) => `${r.group} ${r.fromUid}->${r.toUid}`));
+  check(aCam && aCam.status === 'pending' && aCam.note === 'Internet' && Math.abs(aCam.amount - owes(aptoNow, camilo.uid, ana.uid, members)) < 0.011,
+    `Internet charge Ana -> Camilo for the real balance (${aCam && money(aCam.amount)})`);
+  check(aSara && aSara.status === 'pending' && Math.abs(aSara.amount - owes(aptoNow, sara.uid, ana.uid, members)) < 0.011,
+    `Internet charge Ana -> Sara (${aSara && money(aSara.amount)})`);
+  const d4b = (await db.doc(`groups/${APTO}/paymentRequests/${req4.requestId}`).get()).data() || {};
+  check(d4b.status === 'cancelled', 'Sara\'s earlier pending request was replaced (cancelled)', d4b.status);
+  check(aTrip && aTrip.note === 'Lo del viaje' && aTrip.amount === copExpected
+    && Math.abs(aTrip.dueAt.toMillis() - Date.parse(runAt) - 15 * 86400000) < 120000, 'auto charge Camilo -> Ana (Cartagena): amount, note, dueDays 15');
+  const fromCamiloApto = autoReqs.filter((r) => r.group === APTO && r.fromUid === camilo.uid);
+  check(saraOwesCamilo > 0.01 && saraOwesCamilo < 100 && fromCamiloApto.length === 0, 'no request from Camilo in Apartamento 302 (Sara\'s debt is below his minAmount)');
+
+  const autoMails = await mails((m) => m.kind === 'invoice' && m.auto === 'yes', 3);
+  const amCam = autoMails.find((m) => m.to === camilo.email);
+  const amSara = autoMails.find((m) => m.to === sara.email);
+  const amAna = autoMails.find((m) => m.to === ana.email);
+  check(autoMails.length === 3, 'three automatic invoices', toList(autoMails));
+  check(amCam && amCam.lang === 'es' && amCam.html.includes('Cobro automático de Ana') && amCam.html.includes('Ana programó este cobro automático en SpentShare.'),
+    'Camilo: Spanish, "Cobro automático de Ana" + "programó este cobro automático"', amCam && amCam.subject);
+  check(amSara && amSara.lang === 'es' && amSara.html.includes('Cobro automático de Ana'), 'Sara: Spanish automatic wording', amSara && amSara.subject);
+  check(amAna && amAna.lang === 'en' && amAna.html.includes('Camilo’s automatic request') && amAna.html.includes('Camilo set up this automatic request in SpentShare.'),
+    'Ana: English, "Camilo’s automatic request"', amAna && amAna.subject);
+  await sleep(1500);
+  check(readOutbox().filter((m) => m.kind === 'expense' && m.expense === recId).length === 0, 'no shared-expense email for the recurring expense (notify:false)');
+
+  const before2 = { mails: readOutbox().length, reqs: (await db.collectionGroup('paymentRequests').get()).size, exps: (await db.collectionGroup('expenses').get()).size };
+  const ab2 = await callFn('devRunAutoBilling', { now: runAt }, tok.ana);
+  const R2 = ab2.result || {};
+  await sleep(2500);
+  const after2 = { mails: readOutbox().length, reqs: (await db.collectionGroup('paymentRequests').get()).size, exps: (await db.collectionGroup('expenses').get()).size };
+  check(R2.recurring && R2.recurring.created === 0 && R2.auto && R2.auto.requests === 0 && R2.auto.alreadyRan === 3,
+    'second run the same day: nothing to do', ab2.error || R2);
+  check(JSON.stringify(before2) === JSON.stringify(after2), 'second run: no new expense, request or email', { before2, after2 });
+
   section('Firestore rules (REST as signed-in users)');
   check(await fsRest('GET', `groups/${APTO}/paymentRequests/${req2.requestId}`, tok.camilo) === 200, 'member reads a payment request');
   check(await fsRest('PATCH', `groups/${APTO}/paymentRequests/hack`, tok.camilo, { amount: { integerValue: '1' } }) === 403, 'member cannot write paymentRequests');
@@ -324,6 +448,44 @@ async function main() {
   check(await fsRest('PATCH', `groups/${TRIP}/budgets/hack`, tok.sara, { name: { stringValue: 'x' } }) === 403, 'non-member cannot write budgets');
   check(await fsRest('PATCH', `groups/${APTO}/budgets/b02`, tok.sara, { name: { stringValue: 'Ocio' } }) === 200, 'member writes budgets');
   check(await fsRest('GET', `groups/${TRIP}`, tok.sara) === 200, 'any signed-in user reads a group doc (join by code)');
+
+  // autoCharges/{uid}: members read, only that uid writes
+  check(await fsRest('PATCH', `groups/${APTO}/autoCharges/${camilo.uid}`, tok.camilo, {
+    enabled: { booleanValue: false }, frequency: { stringValue: 'weekly' }, day: { integerValue: '1' },
+  }) === 200, 'member writes their own autoCharges');
+  check(await fsRest('PATCH', `groups/${APTO}/autoCharges/${ana.uid}`, tok.camilo, { enabled: { booleanValue: false } }) === 403, 'member cannot write someone else\'s autoCharges');
+  check(await fsRest('GET', `groups/${APTO}/autoCharges/${ana.uid}`, tok.sara) === 200, 'members read autoCharges');
+  check(await fsRest('GET', `groups/${TRIP}/autoCharges/${camilo.uid}`, tok.sara) === 403, 'non-member cannot read autoCharges');
+
+  // recurring/{id}: members read; creator-only edits; a charging rule must be paid by its creator
+  const ruleFields = ({ payer, createdBy, sendCharge }) => ({
+    active: { booleanValue: false }, description: { stringValue: 'Agua' }, amount: { doubleValue: 30 },
+    category: { stringValue: 'utilities' }, payerUid: { stringValue: payer },
+    splitUids: { arrayValue: { values: [camilo.uid, sara.uid].map((u) => ({ stringValue: u })) } },
+    frequency: { stringValue: 'monthly' }, day: { integerValue: '5' }, dueDays: { integerValue: '7' },
+    sendCharge: { booleanValue: !!sendCharge }, createdByUid: { stringValue: createdBy },
+  });
+  const rPath = `groups/${APTO}/recurring/r_rules_test`;
+  check(await fsRest('PATCH', rPath, tok.camilo, ruleFields({ payer: ana.uid, createdBy: camilo.uid, sendCharge: true })) === 403,
+    'cannot create a charging rule with someone else as payer');
+  check(await fsRest('PATCH', rPath, tok.camilo, ruleFields({ payer: camilo.uid, createdBy: ana.uid })) === 403,
+    'cannot create a rule in someone else\'s name');
+  check(await fsRest('PATCH', rPath, tok.camilo, ruleFields({ payer: ana.uid, createdBy: camilo.uid })) === 200,
+    'member creates a rule (no charges, any payer)');
+  check(await fsRest('PATCH', rPath, tok.camilo, ruleFields({ payer: camilo.uid, createdBy: camilo.uid, sendCharge: true })) === 200,
+    'creator turns charges on with themself as payer');
+  check(await fsRest('PATCH', rPath, tok.camilo, ruleFields({ payer: ana.uid, createdBy: camilo.uid, sendCharge: true })) === 403,
+    'creator cannot move a charging rule to another payer');
+  check(await fsRest('PATCH', rPath, tok.camilo, ruleFields({ payer: camilo.uid, createdBy: sara.uid })) === 403,
+    'createdByUid cannot change');
+  check(await fsRest('PATCH', rPath, tok.sara, ruleFields({ payer: sara.uid, createdBy: camilo.uid })) === 403,
+    'another member cannot edit it');
+  check(await fsRest('PATCH', `groups/${APTO}/recurring/${RECURRING.internet}`, tok.sara, ruleFields({ payer: ana.uid, createdBy: ana.uid })) === 403,
+    'another member cannot edit Ana\'s "Internet"');
+  check(await fsRest('DELETE', `groups/${APTO}/recurring/${RECURRING.internet}`, tok.sara) === 403, 'another member cannot delete it');
+  check(await fsRest('GET', `groups/${APTO}/recurring/${RECURRING.internet}`, tok.sara) === 200, 'members read rules');
+  check(await fsRest('GET', `groups/${TRIP}/recurring/r_left`, tok.sara) === 403, 'non-member cannot read rules');
+  check(await fsRest('DELETE', rPath, tok.camilo) === 200, 'creator deletes their rule');
 
   section('Outbox');
   const all = readOutbox();

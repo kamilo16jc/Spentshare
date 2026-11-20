@@ -45,7 +45,7 @@ function openGroup(gid) {
   const g = S.groups.find(x => x.id === gid);
   if (!g) return;
   S.gid = gid; S.group = g;
-  S.expenses = null; S.budgets = []; S.requests = []; S.meta = {}; S.members = [];
+  S.expenses = null; S.budgets = []; S.requests = []; S.meta = {}; S.members = []; S.autoCharges = {}; S.recurring = [];
   S.act = { cat: 'all', person: 'all', query: '', period: 'all' };
   S.st = { period: 'month', bar: null };
   try { localStorage.setItem('ss_group', gid); } catch (e) {}
@@ -75,6 +75,16 @@ function openGroup(gid) {
     S.requests = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     refresh();
   }, () => { S.requests = []; }));
+  // Automático: mi cobro periódico (y el de los demás, para saber quién lo tiene) y los gastos fijos
+  groupUnsubs.push(window._onSnap(col(`groups/${gid}/autoCharges`), snap => {
+    S.autoCharges = {}; snap.docs.forEach(d => { S.autoCharges[d.id] = d.data(); });
+    refresh();
+  }, () => { S.autoCharges = {}; }));
+  groupUnsubs.push(window._onSnap(col(`groups/${gid}/recurring`), snap => {
+    S.recurring = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.active === false ? 0 : 1) - (a.active === false ? 0 : 1) || ((toDate(a.nextRunAt) || 0) - (toDate(b.nextRunAt) || 0)));
+    refresh();
+  }, () => { S.recurring = []; }));
   groupUnsubs.push(window._onSnap(col(`groups/${gid}/members`), snap => {
     S.meta = {}; snap.docs.forEach(d => { S.meta[d.id] = d.data(); });
     refresh();
@@ -134,6 +144,11 @@ async function deleteGroupDocs(gid) {
     const snap = await window._getDocs(col(`groups/${gid}/${sub}`));
     await Promise.all(snap.docs.map(d => window._delDoc(ref(`groups/${gid}/${sub}`, d.id))));
   }
+  // lo automático que se pueda borrar (los gastos fijos de otros los apaga el servidor al no ver el grupo)
+  for (const sub of ['recurring', 'autoCharges']) {
+    const snap = await window._getDocs(col(`groups/${gid}/${sub}`)).catch(() => ({ docs: [] }));
+    await Promise.all(snap.docs.map(d => window._delDoc(ref(`groups/${gid}/${sub}`, d.id)).catch(() => null)));
+  }
   await window._delDoc(ref('groups', gid));
 }
 
@@ -167,8 +182,9 @@ async function addExpenseDoc({ amount, description, category, payerUid, splitUid
     createdByUid: uid(), createdAt: window._srvTs(), spentAt: window._Timestamp.fromDate(d),
   };
   // Si vino de un recibo escaneado o de la IA, el logo ya está: el servidor no repite la consulta
-  const r = S.pendingReceipt;
-  if (r && r.merchant && description === r.merchant) Object.assign(data, { logoDomain: r.logoDomain || '', logoEmoji: r.logoEmoji || '', merchant: r.merchant, aiEnriched: true });
+  const r = S.pendingReceipt, m = merchantFor(description);
+  if (m) Object.assign(data, { logoDomain: m.domain, logoEmoji: m.emoji || '', merchant: m.name, aiEnriched: true });   // comercio conocido: sin IA
+  else if (r && r.merchant && description === r.merchant) Object.assign(data, { logoDomain: r.logoDomain || '', logoEmoji: r.logoEmoji || '', merchant: r.merchant, aiEnriched: true });
   S.pendingReceipt = null;
   return window._addDoc(col(`groups/${S.gid}/expenses`), data);
 }
@@ -185,6 +201,15 @@ async function addSettleDoc({ fromUid, toUid, amount, method, requestId }) {
   if (requestId) data.requestId = requestId;
   return window._addDoc(col(`groups/${S.gid}/expenses`), data);
 }
+
+// ───────────────────────── automático ─────────────────────────
+// Mi cobro automático (doc = mi uid) y los gastos fijos; los ejecuta autoBilling en el servidor
+const saveAutoCharge = data => window._setDoc(ref(`groups/${S.gid}/autoCharges`, uid()), { ...data, updatedAt: window._srvTs() }, { merge: true });
+function saveRecurring(id, data) {
+  if (id) return window._updateDoc(ref(`groups/${S.gid}/recurring`, id), { ...data, updatedAt: window._srvTs() });
+  return window._addDoc(col(`groups/${S.gid}/recurring`), { ...data, runs: 0, createdByUid: uid(), createdAt: window._srvTs() });
+}
+const deleteRecurring = id => window._delDoc(ref(`groups/${S.gid}/recurring`, id));
 
 const deleteExpenseDoc = id => window._delDoc(ref(`groups/${S.gid}/expenses`, id));
 

@@ -28,6 +28,7 @@ function refreshSheet() {
   if (!S.sheet || !$('#sheet-body')) return;
   const { name, args } = S.sheet;
   if (name === 'members') $('#sheet-body').innerHTML = membersHtml();
+  if (name === 'auto-charge') autoRefresh();
   if (name === 'budget') { const keep = $('#budget-text') && $('#budget-text').value; $('#sheet-body').innerHTML = budgetHtml(); if (keep) $('#budget-text').value = keep; }
 }
 const formError = (id, msg) => { const el = $('#' + id); if (el) el.innerHTML = msg ? `<p class="form-error" role="alert">${esc(msg)}</p>` : ''; };
@@ -86,13 +87,25 @@ function addExpenseSheet() {
     <div class="amount-entry"><label for="expense-amount">${t('add.howMuch')}</label><div class="amount-input"><span>${c.symbol}</span><input id="expense-amount" name="amount" inputmode="decimal" placeholder="${c.decimals ? '0.00' : '0'}" type="text" autocomplete="off" aria-label="${esc(t('add.howMuch'))}" required></div></div>
     <div class="ai-row"><button type="button" class="ai-chip" data-action="scan-receipt">${icon('camera', 'small-ico')} <span>${t('add.scan')}</span></button><button type="button" class="ai-chip" data-action="ai-toggle">${icon('spark', 'small-ico')} <span>${t('add.ai')}</span></button></div>
     <div class="ai-box" id="ai-box" hidden><input id="ai-text" placeholder="${esc(t('add.aiPh'))}" autocomplete="off"><button type="button" class="ai-go" data-action="ai-parse" aria-label="${esc(t('add.aiGo'))}">${icon('chevron')}</button></div>
-    <div class="field"><label for="expense-title">${t('add.what')}</label><input id="expense-title" name="title" placeholder="${esc(t('add.whatPh'))}" maxlength="60" required></div>
+    <div class="field"><label for="expense-title">${t('add.what')}</label><div class="title-wrap"><input id="expense-title" name="title" placeholder="${esc(t('add.whatPh'))}" maxlength="60" required><img class="title-logo" id="title-logo" alt="" hidden></div></div>
     <span class="field-label">${t('add.category')}</span><div class="category-choices scroll">${cats}</div>
     <div class="form-row"><div class="field"><label for="expense-payer">${t('add.paid')}</label><div class="select-wrap"><select id="expense-payer" name="payer">${S.members.map(m => `<option value="${m.uid}" ${m.uid === uid() ? 'selected' : ''}>${esc(m.uid === uid() ? t('youCap') : firstName(m.name))}</option>`).join('')}</select>${icon('down')}</div></div><div class="field"><label for="expense-day">${t('add.date')}</label><input id="expense-day" name="date" type="date" value="${ymd(new Date())}" max="${ymd(new Date())}" required></div></div>
     <fieldset class="split-fieldset"><legend>${t('add.shareWith')}</legend><div class="participant-options">${S.members.map(m => `<button type="button" class="participant-choice is-selected" data-participant="${m.uid}" aria-label="${esc(participantLabel(m.uid))}" aria-pressed="true"><span class="participant-avatar">${avatar(m)}<span class="participant-check">${icon('check', 'small-ico')}</span></span><span>${esc(participantLabel(m.uid))}</span></button>`).join('')}</div><div class="split-live" id="split-live" aria-live="polite">${splitPreview()}</div></fieldset>
     <div id="expense-error"></div>
     <div class="expense-submit-dock"><div class="submit-holder"><button class="full-btn save-expense-btn" type="submit">${t('add.save')}</button></div><p class="notice-inline">${esc(S.group.name)} · ${cur()}</p></div></form>`,
     { cls: 'expense-sheet', noFocus: true, onOpen: () => setTimeout(() => { const a = $('#expense-amount'); a && a.focus(); }, 60) });
+}
+// Mientras escribe el título: si es un comercio conocido, su logo y su categoría (sin IA)
+function titleMerchant(text) {
+  const m = merchantFor(text), img = $('#title-logo'), src = merchantLogo(m);
+  if (img) {
+    if (src) { if (img.getAttribute('src') !== src) img.src = src; img.alt = m.name; img.hidden = false; }
+    else { img.hidden = true; img.removeAttribute('src'); }
+    img.parentElement.classList.toggle('has-logo', !!src);
+  }
+  if (S.draft.manualCat) return;
+  const k = (m && m.cat) || guessCategory(text);
+  if (k) setCategory(k, false);
 }
 async function submitExpense(form) {
   const amount = parseAmount($('#expense-amount').value), title = $('#expense-title').value.trim();
@@ -127,6 +140,7 @@ function applyAi(d) {
   else if (d.split === 'solo') S.draft.split = [pUid];
   else if (d.split === 'all') S.draft.split = S.members.map(m => m.uid);
   updateSplitPreview();
+  if (desc) titleMerchant(desc);
   S.pendingReceipt = { logoDomain: d.domain || '', logoEmoji: d.emoji || '', merchant: desc };
   return true;
 }
@@ -253,7 +267,8 @@ function requestSheet(otherUid) {
     <p class="payment-notice">${t('req.notice', esc(firstName(nameOf(otherUid))))}</p>
     <div id="req-error"></div>
     <div class="submit-holder"><button class="full-btn" data-action="send-request">${icon('send')} ${t('req.send')}</button></div>
-    <button class="full-btn secondary" data-action="received" data-uid="${otherUid}" style="margin-top:10px">${t('req.alreadyPaid')}</button>`, { name: 'request', args: [otherUid] });
+    <button class="full-btn secondary" data-action="received" data-uid="${otherUid}" style="margin-top:10px">${t('req.alreadyPaid')}</button>
+    <button class="text-btn auto-link" data-action="auto-charge">${icon('clock', 'small-ico')} ${t('auto.fromReq')}</button>`, { name: 'request', args: [otherUid] });
 }
 async function sendRequestNow(button) {
   const d = S.reqDraft; if (!d) return;
@@ -275,6 +290,146 @@ async function markReceived(otherUid, button) {
   try { await Promise.all([buttonCheck(button), addSettleDoc({ fromUid: otherUid, toUid: uid(), amount: owed, method: 'other', requestId: req ? req.id : '' })]); }
   catch (e) { console.error(e); return formError('req-error', t('err.save')); }
   celebrate(otherUid, uid(), t('settle.doneH'), t('req.receivedP', esc(firstName(nameOf(otherUid)))), t('settle.doneTag'));
+}
+
+// ───────────────────────── automático: cobro periódico y gastos fijos ─────────────────────────
+// El servidor (autoBilling, todos los días a las 8:00) hace el trabajo; aquí solo se programa.
+S.auto = null;   // borrador de la hoja abierta: { kind: 'charge' | 'recurring', frequency, day, dueDays, … }
+const pickPill = (key, val, label, on) => `<button type="button" class="pill ${on ? 'active' : ''}" data-pick="${key}" data-val="${val}" aria-pressed="${on}">${label}</button>`;
+const whenLabel = d => d ? `${L().daysLong[(d.getDay() + 6) % 7]}${lang === 'en' ? ',' : ''} ${fmtLong(d)}` : '—';
+function scheduleHtml(d) {
+  const freq = FREQS.map(f => pickPill('frequency', f, t('freq.' + f), d.frequency === f)).join('');
+  let day;
+  if (d.frequency === 'weekly') day = `<span class="field-label">${t('auto.weekday')}</span><div class="pills weekday-pills">${L().daysMed.map((n, i) => pickPill('day', i + 1, n, Number(d.day) === i + 1)).join('')}</div>`;
+  else if (d.frequency === 'monthly') day = `<div class="field"><label for="auto-day">${t('auto.monthDay')}</label><div class="select-wrap"><select id="auto-day">${Array.from({ length: 28 }, (_, i) => `<option value="${i + 1}" ${Number(d.day) === i + 1 ? 'selected' : ''}>${i + 1}</option>`).join('')}</select>${icon('down')}</div></div>`;
+  else day = `<p class="auto-hint">${t('auto.biweeklyHint')}</p>`;
+  return `<span class="field-label">${t('auto.frequency')}</span><div class="pills">${freq}</div>${day}`;
+}
+const dueHtml = d => `<span class="field-label">${t('auto.dueIn')}</span><div class="pills">${[3, 7, 15, 30].map(n => pickPill('dueDays', n, t('days', n), Number(d.dueDays) === n)).join('')}</div>`;
+function autoPick(el) {
+  const d = S.auto; if (!d) return;
+  const key = el.dataset.pick, raw = el.dataset.val, val = /^\d+$/.test(raw) ? Number(raw) : raw;
+  d[key] = val;
+  if (key === 'frequency') { d.day = d.orig && d.orig.frequency === val ? d.orig.day : defaultDay(val); $('#sched-box').innerHTML = scheduleHtml(d); }
+  else $$(`[data-pick="${key}"]`).forEach(b => { const on = b === el; b.classList.toggle('active', on); b.setAttribute('aria-pressed', String(on)); });
+  autoRefresh();
+}
+function autoRefresh() { const p = $('#auto-preview'); if (p && S.auto) p.innerHTML = S.auto.kind === 'charge' ? autoPreview() : recPreview(); }
+
+// Mi cobro automático en este grupo
+function autoChargeSheet() {
+  if (!S.group) return;
+  const saved = S.autoCharges[uid()] || null;
+  const freq = saved && FREQS.includes(saved.frequency) ? saved.frequency : 'monthly';
+  S.auto = { kind: 'charge', enabled: saved ? !!saved.enabled : true, frequency: freq, day: saved ? saved.day : defaultDay(freq), dueDays: (saved && saved.dueDays) || 7, minAmount: (saved && saved.minAmount) || 0, orig: saved ? { frequency: saved.frequency, day: saved.day } : null };
+  const c = CURRENCIES[cur()];
+  openSheet(t('auto.chargeTitle'), `${groupContext()}<p class="sheet-intro" style="margin-top:16px">${t('auto.chargeIntro')}</p>
+    <form id="auto-form" novalidate>
+    <div class="menu-list"><button type="button" class="menu-row" data-action="auto-toggle" role="switch" aria-checked="${S.auto.enabled}">${icon('clock')}<span>${t('auto.enable')}</span><i class="switch ${S.auto.enabled ? 'on' : ''}" aria-hidden="true"></i></button></div>
+    <div id="auto-fields" class="auto-fields ${S.auto.enabled ? '' : 'is-off'}">
+      <div id="sched-box">${scheduleHtml(S.auto)}</div>
+      ${dueHtml(S.auto)}
+      <div class="form-row"><div class="field"><label for="auto-min">${t('auto.min')}</label><input id="auto-min" inputmode="decimal" value="${S.auto.minAmount || ''}" placeholder="${c.symbol}0" autocomplete="off"></div><div></div></div>
+      <div class="field"><label for="auto-note">${t('auto.noteLbl')}</label><input id="auto-note" maxlength="140" value="${esc((saved && saved.note) || '')}" placeholder="${esc(t('auto.notePh'))}" autocomplete="off"></div>
+    </div>
+    <div class="auto-preview" id="auto-preview" aria-live="polite">${autoPreview()}</div>
+    <div id="auto-error"></div>
+    <div class="submit-holder"><button class="full-btn" type="submit">${t('auto.save')}</button></div>
+    <p class="notice-inline">${t('auto.foot')}</p></form>`, { name: 'auto-charge' });
+}
+function autoPreview() {
+  const d = S.auto;
+  if (!d.enabled) return `<p>${t('auto.offNote')}</p>`;
+  const raw = (($('#auto-min') || {}).value || '').trim();
+  const min = raw ? parseAmount(raw) : Number(d.minAmount) || 0;
+  const list = autoChargeTargets(Number.isFinite(min) ? min : 0);
+  const people = list.length
+    ? `<p>${t('auto.wouldCharge')}</p><div class="auto-people">${list.map(x => `<span class="auto-person ${x.pending ? 'muted' : ''}">${avatar(x.uid)}<span><strong>${esc(firstName(nameOf(x.uid)))}</strong> · <b class="num">${money(x.amount)}</b>${x.pending ? `<small>${t('auto.hasPending')}</small>` : ''}</span></span>`).join('')}</div>`
+    : `<p>${t('auto.nobody')}</p>`;
+  return `<p class="auto-next">${icon('calendar', 'small-ico')} <span>${t('auto.next', whenLabel(firstRunDate(d)))}</span></p>${people}`;
+}
+async function submitAuto(form) {
+  const d = S.auto, raw = $('#auto-min').value.trim();
+  const min = raw ? parseAmount(raw) : 0;
+  if (!Number.isFinite(min) || min < 0 || min > 1e9) return formError('auto-error', t('auto.errMin'));
+  const b = $('button[type="submit"]', form); if (b.disabled) return;
+  formError('auto-error', '');
+  const data = { enabled: !!d.enabled, frequency: d.frequency, day: Number(d.day) || 1, minAmount: round2(min), dueDays: Number(d.dueDays) || 7, note: $('#auto-note').value.trim().slice(0, 140) };
+  try { await Promise.all([buttonCheck(b), saveAutoCharge(data)]); }
+  catch (e) { console.error(e); b.disabled = false; b.innerHTML = t('auto.save'); return formError('auto-error', t('err.save')); }
+  closeSheet(); toast(data.enabled ? t('auto.saved') : t('auto.savedOff'));
+}
+
+// Gasto fijo: se anota solo (y si quien paga quiere, manda el cobro a cada uno)
+const participantsHtml = () => `<fieldset class="split-fieldset"><legend>${t('add.shareWith')}</legend><div class="participant-options">${S.members.map(m => { const on = S.draft.split.includes(m.uid); return `<button type="button" class="participant-choice ${on ? 'is-selected' : ''}" data-participant="${m.uid}" aria-label="${esc(participantLabel(m.uid))}" aria-pressed="${on}"><span class="participant-avatar">${avatar(m)}<span class="participant-check">${icon('check', 'small-ico')}</span></span><span>${esc(participantLabel(m.uid))}</span></button>`; }).join('')}</div><div class="split-live" id="split-live" aria-live="polite">${splitPreview()}</div></fieldset>`;
+function recurringSheet(id) {
+  if (!S.group) return;
+  const r = id ? S.recurring.find(x => x.id === id) : null;
+  if (id && !r) return;
+  if (r && r.createdByUid !== uid()) return recurringReadOnly(r);
+  const freq = r && FREQS.includes(r.frequency) ? r.frequency : 'monthly';
+  const payer = r && memberUids().includes(r.payerUid) ? r.payerUid : uid();
+  S.auto = { kind: 'recurring', id: r ? r.id : null, payer, frequency: freq, day: r ? r.day : defaultDay(freq), dueDays: (r && r.dueDays) || 7, sendCharge: !!(r && r.sendCharge), orig: r ? { frequency: r.frequency, day: r.day } : null };
+  const cat = r && CATS[r.category] ? r.category : 'home';
+  const split = r ? (r.splitUids || []).filter(u => memberUids().includes(u)) : [];
+  S.draft = { category: cat, manualCat: !!r, split: split.length ? split : S.members.map(m => m.uid) };
+  S.pendingReceipt = null;
+  const c = CURRENCIES[cur()];
+  const cats = CAT_ORDER.map(k => `<button class="category-choice ${k === cat ? 'active' : ''}" data-choice="${k}" type="button" aria-pressed="${k === cat}">${categoryIcon(k)}<span>${catName(k)}</span></button>`).join('');
+  openSheet(t('rec.title'), `${groupContext()}${r ? '' : `<p class="sheet-intro" style="margin-top:16px">${t('rec.intro')}</p>`}<form id="recurring-form" novalidate>
+    <div class="amount-entry"><label for="expense-amount">${t('add.howMuch')}</label><div class="amount-input"><span>${c.symbol}</span><input id="expense-amount" inputmode="decimal" placeholder="${c.decimals ? '0.00' : '0'}" value="${r ? esc(r.amount) : ''}" type="text" autocomplete="off" aria-label="${esc(t('add.howMuch'))}" required></div></div>
+    <div class="field"><label for="expense-title">${t('add.what')}</label><div class="title-wrap"><input id="expense-title" placeholder="${esc(t('rec.ph'))}" maxlength="60" value="${esc(r ? r.description : '')}" required><img class="title-logo" id="title-logo" alt="" hidden></div></div>
+    <span class="field-label">${t('add.category')}</span><div class="category-choices scroll">${cats}</div>
+    <div class="field"><label for="expense-payer">${t('add.paid')}</label><div class="select-wrap"><select id="expense-payer">${S.members.map(m => `<option value="${m.uid}" ${m.uid === payer ? 'selected' : ''}>${esc(m.uid === uid() ? t('youCap') : firstName(m.name))}</option>`).join('')}</select>${icon('down')}</div></div>
+    ${participantsHtml()}
+    <div id="sched-box">${scheduleHtml(S.auto)}</div>
+    <div id="rec-charge">${recChargeHtml()}</div>
+    <div class="auto-preview" id="auto-preview" aria-live="polite">${recPreview()}</div>
+    <div id="rec-error"></div>
+    <div class="submit-holder"><button class="full-btn" type="submit">${t('rec.save')}</button></div>
+    ${r ? `<button type="button" class="full-btn secondary" data-action="recurring-pause" style="margin-top:10px">${r.active === false ? t('rec.resume') : t('rec.pause')}</button><button type="button" class="danger-link" data-action="recurring-delete">${icon('trash', 'small-ico')} ${t('rec.delete')}</button>` : ''}
+    </form>`, { cls: 'expense-sheet', noFocus: true, name: 'recurring', onOpen: () => { if (r) titleMerchant(r.description); else setTimeout(() => { const a = $('#expense-amount'); a && a.focus(); }, 60); } });
+}
+function recChargeHtml() {
+  const d = S.auto;
+  if (d.payer !== uid()) return `<p class="auto-hint">${t('rec.notifyHint')} ${t('rec.onlyPayer')}</p>`;
+  return `<div class="menu-list" style="margin-top:4px"><button type="button" class="menu-row" data-action="rec-charge-toggle" role="switch" aria-checked="${d.sendCharge}">${icon('send')}<span>${t('rec.sendCharge')}</span><i class="switch ${d.sendCharge ? 'on' : ''}" aria-hidden="true"></i></button></div><p class="auto-hint" style="margin-top:10px">${d.sendCharge ? t('rec.sendChargeHint') : t('rec.notifyHint')}</p>${d.sendCharge ? dueHtml(d) : ''}`;
+}
+function recPreview() {
+  const d = S.auto, r = d.id && S.recurring.find(x => x.id === d.id);
+  if (r && r.active === false) return `<p class="auto-next">${icon('clock', 'small-ico')} <span>${t('auto.paused')}</span></p>`;
+  const same = r && r.frequency === d.frequency && Number(r.day) === Number(d.day) && toDate(r.nextRunAt);
+  const next = same ? toDate(r.nextRunAt) : firstRunDate(d);
+  return `<p class="auto-next">${icon('calendar', 'small-ico')} <span>${t(r ? 'rec.next' : 'rec.first', whenLabel(next))}</span></p>`;
+}
+async function submitRecurring(form) {
+  const d = S.auto;
+  const amount = parseAmount($('#expense-amount').value), title = $('#expense-title').value.trim(), payer = $('#expense-payer').value;
+  if (!Number.isFinite(amount) || Math.round(amount * 100) <= 0 || amount > 1e9) return formError('rec-error', t('err.amount'));
+  if (!title) return formError('rec-error', t('err.title'));
+  if (!S.draft.split.length) return formError('rec-error', t('err.split'));
+  const b = $('button[type="submit"]', form); if (b.disabled) return;
+  formError('rec-error', '');
+  const data = { description: title, amount: round2(amount), category: S.draft.category, payerUid: payer, splitUids: [...S.draft.split], frequency: d.frequency, day: Number(d.day) || 1, sendCharge: payer === uid() && !!d.sendCharge, dueDays: Number(d.dueDays) || 7 };
+  const r = d.id && S.recurring.find(x => x.id === d.id);
+  // fecha de la próxima vez: nueva si es nuevo o si cambió cuándo se repite (si está pausado, al reanudar)
+  if (!r) Object.assign(data, { active: true, nextRunAt: window._Timestamp.fromDate(firstRunDate(data)) });
+  else if (r.active !== false && (r.frequency !== data.frequency || Number(r.day) !== data.day)) data.nextRunAt = window._Timestamp.fromDate(firstRunDate(data));
+  try { await Promise.all([buttonCheck(b), saveRecurring(r ? r.id : null, data)]); }
+  catch (e) { console.error(e); b.disabled = false; b.innerHTML = t('rec.save'); return formError('rec-error', t('err.save')); }
+  closeSheet(); toast(t('rec.saved'));
+}
+async function toggleRecurring() {
+  const r = S.auto && S.recurring.find(x => x.id === S.auto.id); if (!r) return;
+  const resume = r.active === false;
+  try { await saveRecurring(r.id, resume ? { active: true, nextRunAt: window._Timestamp.fromDate(firstRunDate(r)) } : { active: false }); closeSheet(); toast(t(resume ? 'rec.resumed' : 'rec.paused')); }
+  catch (e) { console.error(e); formError('rec-error', t('err.save')); }
+}
+function recurringReadOnly(r) {
+  const nx = toDate(r.nextRunAt), who = u => u === uid() ? t('youCap') : firstName(nameOf(u));
+  openSheet(t('rec.title'), `${groupContext()}<div class="detail-hero">${expenseIcon(r)}<h3>${esc(r.description)}</h3><span class="num">${money(r.amount)}</span><p>${esc(scheduleLabel(r))}</p></div>
+    <div class="detail-lines"><div class="detail-line"><span>${t('rec.paidBy')}</span><strong>${esc(who(r.payerUid))}</strong></div><div class="detail-line"><span>${t('rec.split')}</span><strong>${esc((r.splitUids || []).map(who).join(', '))}</strong></div><div class="detail-line"><span>${t('rec.when')}</span><strong>${r.active === false ? t('auto.paused') : esc(whenLabel(nx))}</strong></div><div class="detail-line"><span>${t('rec.charges')}</span><strong>${r.sendCharge ? t('rec.yes') : t('rec.no')}</strong></div></div>
+    <p class="notice-inline">${t('rec.notMine', esc(firstName(nameOf(r.createdByUid))))}</p>`);
 }
 
 // ───────────────────────── miembros, grupos, invitar ─────────────────────────

@@ -33,12 +33,40 @@ service cloud.firestore {
         allow write: if false;
       }
 
+      // Automatic charges: doc id = the creditor's uid; only they set it up.
+      // (autoBilling adds lastRunKey/lastRunAt with the admin SDK.)
+      match /autoCharges/{uid} {
+        allow read:  if isMember(groupId);
+        allow write: if isMember(groupId) && request.auth.uid == uid;
+      }
+
+      // Recurring fixed expenses: members read; only the creator edits or deletes;
+      // one that sends charges must be in the creator's own name (creator == payer).
+      // (autoBilling maintains nextRunAt/lastRunAt/runs with the admin SDK.)
+      match /recurring/{ruleId} {
+        function chargesOnlyAsPayer() {
+          return request.resource.data.get('sendCharge', false) != true
+            || request.resource.data.get('payerUid', null) == request.auth.uid;
+        }
+        allow read:   if isMember(groupId);
+        allow create: if isMember(groupId)
+          && request.resource.data.get('createdByUid', null) == request.auth.uid
+          && chargesOnlyAsPayer();
+        allow update: if isMember(groupId)
+          && resource.data.get('createdByUid', null) == request.auth.uid
+          && request.resource.data.get('createdByUid', null) == resource.data.get('createdByUid', null)
+          && chargesOnlyAsPayer();
+        allow delete: if isMember(groupId)
+          && resource.data.get('createdByUid', null) == request.auth.uid;
+      }
+
       // expenses, budgets and any other subcollection: members only.
-      // Rules OR together, so members/ and paymentRequests/ are left out of this
-      // write rule to keep the stricter rules above in force.
+      // Rules OR together, so the subcollections with their own stricter rules
+      // above are left out of this write rule.
       match /{sub}/{doc=**} {
         allow read:  if isMember(groupId);
-        allow write: if isMember(groupId) && !(sub in ['members', 'paymentRequests']);
+        allow write: if isMember(groupId)
+          && !(sub in ['members', 'paymentRequests', 'autoCharges', 'recurring']);
       }
     }
   }

@@ -155,6 +155,8 @@
       remindYou: F => `${F} te recuerda un cobro`,
       overdue: 'Vencido',
       wasDue: d => `venció el ${d}`,
+      autoYou: F => `Cobro automático de ${F}`,
+      autoSetBy: F => `${F} programó este cobro automático en SpentShare.`,
       days: n => `${n} ${n === 1 ? 'día' : 'días'}`,
       noteBy: F => `${F}, al enviarte el cobro`,
       mFrom: 'De', mTo: 'Para', mNo: 'Cobro n.º', mGroup: 'Grupo', mIssued: 'Emitido', mDue: 'Vence', mNoDue: 'Sin fecha',
@@ -294,6 +296,8 @@
       remindYou: F => `${F} is reminding you`,
       overdue: 'Overdue',
       wasDue: d => `was due ${d}`,
+      autoYou: F => `${F}’s automatic request`,
+      autoSetBy: F => `${F} set up this automatic request in SpentShare.`,
       days: n => `${n} ${n === 1 ? 'day' : 'days'}`,
       noteBy: F => `${F}, with the request`,
       mFrom: 'From', mTo: 'To', mNo: 'Request no.', mGroup: 'Group', mIssued: 'Issued', mDue: 'Due', mNoDue: 'No due date',
@@ -759,6 +763,7 @@
    *   note?, items[{date, description, category, paidBy:'from'|'to', total, share}],
    *   amount? (si falta se calcula), payTo?[{type, value}] ("Cómo me pagan" de quien cobra),
    *   reminder? (true: recordatorio de un cobro vencido; amount = lo que falta por pagar),
+   *   auto? (true: cobro automático que programó quien cobra),
    *   appUrl?, assetBase?, timeZone?
    */
   function renderInvoice(d) {
@@ -780,6 +785,7 @@
     const payLink = `${app}?pagar=${encodeURIComponent(d.requestId || d.invoiceNo)}`;
 
     const reminder = !!d.reminder;
+    const auto = !!d.auto;
     const subject = (reminder ? L.remindPrefix : '') + L.invoiceSubject(F, amt, dueShort);
     const preheader = L.invoicePre(d.invoiceNo, g, items.length);
 
@@ -797,7 +803,7 @@
 
     const hero = `
       ${animatedImage(base, 'cobro', L.invoiceImg, 120)}
-      <div class="ss-a ss-d1">${heroEyebrow(esc(reminder ? L.remindYou(F) : L.sentYou(F)))}</div>
+      <div class="ss-a ss-d1">${heroEyebrow(esc(reminder ? L.remindYou(F) : auto ? L.autoYou(F) : L.sentYou(F)))}</div>
       <div class="ss-a ss-d2">${heroAmount(amount, cur)}</div>
       <div class="ss-a ss-d3">${pill}</div>`;
 
@@ -884,6 +890,7 @@
     const body = `
       ${note}
       <div class="ss-a ss-d4">${metaCard}</div>
+      ${auto ? `<div class="ss-a ss-d4" style="margin-top:10px;padding:0 6px;${font(12, 500, C.muted, BODY, 'line-height:18px;')}">${esc(L.autoSetBy(F))}</div>` : ''}
 
       <div class="ss-a ss-d5" style="margin-top:26px">
         ${sectionHead(L.includes)}
@@ -908,6 +915,7 @@
       L.tInvoice(F, amt, cur, g),
       d.dueAt ? L.tDue(fmtDate(L, d.dueAt, tz)) : null,
       d.note ? L.tNote(F, d.note) : null,
+      auto ? L.autoSetBy(F) : null,
       '',
       `${L.includes}:`,
       ...items.map(i => `- ${fmtDate(L, i.date, tz, { year: false })}  ${i.description} (${i.paidBy === 'to' ? L.youPaid : L.paidBy(F)}): ${i.paidBy === 'to' ? '-' : ''}${fmtMoney(i.share, cur)}`),

@@ -32,6 +32,7 @@ for (const k of ['FIRESTORE_EMULATOR_HOST', 'FIREBASE_AUTH_EMULATOR_HOST']) {
 }
 
 const admin = require('firebase-admin');
+const billingDates = require('./billing-dates.js');   // functions/billing-dates.js (Chicago calendar)
 const app = admin.apps.length ? admin.app() : admin.initializeApp({ projectId: PROJECT_ID });
 const db = admin.firestore(app);
 const auth = admin.auth(app);
@@ -44,6 +45,7 @@ export const USERS = {
   sara:   { uid: 'u_sara',   name: 'Sara Díaz',   email: 'sara@spentshare.test',   lang: 'es' },
 };
 export const GROUPS = { apto: 'g_apto302', trip: 'g_cartagena' };
+export const RECURRING = { internet: 'r_internet', gym: 'r_gym' };
 const { ana, camilo, sara } = USERS;
 
 // a day of the current month at hh:mm (America/Chicago-ish, local time of the machine)
@@ -125,6 +127,29 @@ async function seed() {
     createdByUid: ana.uid, createdAt: day(1, 9, 30),
   });
 
+  // Automatic monthly charge for Ana, due today (Chicago) -> devRunAutoBilling acts on it
+  const todayChicago = billingDates.zoneParts(new Date()).d;
+  await db.doc(`groups/${GROUPS.apto}/autoCharges/${ana.uid}`).set({
+    enabled: true, frequency: 'monthly', day: todayChicago, minAmount: 10, dueDays: 7,
+    note: 'Cobro del mes', updatedAt: Timestamp.now(),
+  });
+  // Recurring fixed expenses: "Internet" is due (1 minute ago) and sends its own charges;
+  // "Gimnasio" is paused (active: false) and must never run.
+  await db.doc(`groups/${GROUPS.apto}/recurring/${RECURRING.internet}`).set({
+    active: true, description: 'Internet', amount: 60, category: 'utilities',
+    payerUid: ana.uid, splitUids: [ana.uid, camilo.uid, sara.uid],
+    frequency: 'monthly', day: todayChicago, sendCharge: true, dueDays: 7,
+    createdByUid: ana.uid, createdAt: day(1, 9, 45),
+    nextRunAt: Timestamp.fromDate(new Date(Date.now() - 60000)),
+  });
+  await db.doc(`groups/${GROUPS.apto}/recurring/${RECURRING.gym}`).set({
+    active: false, description: 'Gimnasio', amount: 45, category: 'health',
+    payerUid: camilo.uid, splitUids: [camilo.uid, sara.uid],
+    frequency: 'weekly', day: 1, sendCharge: false, dueDays: 7,
+    createdByUid: camilo.uid, createdAt: day(1, 10, 0),
+    nextRunAt: Timestamp.fromDate(new Date(Date.now() - 86400000)),
+  });
+
   const members2 = [ana, camilo];
   await db.doc(`groups/${GROUPS.trip}`).set({
     name: 'Viaje a Cartagena', emoji: '🏖️', currency: 'COP',
@@ -146,6 +171,8 @@ async function seed() {
   console.log('\nSeeded the local emulators (project demo-spentshare):');
   console.log(`  Groups: "Apartamento 302" (${GROUPS.apto}, USD, ${Object.keys(APTO_EXPENSES).length} movements)`
     + ` · "Viaje a Cartagena" (${GROUPS.trip}, COP, ${Object.keys(TRIP_EXPENSES).length} expenses)`);
+  console.log('  Apartamento 302 also has: Ana\'s monthly auto charge (due today), recurring "Internet"'
+    + ' (due now, sends charges) and a paused "Gimnasio".');
   console.log('  Logins (Auth emulator):');
   Object.values(USERS).forEach((u) => console.log(`    ${u.email.padEnd(24)} ${TEST_PASSWORD}   ${u.name} · lang ${u.lang}`));
   console.log('  Emulator UI: http://127.0.0.1:4000\n');

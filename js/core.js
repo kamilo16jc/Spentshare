@@ -21,6 +21,8 @@ const S = {
   act: { cat: 'all', person: 'all', query: '', period: 'month', month: null, day: null, from: null, to: null },
   st: { period: 'month', bar: null, cat: null },
   pendingReceipt: null,    // datos de un recibo escaneado o de la IA, para el gasto que se está creando
+  autoCharges: {},         // uid -> groups/{g}/autoCharges/{uid} (cobro automático de cada quien)
+  recurring: [],           // groups/{g}/recurring (gastos fijos)
 };
 
 // ───────────────────────── utilidades ─────────────────────────
@@ -114,12 +116,22 @@ function categoryIcon(k) {
   const c = CATS[k] || CATS.other;
   return `<span class="category-icon ${c.tone}">${icon(c.icon)}</span>`;
 }
-// Ícono del gasto: logo de la tienda (si la IA lo encontró) encima del ícono de categoría
+// Comercios conocidos (functions/merchants.js): se reconocen por el nombre sin llamar a la IA
+// y su logo viene de /logos/<id>.png, guardado en la app.
+function merchantFor(text) { return window.SSMerchants ? SSMerchants.find(text) : null; }
+function merchantOf(e) {
+  if (!window.SSMerchants) return null;
+  return (e.logoDomain && SSMerchants.byDomain(e.logoDomain)) || SSMerchants.find(e.merchant || e.description) || null;
+}
+const merchantLogo = m => (m && m.logo ? `logos/${m.id}.png` : '');
+// Ícono del gasto: logo de la tienda encima del ícono de categoría
 function expenseIcon(e) {
   if (e.type === 'settle') return `<span class="category-icon transport">${icon('check')}</span>`;
   const base = categoryIcon(e.category);
-  if (!e.logoDomain) return base;
-  const src = 'https://icons.duckduckgo.com/ip3/' + encodeURIComponent(e.logoDomain) + '.ico';
+  let src = merchantLogo(merchantOf(e));
+  // comercio que no está en el catálogo pero la IA encontró su sitio
+  if (!src && e.logoDomain) src = 'https://icons.duckduckgo.com/ip3/' + encodeURIComponent(e.logoDomain) + '.ico';
+  if (!src) return base;
   return `<span class="expense-logo-wrap">${base}<img class="expense-logo" src="${src}" alt="" loading="lazy" onerror="this.remove()"></span>`;
 }
 // Detección rápida de categoría mientras se escribe (la IA la afina después en el servidor)
@@ -299,4 +311,38 @@ async function copyText(text) {
     let ok = false; try { ok = document.execCommand('copy'); } catch (_) {}
     ta.remove(); return ok;
   }
+}
+
+// ───────────────────────── automático: cuándo toca ─────────────────────────
+// Igual que el servidor (functions/billing-dates.js): weekly → día ISO (1 = lunes … 7 = domingo);
+// biweekly → días 1 y 15; monthly → ese día (si el mes es más corto, el último). Corre a las 8:00.
+const FREQS = ['weekly', 'biweekly', 'monthly'];
+function ruleHits(rule, d) {
+  if (rule.frequency === 'weekly') return (d.getDay() || 7) === (Number(rule.day) || 1);
+  if (rule.frequency === 'biweekly') return d.getDate() === 1 || d.getDate() === 15;
+  const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  return d.getDate() === Math.min(Number(rule.day) || 1, last);
+}
+function nextRunDate(rule, from = new Date()) {
+  const d = new Date(from); d.setHours(8, 0, 0, 0);
+  for (let i = 0; i < 400; i++) { if (ruleHits(rule, d)) return new Date(d); d.setDate(d.getDate() + 1); }
+  return null;
+}
+// La primera vez: hoy si toca y aún no son las 8; si no, la siguiente fecha
+function firstRunDate(rule, now = new Date()) {
+  const start = new Date(now);
+  if (now.getHours() >= 8) start.setDate(start.getDate() + 1);
+  return nextRunDate(rule, start);
+}
+const defaultDay = (freq, d = new Date()) => freq === 'weekly' ? (d.getDay() || 7) : freq === 'monthly' ? Math.min(d.getDate(), 28) : 1;
+function scheduleLabel(rule) {
+  if (rule.frequency === 'weekly') return t('sched.weekly', L().daysLong[((Number(rule.day) || 1) - 1) % 7]);
+  if (rule.frequency === 'biweekly') return t('sched.biweekly');
+  return t('sched.monthly', Number(rule.day) || 1);
+}
+// A quién le llegaría hoy mi cobro automático: me deben al menos el mínimo y no tienen un cobro mío pendiente
+function autoChargeTargets(minAmount, list = S.expenses || []) {
+  const me = uid();
+  return S.members.filter(m => m.uid !== me).map(m => ({ uid: m.uid, amount: round2(-pairOwes(me, m.uid, list)), pending: !!pendingRequest(me, m.uid) }))
+    .filter(x => x.amount >= Math.max(Number(minAmount) || 0, 0.01));
 }
