@@ -506,7 +506,8 @@ async function main() {
     enabled: { booleanValue: false }, frequency: { stringValue: 'weekly' }, day: { integerValue: '1' },
   }) === 200, 'member writes their own autoCharges');
   check(await fsRest('PATCH', `groups/${APTO}/autoCharges/${ana.uid}`, tok.camilo, { enabled: { booleanValue: false } }) === 403, 'member cannot write someone else\'s autoCharges');
-  check(await fsRest('GET', `groups/${APTO}/autoCharges/${ana.uid}`, tok.sara) === 200, 'members read autoCharges');
+  check(await fsRest('GET', `groups/${APTO}/autoCharges/${ana.uid}`, tok.ana) === 200, 'the owner reads her autoCharges');
+  check(await fsRest('GET', `groups/${APTO}/autoCharges/${ana.uid}`, tok.sara) === 403, "another member cannot read someone else's autoCharges (private)");
   check(await fsRest('GET', `groups/${TRIP}/autoCharges/${camilo.uid}`, tok.sara) === 403, 'non-member cannot read autoCharges');
 
   // recurring/{id}: members read; creator-only edits; a charging rule must be paid by its creator
@@ -535,7 +536,8 @@ async function main() {
   check(await fsRest('PATCH', `groups/${APTO}/recurring/${RECURRING.internet}`, tok.sara, ruleFields({ payer: ana.uid, createdBy: ana.uid })) === 403,
     'another member cannot edit Ana\'s "Internet"');
   check(await fsRest('DELETE', `groups/${APTO}/recurring/${RECURRING.internet}`, tok.sara) === 403, 'another member cannot delete it');
-  check(await fsRest('GET', `groups/${APTO}/recurring/${RECURRING.internet}`, tok.sara) === 200, 'members read rules');
+  check(await fsRest('GET', `groups/${APTO}/recurring/${RECURRING.internet}`, tok.ana) === 200, 'the creator reads her fixed expense');
+  check(await fsRest('GET', `groups/${APTO}/recurring/${RECURRING.internet}`, tok.sara) === 403, "another member cannot read someone else's fixed expense (private)");
   check(await fsRest('GET', `groups/${TRIP}/recurring/r_left`, tok.sara) === 403, 'non-member cannot read rules');
   check(await fsRest('DELETE', rPath, tok.camilo) === 200, 'creator deletes their rule');
 

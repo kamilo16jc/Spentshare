@@ -35,12 +35,14 @@ service cloud.firestore {
 
       // Automatic charges: doc id = the creditor's uid; only they set it up.
       // (autoBilling adds lastRunKey/lastRunAt with the admin SDK.)
+      // Private: only its owner sees it; the others only see the request once it is sent.
       match /autoCharges/{uid} {
-        allow read:  if isMember(groupId);
+        allow read:  if isMember(groupId) && request.auth.uid == uid;
         allow write: if isMember(groupId) && request.auth.uid == uid;
       }
 
-      // Recurring fixed expenses: members read; only the creator edits or deletes;
+      // Recurring fixed expenses: private to their creator (the others see the expense when it is
+      // added and the request when it is sent); only the creator edits or deletes;
       // one that sends charges must be in the creator's own name (creator == payer).
       // (autoBilling maintains nextRunAt/lastRunAt/runs with the admin SDK.)
       match /recurring/{ruleId} {
@@ -48,7 +50,7 @@ service cloud.firestore {
           return request.resource.data.get('sendCharge', false) != true
             || request.resource.data.get('payerUid', null) == request.auth.uid;
         }
-        allow read:   if isMember(groupId);
+        allow read:   if isMember(groupId) && resource.data.createdByUid == request.auth.uid;
         allow create: if isMember(groupId)
           && request.resource.data.get('createdByUid', null) == request.auth.uid
           && chargesOnlyAsPayer();
@@ -64,7 +66,8 @@ service cloud.firestore {
       // Rules OR together, so the subcollections with their own stricter rules
       // above are left out of this write rule.
       match /{sub}/{doc=**} {
-        allow read:  if isMember(groupId);
+        // autoCharges and recurring are private: only their own read rules above apply
+        allow read:  if isMember(groupId) && !(sub in ['autoCharges', 'recurring']);
         allow write: if isMember(groupId)
           && !(sub in ['members', 'paymentRequests', 'autoCharges', 'recurring']);
       }

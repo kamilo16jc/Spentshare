@@ -1,6 +1,6 @@
-// v28: cobro automático por gasto fijo (cada uno su parte, con el logo).
+// v29: lo automático es privado (cada quien ve solo lo suyo).
 // Cambiar el número en cada publicación.
-const CACHE_NAME = 'spentshare-v28';
+const CACHE_NAME = 'spentshare-v29';
 // Relative paths (resolved against the SW's own location) so the same file
 // works both on GitHub Pages (/Spentshare/) and on the custom domain (root).
 const ASSETS = [

@@ -75,12 +75,14 @@ function openGroup(gid) {
     S.requests = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     refresh();
   }, () => { S.requests = []; }));
-  // Automático: mi cobro periódico (y el de los demás, para saber quién lo tiene) y los gastos fijos
-  groupUnsubs.push(window._onSnap(col(`groups/${gid}/autoCharges`), snap => {
-    S.autoCharges = {}; snap.docs.forEach(d => { S.autoCharges[d.id] = d.data(); });
+  // Automático: SOLO lo mío (mi cobro automático y los gastos fijos que yo creé). Es privado:
+  // los demás ven el gasto cuando se anota y el cobro cuando se envía.
+  const me = uid();
+  groupUnsubs.push(window._onSnap(ref(`groups/${gid}/autoCharges`, me), snap => {
+    S.autoCharges = snap.exists() ? { [me]: snap.data() } : {};
     refresh();
   }, () => { S.autoCharges = {}; }));
-  groupUnsubs.push(window._onSnap(col(`groups/${gid}/recurring`), snap => {
+  groupUnsubs.push(window._onSnap(window._query(col(`groups/${gid}/recurring`), window._where('createdByUid', '==', me)), snap => {
     S.recurring = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       .sort((a, b) => (b.active === false ? 0 : 1) - (a.active === false ? 0 : 1) || ((toDate(a.nextRunAt) || 0) - (toDate(b.nextRunAt) || 0)));
     refresh();
@@ -144,11 +146,10 @@ async function deleteGroupDocs(gid) {
     const snap = await window._getDocs(col(`groups/${gid}/${sub}`));
     await Promise.all(snap.docs.map(d => window._delDoc(ref(`groups/${gid}/${sub}`, d.id))));
   }
-  // lo automático que se pueda borrar (los gastos fijos de otros los apaga el servidor al no ver el grupo)
-  for (const sub of ['recurring', 'autoCharges']) {
-    const snap = await window._getDocs(col(`groups/${gid}/${sub}`)).catch(() => ({ docs: [] }));
-    await Promise.all(snap.docs.map(d => window._delDoc(ref(`groups/${gid}/${sub}`, d.id)).catch(() => null)));
-  }
+  // lo automático mío (lo de los demás es privado: el servidor lo apaga al no encontrar el grupo)
+  const mine = await window._getDocs(window._query(col(`groups/${gid}/recurring`), window._where('createdByUid', '==', uid()))).catch(() => ({ docs: [] }));
+  await Promise.all(mine.docs.map(d => window._delDoc(ref(`groups/${gid}/recurring`, d.id)).catch(() => null)));
+  await window._delDoc(ref(`groups/${gid}/autoCharges`, uid())).catch(() => null);
   await window._delDoc(ref('groups', gid));
 }
 
