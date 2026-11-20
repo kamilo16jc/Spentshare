@@ -1,35 +1,26 @@
-const CACHE_NAME = 'spentshare-v20';
+// v21: UI nueva (morado + lima). Cambiar el número en cada publicación.
+const CACHE_NAME = 'spentshare-v21';
 // Relative paths (resolved against the SW's own location) so the same file
 // works both on GitHub Pages (/Spentshare/) and on the custom domain (root).
 const ASSETS = [
   './',
   'index.html',
   'manifest.json',
-  'css/base.css',
-  'css/splash.css',
-  'css/auth.css',
-  'css/groups.css',
-  'css/modals.css',
-  'css/dashboard.css',
-  'css/forms.css',
-  'css/stats.css',
-  'css/profile.css',
+  'css/app.css',
   'js/firebase.js',
-  'js/state.js',
   'js/i18n.js',
-  'js/ui.js',
-  'js/currency.js',
-  'js/auth.js',
-  'js/avatar.js',
-  'js/members.js',
-  'js/groups.js',
-  'js/expenses.js',
-  'js/balances.js',
-  'js/budgets.js',
-  'js/history.js',
-  'js/stats.js',
-  'js/profile.js',
-  'js/app.js'
+  'js/core.js',
+  'js/data.js',
+  'js/views.js',
+  'js/sheets.js',
+  'js/app.js',
+  'icon-192.png',
+  'icon-512.png',
+  'icon-maskable-192.png',
+  'icon-maskable-512.png',
+  'apple-touch-icon.png',
+  'favicon-32.png',
+  'favicon-48.png'
 ];
 
 // Install — cache core assets

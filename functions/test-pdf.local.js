@@ -15,7 +15,9 @@ const mocks = {
   'firebase-admin': { initializeApp: () => {}, firestore: () => ({}) },
   'resend': { Resend: class {} },
 };
-const fakeRequire = (id) => mocks[id] || require(path.join(__dirname, 'node_modules', id));
+// everything not mocked resolves as if required from index.js (builtins, ./emails, subpath exports)
+const localRequire = require('module').createRequire(path.join(__dirname, 'index.js'));
+const fakeRequire = (id) => mocks[id] || localRequire(id);
 
 const m = { exports: {} };
 new Function('require', 'module', 'exports', src)(fakeRequire, m, m.exports);

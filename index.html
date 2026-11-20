@@ -1,474 +1,117 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>SpentShare</title>
-<meta name="theme-color" content="#232323">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SpentShare · Cuentas claras</title>
+<meta name="description" content="SpentShare. Gastos compartidos, cuentas claras.">
+<meta name="theme-color" content="#F8F7FC">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="SpentShare">
-
-
 <link rel="preconnect" href="https://www.gstatic.com">
 <link rel="preconnect" href="https://firestore.googleapis.com">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="manifest" href="manifest.json">
-<link rel="icon" type="image/png" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-192.png">
-
-<link rel="stylesheet" href="css/base.css">
-<link rel="stylesheet" href="css/splash.css">
-<link rel="stylesheet" href="css/auth.css">
-<link rel="stylesheet" href="css/groups.css">
-<link rel="stylesheet" href="css/modals.css">
-<link rel="stylesheet" href="css/dashboard.css">
-<link rel="stylesheet" href="css/forms.css">
-<link rel="stylesheet" href="css/stats.css">
-<link rel="stylesheet" href="css/profile.css">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="stylesheet" href="css/app.css">
 </head>
 <body>
+<svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden" xmlns="http://www.w3.org/2000/svg">
+<!-- del diseño (spentshare-ui.html) -->
+<symbol id="i-logo" viewBox="0 0 24 24"><path d="M17 5H9a4 4 0 0 0 0 8h6a3 3 0 0 1 0 6H6M14 2l3 3-3 3M10 16l-4 3 4 3"/></symbol>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z"/></symbol>
+<symbol id="i-activity" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="3"/><path d="M9 8h6M9 12h6M9 16h3"/></symbol>
+<symbol id="i-chart" viewBox="0 0 24 24"><path d="M5 20V11M12 20V4M19 20V8"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/><circle cx="9" cy="7" r="4"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+<symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+<symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+<symbol id="i-food" viewBox="0 0 24 24"><path d="M5 3v5a2 2 0 0 0 4 0V3M7 3v18M19 21V3c-4 2-5 8-1 9h1"/></symbol>
+<symbol id="i-shop" viewBox="0 0 24 24"><path d="m5 7-2 14h18L19 7ZM8 8V6a4 4 0 0 1 8 0v2"/></symbol>
+<symbol id="i-car" viewBox="0 0 24 24"><path d="m5 6-2 8v5h3v-3h12v3h3v-5l-2-8ZM3 12h18M7 6l1-3h8l1 3M6 14h1M17 14h1"/></symbol>
+<symbol id="i-wallet" viewBox="0 0 24 24"><path d="M20 8V5a2 2 0 0 0-2-2H6a3 3 0 0 0 0 6h15v12H6a3 3 0 0 1-3-3V6M21 12h-5v5h5"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></symbol>
+<symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M16 3v4M8 3v4M3 11h18"/></symbol>
+<symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5ZM20 2v4M18 4h4"/></symbol>
+<symbol id="i-trend" viewBox="0 0 24 24"><path d="m3 6 6 6 4-4 8 10M15 18h6v-6"/></symbol>
+<symbol id="i-link" viewBox="0 0 24 24"><path d="m10 13 4-4M7 14l-2 2a3 3 0 0 0 4 4l4-4a3 3 0 0 0 0-4M17 10l2-2a3 3 0 0 0-4-4l-4 4a3 3 0 0 0 0 4"/></symbol>
+<symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V3H3v13h5"/></symbol>
+<symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/></symbol>
+<symbol id="i-motion" viewBox="0 0 24 24"><path d="M3 7h11a4 4 0 1 0-4-4M2 12h15a4 4 0 1 1-4 4M5 17h2"/></symbol>
+<symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 3H4v18h5M9 12h12m-5-5 5 5-5 5"/></symbol>
+<symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="m12 3 8 3v6c0 4-8 9-8 9s-8-5-8-9V6ZM8 12l3 3 5-6"/></symbol>
+<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></symbol>
+<!-- agregados para la app real, mismo trazo -->
+<symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7Z"/></symbol>
+<symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-8-4.6-8-10.2A4.3 4.3 0 0 1 12 7a4.3 4.3 0 0 1 8 2.8C20 15.4 12 20 12 20Z"/></symbol>
+<symbol id="i-ticket" viewBox="0 0 24 24"><path d="M3 8V6a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v2a2 2 0 0 0 0 4v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-6a2 2 0 0 0 0-4ZM14 5v14"/></symbol>
+<symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v15H6a2 2 0 0 0-2 2ZM4 20a2 2 0 0 0 2 1h13v-3M9 7h6"/></symbol>
+<symbol id="i-plane" viewBox="0 0 24 24"><path d="M10 14 3 11l1-2 8 1 4-6a1.5 1.5 0 0 1 2.5 1.5L16 11l2 8-2 1-4-6-3 3v3l-1.5 1-1-4-4-1L5 15h3Z"/></symbol>
+<symbol id="i-paw" viewBox="0 0 24 24"><circle cx="7" cy="9" r="2"/><circle cx="17" cy="9" r="2"/><circle cx="10" cy="5" r="2"/><circle cx="14" cy="5" r="2"/><path d="M12 12c-3 0-6 4-6 6.5S9 21 12 20s6 1.5 6-1.5S15 12 12 12Z"/></symbol>
+<symbol id="i-glass" viewBox="0 0 24 24"><path d="M6 3h12l-1 7a5 5 0 0 1-10 0ZM12 15v6M8 21h8M6.5 7h11"/></symbol>
+<symbol id="i-scissors" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></symbol>
+<symbol id="i-smile" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14a4 4 0 0 0 7 0M9 9.5h.01M15 9.5h.01"/></symbol>
+<symbol id="i-gift" viewBox="0 0 24 24"><path d="M3 8h18v4H3ZM5 12v9h14v-9M12 8v13M12 8S10.5 3 8 3.5 7 8 12 8ZM12 8s1.5-5 4-4.5S17 8 12 8Z"/></symbol>
+<symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 7h3l2-3h6l2 3h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="4"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+<symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16ZM13.5 6.5l4 4"/></symbol>
+<symbol id="i-card" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18M7 15h3"/></symbol>
+<symbol id="i-send" viewBox="0 0 24 24"><path d="m21 3-9 18-2-8-8-2ZM21 3 10 13"/></symbol>
+<symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m4 7 8 6 8-6"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+<symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="m4 18 5-5 4 4 3-3 4 4"/></symbol>
+<symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+<symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></symbol>
+</svg>
 
+<!-- Pantalla de carga mientras Firebase restaura la sesión -->
+<div class="boot" id="boot" aria-hidden="true"><img class="boot-logo" src="icon-192.png" alt="" width="132" height="132"></div>
 
-<!-- SPLASH -->
-<div id="splash">
-  <div class="coin-wrapper">
-    <div class="coin">S</div>
-    <div class="split-line"></div><div class="split-line"></div><div class="split-line"></div>
-    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
-  </div>
-  <div class="splash-text">
-    <div class="spent-l"><span class="letter">S</span><span class="letter">p</span><span class="letter">e</span><span class="letter">n</span><span class="letter">t</span></div>
-    <div class="share-l"><span class="letter">S</span><span class="letter">h</span><span class="letter">a</span><span class="letter">r</span><span class="letter">e</span></div>
-  </div>
-  <div class="splash-tagline" id="splashTagline">Split expenses with anyone</div>
-  <div class="splash-loader"><div class="splash-loader-bar"></div></div>
+<div class="app" id="app">
+  <header class="topbar" id="topbar"></header>
+  <main class="main" id="main"></main>
+  <div class="bottom-wrap" id="bottom-wrap" hidden><nav class="bottom-nav" aria-label="Navegación principal" id="bottom-nav"></nav></div>
+  <button class="fab" id="fab" aria-label="Agregar gasto" hidden></button>
 </div>
+<div id="modal-root"></div>
+<div id="toast-root" aria-live="polite"></div>
 
-<!-- AUTH -->
-<div id="authScreen">
-  <div class="auth-card" id="authCard">
-    <div class="card-accent"></div>
-    <div class="card-logo">
-      <div class="mini-coin">S</div>
-      <div class="mini-name">Spent<span>Share</span></div>
-    </div>
-    <div class="lang-toggle">
-      <button class="lang-btn active" onclick="setLang('en')" id="btnEn">EN</button>
-      <button class="lang-btn" onclick="setLang('es')" id="btnEs">ES</button>
-    </div>
-    <div class="auth-tabs">
-      <button class="auth-tab active" id="tabLogin" onclick="switchTab('login')" data-i18n="tabLogin">Log in</button>
-      <button class="auth-tab" id="tabReg" onclick="switchTab('register')" data-i18n="tabRegister">Sign up</button>
-    </div>
-    <!-- LOGIN -->
-    <div id="loginForm">
-      <div class="welcome-title" data-i18n="loginTitle">Welcome back</div>
-      <div class="welcome-sub" data-i18n="loginSub">Sign in to your account</div>
-      <button class="google-btn" onclick="googleAuth()">
-        <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/></svg>
-        <span data-i18n="googleBtn">Continue with Google</span>
-      </button>
-      <div class="divider"><span data-i18n="orLabel">or</span></div>
-      <div class="form-group"><label class="form-label" data-i18n="emailLabel">Email</label><input class="form-input" type="email" id="loginEmail" placeholder="you@email.com"></div>
-      <div class="form-group"><label class="form-label" data-i18n="passwordLabel">Password</label><input class="form-input" type="password" id="loginPassword" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
-      <button class="auth-btn" id="loginBtn" onclick="doLogin()" data-i18n="loginBtn">Sign in →</button>
-    </div>
-    <!-- REGISTER -->
-    <div id="registerForm" style="display:none">
-      <div class="welcome-title" data-i18n="registerTitle">Create account</div>
-      <div class="welcome-sub" data-i18n="registerSub">Free forever, no credit card needed</div>
-      <button class="google-btn" onclick="googleAuth()">
-        <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/></svg>
-        <span data-i18n="googleBtn">Continue with Google</span>
-      </button>
-      <div class="divider"><span data-i18n="orLabel">or</span></div>
-      <div class="form-group"><label class="form-label" data-i18n="nameLabel">Full name</label><input class="form-input" type="text" id="regName" placeholder="Your name"></div>
-      <div class="form-group"><label class="form-label" data-i18n="emailLabel">Email</label><input class="form-input" type="email" id="regEmail" placeholder="you@email.com"></div>
-      <div class="form-group"><label class="form-label" data-i18n="passwordLabel">Password</label><input class="form-input" type="password" id="regPassword" placeholder="Min. 8 characters" onkeydown="if(event.key==='Enter')doRegister()"></div>
-      <button class="auth-btn" id="registerBtn" onclick="doRegister()" data-i18n="registerBtn">Create account →</button>
-    </div>
-    <div class="success-overlay" id="authSuccess">
-      <div style="font-size:56px;animation:popBig 0.5s cubic-bezier(0.34,1.56,0.64,1)">✅</div>
-      <div id="authSuccessText" style="font-family:var(--ui);font-size:22px;font-weight:900;color:white">Welcome!</div>
-    </div>
-  </div>
-</div>
+<!-- Selectores de archivo (fotos de recibo y de perfil) -->
+<input type="file" id="receiptFile" accept="image/*" hidden>
+<input type="file" id="avatarFile" accept="image/*" hidden>
 
-<!-- GROUP SCREEN -->
-<div id="groupScreen">
-  <div class="group-card">
-    <div class="card-accent"></div>
-    <div class="card-logo">
-      <div class="mini-coin">S</div>
-      <div class="mini-name">Spent<span>Share</span></div>
-      <button onclick="logoutUser()" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;font-family:var(--ui);font-weight:700;" data-i18n="logoutBtn">Log out</button>
-    </div>
-    <div class="section-title" data-i18n="myGroupsLabel">MY GROUPS</div>
-    <div class="group-list" id="groupList"><div class="skeleton" style="height:64px"></div><div class="skeleton" style="height:64px"></div></div>
-    <button class="new-group-btn" onclick="openCreateGroupModal()"><span style="font-size:18px">＋</span><span data-i18n="newGroupBtn">Create new group</span></button>
-    <div class="join-section">
-      <div class="join-title" data-i18n="joinTitle">Join with an invite code</div>
-      <div class="join-row">
-        <input class="join-input" type="text" id="joinCodeInput" placeholder="XX-0000" maxlength="7">
-        <button class="join-btn" onclick="joinGroup()" data-i18n="joinBtn">Join</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- CREATE GROUP MODAL -->
-<div class="modal-overlay" id="createGroupModal" onclick="closeOnOverlay(event,'createGroupModal')">
-  <div class="modal">
-    <div class="modal-handle"></div>
-    <div class="modal-title" data-i18n="createGroupTitle">New group</div>
-    <div class="form-group"><label class="form-label" data-i18n="groupNameLabel">Group name</label><input class="form-input" type="text" id="newGroupName" placeholder='e.g. "Casa Melrose"'></div>
-    <div class="form-group">
-      <label class="form-label" data-i18n="groupEmojiLabel">Icon</label>
-      <div class="emoji-grid">
-        <button class="emoji-btn selected" onclick="selEmoji(this)">🏠</button><button class="emoji-btn" onclick="selEmoji(this)">✈️</button><button class="emoji-btn" onclick="selEmoji(this)">🍕</button><button class="emoji-btn" onclick="selEmoji(this)">🎉</button><button class="emoji-btn" onclick="selEmoji(this)">💼</button><button class="emoji-btn" onclick="selEmoji(this)">🚗</button><button class="emoji-btn" onclick="selEmoji(this)">🏖️</button><button class="emoji-btn" onclick="selEmoji(this)">🎮</button><button class="emoji-btn" onclick="selEmoji(this)">🐾</button><button class="emoji-btn" onclick="selEmoji(this)">💪</button><button class="emoji-btn" onclick="selEmoji(this)">🎓</button><button class="emoji-btn" onclick="selEmoji(this)">🏋️</button>
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label" data-i18n="currencyLabel">Currency</label>
-      <div class="currency-grid">
-        <button class="currency-pick-btn selected" data-cur="USD" onclick="selectNewGroupCurrency('USD')">
-          <span class="currency-flag">🇺🇸</span>
-          <span class="currency-txt">USD<br><small>Dólar</small></span>
-        </button>
-        <button class="currency-pick-btn" data-cur="COP" onclick="selectNewGroupCurrency('COP')">
-          <span class="currency-flag">🇨🇴</span>
-          <span class="currency-txt">COP<br><small>Peso colombiano</small></span>
-        </button>
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label" data-i18n="inviteEmailsLabel">Invite members (optional)</label>
-      <input class="form-input" type="email" id="inviteEmailInput" placeholder="friend@email.com" onkeydown="if(event.key==='Enter'||event.key===','){event.preventDefault();addChip();}">
-      <div class="chips-area" id="inviteChips"></div>
-    </div>
-    <button class="submit-btn-form" id="createGroupBtn" onclick="createGroup()" data-i18n="createGroupBtn">Create group →</button>
-    <div id="newGroupCodeBox" style="display:none" class="invite-code-box">
-      <div style="font-size:12px;color:var(--muted)" data-i18n="shareCodeLabel">Share this code with friends</div>
-      <div class="invite-code-val" id="newGroupCode">--</div>
-      <div class="invite-code-sub" data-i18n="codeValid">Valid for 30 days</div>
-      <button class="copy-btn" onclick="copyInviteCode()" data-i18n="copyBtn">Copy</button>
-      <div style="margin-top:10px"><button class="submit-btn-form" onclick="goToNewGroup()" data-i18n="openGroupBtn" style="margin-top:0;padding:12px">Open group →</button></div>
-    </div>
-  </div>
-</div>
-
-<!-- DASHBOARD -->
-<div id="dashboard">
-  <div class="header">
-    <div class="header-logo">
-      <div class="header-coin">S</div>
-      <div class="header-name">Spent<span>Share</span></div>
-    </div>
-    <div class="header-right">
-      <button class="group-selector" onclick="goToGroupPicker()">
-        <span class="group-sel-emoji" id="headerGroupEmoji"></span>
-        <span class="group-sel-name" id="headerGroupName">Group</span>
-        <span class="group-sel-arrow">▼</span>
-      </button>
-      <button class="user-btn" onclick="openProfile()" style="padding:4px;">
-        <div class="avatar-display initials" id="userInitialCircle" style="width:32px;height:32px;font-size:14px;">?</div>
-      </button>
-    </div>
-  </div>
-  <div class="main">
-    <div class="sync-label"><span class="sync-dot" id="syncDot"></span><span id="syncLabel">Connecting...</span></div>
-    <div class="balance-card">
-      <svg class="balance-spark" id="balanceSpark" viewBox="0 0 300 80" preserveAspectRatio="none" aria-hidden="true"></svg>
-      <div class="balance-label" id="t-balanceLabel">MONTHLY EXPENSES</div>
-      <div class="balance-month" id="balanceMonth">—</div>
-      <div class="balance-amount" id="totalMonth">$0.00</div>
-      <div class="balance-members" id="balanceMembers"></div>
-    </div>
-    <div class="section-title" id="t-quickActions">Quick actions</div>
-    <div class="quick-actions">
-      <button class="qa-btn" onclick="openModal()"><div class="qa-icon orange"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div><div class="qa-label" id="t-addExpense">Add expense</div></button>
-      <button class="qa-btn" onclick="openSettleModal()"><div class="qa-icon green"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></div><div class="qa-label" id="t-settle">Settle debt</div></button>
-      <button class="qa-btn" onclick="openMembersModal()"><div class="qa-icon blue"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="qa-label" id="t-members">Members</div></button>
-      <button class="qa-btn" onclick="openStatsModal()"><div class="qa-icon red"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div><div class="qa-label" id="t-stats">Statistics</div></button>
-    </div>
-    <div class="debt-section">
-      <div class="expenses-header">
-        <div class="section-title" style="margin:0" id="t-whoOwes">Who owes who</div>
-        <button class="see-all" onclick="openDebtDetail()" id="t-detail">Detail →</button>
-      </div>
-      <div id="debtSummary"></div>
-    </div>
-    <div class="budgets-section" id="budgetsSection">
-      <div class="expenses-header">
-        <div class="section-title" style="margin:0" id="t-budgets" data-i18n="budgetsLabel">Presupuestos</div>
-        <button class="see-all" onclick="openBudgetModal()" id="t-newBudget" data-i18n="newBudgetBtn2">+ Nuevo</button>
-      </div>
-      <div id="budgetsList"></div>
-    </div>
-    <div class="expenses-header">
-      <div class="section-title" style="margin:0" id="t-recentExpenses">Recent expenses</div>
-      <button class="see-all" id="t-seeAll" onclick="toggleSeeAll()">See all →</button>
-    </div>
-    <div id="loadingSkeletons"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
-    <div id="expensesList"></div>
-  </div>
-  <button class="fab" onclick="openModal()">+</button>
-  <div class="bottom-nav">
-    <button class="nav-item" onclick="setTab(this);openHistoryModal()"><span class="nav-icon"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l3 2"/></svg></span><span class="nav-label" data-i18n="navHistory" id="t-navHistory">History</span></button>
-    <button class="nav-item" onclick="setTab(this);openStatsModal()"><span class="nav-icon"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span><span class="nav-label" id="t-nav2">Stats</span></button>
-    <button class="nav-item" onclick="setTab(this);openMembersModal()"><span class="nav-icon"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><span class="nav-label" id="t-nav3">Members</span></button>
-    <button class="nav-item" onclick="setTab(this);goToGroupPicker()"><span class="nav-icon"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg></span><span class="nav-label" id="t-nav4">Groups</span></button>
-  </div>
-</div>
-
-<!-- ADD EXPENSE MODAL -->
-<div class="modal-overlay" id="addModal" onclick="closeOnOverlay(event,'addModal')">
-  <div class="modal"><div class="modal-handle"></div>
-    <div class="modal-title" data-i18n="addModalTitle">New expense</div>
-    <div class="nl-input-row">
-      <input class="form-input nl-input" id="nlInput" type="text" data-i18n-ph="nlPh" placeholder="Escribí el gasto… ej: cené 45 mil con Ana" onkeydown="if(event.key==='Enter'){event.preventDefault();parseExpenseText();}">
-      <button class="nl-go" id="nlGoBtn" onclick="parseExpenseText()" data-i18n-title="nlInterpret" aria-label="Interpretar" title="Interpretar">
-        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.7 5.1L19 10l-5.3 1.9L12 17l-1.7-5.1L5 10l5.3-1.9L12 3z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z"/></svg>
-      </button>
-    </div>
-    <label class="scan-receipt-btn" id="scanReceiptBtn" for="receiptFileInput">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-      <span id="scanReceiptLabel" data-i18n="scanReceipt">Escanear recibo</span>
-    </label>
-    <input type="file" id="receiptFileInput" accept="image/*" capture="environment" style="display:none" onchange="handleReceiptScan(event)">
-    <div class="form-group"><label class="form-label" data-i18n="amountLabel">Amount</label><input class="form-input" style="font-family:var(--num);font-size:34px;font-weight:600;letter-spacing:-0.03em;text-align:center;color:var(--text);font-variant-numeric:tabular-nums" type="number" id="inputAmount" placeholder="$0.00" min="0" step="0.01"></div>
-    <div class="form-group"><label class="form-label" data-i18n="descLabel">Description</label><input class="form-input" type="text" id="inputDesc" placeholder="e.g. Groceries, gas..." oninput="autoDetectCategory(this.value)"></div>
-    <div class="form-group"><label class="form-label" data-i18n="paidByLabel">Who paid?</label><div class="paid-grid" id="paidByGrid"></div></div>
-    <div class="form-group">
-      <label class="form-label" data-i18n="splitLabel">Split between</label>
-      <div class="split-grid">
-        <button class="split-btn selected" data-split="all" onclick="selectSplit(this)"><span data-i18n="splitAll">Everyone</span></button>
-        <button class="split-btn" data-split="two" onclick="selectSplit(this)"><span data-i18n="splitTwo">Two people</span></button>
-        <button class="split-btn" data-split="full" onclick="selectSplit(this)"><span data-i18n="splitFull">Pay me back</span></button>
-        <button class="split-btn" data-split="solo" onclick="selectSplit(this)"><span data-i18n="splitSolo">Just me</span></button>
-      </div>
-    </div>
-    <div class="form-group" id="withWhomGroup" style="display:none"><label class="form-label" data-i18n="withWhomLabel">Split with who?</label><div class="paid-grid" id="withWhomGrid"></div></div>
-    <button class="submit-btn-form" id="submitBtn" onclick="addExpense()" data-i18n="addBtn">Add expense ✓</button>
-  </div>
-</div>
-
-<!-- SETTLE MODAL -->
-<div class="modal-overlay" id="settleModal" onclick="closeOnOverlay(event,'settleModal')">
-  <div class="modal"><div class="modal-handle"></div>
-    <div class="modal-title" data-i18n="settleModalTitle">Settle debt</div>
-    <div class="form-group"><label class="form-label" data-i18n="settleFromLabel">Who pays?</label><div class="paid-grid" id="settleFromGrid"></div></div>
-    <div class="form-group"><label class="form-label" data-i18n="settleToLabel">Who receives?</label><div class="paid-grid" id="settleToGrid"></div></div>
-    <div class="form-group"><label class="form-label" data-i18n="amountLabel">Amount</label><input class="form-input" style="font-family:var(--num);font-size:34px;font-weight:600;letter-spacing:-0.03em;text-align:center;color:var(--text);font-variant-numeric:tabular-nums" type="number" id="settleAmount" placeholder="$0.00" min="0" step="0.01"></div>
-    <button class="submit-btn-form" onclick="addSettle()" data-i18n="savePayBtn">Record payment ✓</button>
-  </div>
-</div>
-
-<!-- MEMBERS MODAL -->
-<div class="modal-overlay" id="membersModal" onclick="closeOnOverlay(event,'membersModal')">
-  <div class="modal"><div class="modal-handle"></div>
-    <div class="modal-title" data-i18n="membersModalTitle">Members</div>
-    <div id="membersList" style="margin-bottom:20px"></div>
-    <div style="border-top:1px solid var(--border);padding-top:16px">
-      <label class="form-label" data-i18n="inviteMoreLabel">Invite someone</label>
-      <div style="display:flex;gap:8px;margin-bottom:16px">
-        <input class="form-input" type="email" id="inviteMoreEmail" placeholder="email@example.com" style="flex:1;padding:11px 14px;">
-        <button onclick="sendInviteEmail()" style="background:var(--green);border:none;border-radius:14px;padding:0 18px;color:white;font-family:var(--ui);font-weight:700;cursor:pointer;white-space:nowrap" data-i18n="sendInviteBtn">Send</button>
-      </div>
-      <div class="invite-code-box">
-        <div style="font-size:12px;color:var(--muted)" data-i18n="groupCodeLabel">Group invite code</div>
-        <div class="invite-code-val" id="groupInviteCode">--</div>
-        <div class="invite-code-sub" data-i18n="codeValid">Valid for 30 days</div>
-        <button class="copy-btn" onclick="copyInviteCode()" data-i18n="copyBtn">Copy</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- STATS MODAL -->
-<div class="modal-overlay" id="statsModal" onclick="closeOnOverlay(event,'statsModal')">
-  <div class="modal" style="padding-bottom:50px"><div class="modal-handle"></div>
-    <div class="modal-title"><span data-i18n="statsTitle">Statistics</span> — <span id="statsMonthLabel" style="color:var(--orange)"></span></div>
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:18px 20px;margin-bottom:20px;box-shadow:var(--card-shadow)">
-      <div style="font-size:11px;color:var(--muted);letter-spacing:1.4px;text-transform:uppercase;margin-bottom:4px;font-weight:600" data-i18n="statsTotal">Monthly total</div><div id="statsTotalAmt" style="font-family:var(--num);font-size:34px;font-weight:500;color:var(--text);letter-spacing:-0.035em;font-variant-numeric:tabular-nums">$0.00</div>
-    </div>
-    <div class="section-title" style="margin-bottom:12px" data-i18n="statsByMember">By member</div>
-    <div id="memberBars" style="margin-bottom:22px"></div>
-    <div class="section-title" style="margin-bottom:12px" data-i18n="statsByCat">By category</div>
-    <div id="categoryBars" style="margin-bottom:22px"></div>
-    <div class="section-title" style="margin-bottom:12px" data-i18n="statsTop">Top expenses</div>
-    <div id="topExpenses"></div>
-  </div>
-</div>
-
-<!-- HISTORY MODAL -->
-<div class="modal-overlay" id="historyModal" onclick="closeOnOverlay(event,'historyModal')">
-  <div class="modal" style="padding-bottom:50px"><div class="modal-handle"></div>
-    <div class="modal-title" data-i18n="historyTitle">History</div>
-    <div class="hist-modes">
-      <button class="hist-mode active" data-mode="month" onclick="setHistoryMode('month')" data-i18n="histMonth">Month</button>
-      <button class="hist-mode" data-mode="day" onclick="setHistoryMode('day')" data-i18n="histDay">Day</button>
-      <button class="hist-mode" data-mode="range" onclick="setHistoryMode('range')" data-i18n="histRange">Range</button>
-      <button class="hist-mode" data-mode="all" onclick="setHistoryMode('all')" data-i18n="histAll">All</button>
-    </div>
-    <div class="hist-inputs">
-      <div id="histMonthWrap"><input type="month" id="histMonth" class="form-input hist-date" onchange="renderHistory()"></div>
-      <div id="histDayWrap" style="display:none"><input type="date" id="histDay" class="form-input hist-date" onchange="renderHistory()"></div>
-      <div id="histRangeWrap" style="display:none">
-        <input type="date" id="histFrom" class="form-input hist-date" onchange="renderHistory()">
-        <input type="date" id="histTo" class="form-input hist-date" onchange="renderHistory()">
-      </div>
-    </div>
-    <div class="hist-summary">
-      <div class="hist-count"><span id="histCount">0</span> <span data-i18n="histExpenses">expenses</span></div>
-      <div class="hist-total" id="histTotal">$0.00</div>
-    </div>
-    <div id="historyList"></div>
-  </div>
-</div>
-
-<!-- DEBT DETAIL MODAL -->
-<div class="modal-overlay" id="debtModal" onclick="closeOnOverlay(event,'debtModal')">
-  <div class="modal"><div class="modal-handle"></div>
-    <div class="modal-title" data-i18n="debtModalTitle">Balance detail</div>
-    <div id="debtDetailContent"></div>
-  </div>
-</div>
-
-<!-- CURRENCY PICKER MODAL (for legacy groups without currency) -->
-<div class="modal-overlay" id="currencyPickerModal">
-  <div class="modal" style="max-width:400px">
-    <div class="modal-title" data-i18n="currencyPickerTitle">Choose group currency</div>
-    <div style="font-size:13px;color:var(--muted);margin-bottom:18px" data-i18n="currencyPickerSub">This group doesn't have a currency set yet. Pick one — all amounts will be displayed in this currency.</div>
-    <div class="currency-grid" style="margin-bottom:10px">
-      <button class="currency-pick-btn" id="currencyPickerUsd" style="padding:16px">
-        <span class="currency-flag" style="font-size:32px">🇺🇸</span>
-        <span class="currency-txt"><strong>USD</strong><br><small>Dólar americano</small></span>
-      </button>
-      <button class="currency-pick-btn" id="currencyPickerCop" style="padding:16px">
-        <span class="currency-flag" style="font-size:32px">🇨🇴</span>
-        <span class="currency-txt"><strong>COP</strong><br><small>Peso colombiano</small></span>
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- CREATE BUDGET MODAL -->
-<div class="modal-overlay" id="budgetModal" onclick="closeOnOverlay(event,'budgetModal')">
-  <div class="modal"><div class="modal-handle"></div>
-    <div class="modal-title" id="t-budgetTitle" data-i18n="budgetTitle">Nuevo presupuesto</div>
-    <div class="budget-hint" id="t-budgetHint" data-i18n="budgetHint">Escribí en palabras qué querés controlar este mes.</div>
-    <div class="nl-input-row">
-      <input class="form-input nl-input" id="budgetInput" type="text" data-i18n-ph="budgetPh" placeholder="Ej: 500 mil para restaurantes este mes" onkeydown="if(event.key==='Enter'){event.preventDefault();createBudgetFromText();}">
-      <button class="nl-go" id="budgetGoBtn" onclick="createBudgetFromText()" data-i18n-title="budgetCreate" aria-label="Crear" title="Crear">
-        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.7 5.1L19 10l-5.3 1.9L12 17l-1.7-5.1L5 10l5.3-1.9L12 3z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z"/></svg>
-      </button>
-    </div>
-    <div class="budget-examples" id="t-budgetExamples" data-i18n="budgetExamples">Ej: “ocio 300 mil”, “transporte 200k este mes”, “mercado 800 mil”.</div>
-  </div>
-</div>
-
-<div class="toast" id="toast"></div>
-
-<!-- PROFILE MODAL -->
-<div class="profile-overlay" id="profileModal">
-  <div class="profile-backdrop-click" onclick="closeProfile()"></div>
-  <div class="profile-dropdown">
-    <div class="profile-header">
-      <div class="avatar-preview-big initials" id="profileAvatarBig">?</div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
-        <div class="profile-name" id="profileName" onclick="editName()" style="cursor:pointer;border-bottom:2px dashed var(--border);padding-bottom:2px" title="Click to edit">—</div>
-        <button onclick="editName()" style="background:none;border:none;cursor:pointer;opacity:0.45;display:flex;align-items:center;padding:2px;color:var(--muted)" title="Edit name"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>
-      </div>
-      <div id="profileNameEdit" style="display:none;margin-bottom:4px">
-        <div style="display:flex;gap:6px">
-          <input class="form-input" type="text" id="profileNameInput" placeholder="Your name" style="padding:8px 12px;font-size:14px;flex:1">
-          <button onclick="saveName()" style="background:var(--green);border:none;border-radius:12px;padding:8px 14px;color:white;font-family:var(--ui);font-size:13px;font-weight:700;cursor:pointer">✓</button>
-          <button onclick="cancelEditName()" style="background:var(--cream);border:none;border-radius:12px;padding:8px 12px;font-size:13px;cursor:pointer">✕</button>
-        </div>
-      </div>
-      <div class="profile-email" id="profileEmail">—</div>
-    </div>
-    <div style="padding:4px 8px 4px">
-      <!-- Avatar: initial circle by default, optional uploaded photo -->
-      <div class="avatar-section-title" data-i18n="chooseAvatarLabel">Avatar</div>
-      <label class="avatar-upload-btn" for="avatarFileInput">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-        <span data-i18n="uploadPhotoLabel">Upload photo</span>
-      </label>
-      <input type="file" id="avatarFileInput" accept="image/*" style="display:none" onchange="handleAvatarUpload(event)">
-      <div style="height:1px;background:var(--border);margin:12px 0"></div>
-      <!-- Language -->
-      <div class="avatar-section-title" data-i18n="languageLabel">Language</div>
-      <div class="profile-lang-row" style="margin-bottom:8px">
-        <button class="profile-lang-btn active" id="profileBtnEn" onclick="setLangProfile('en')">English</button>
-        <button class="profile-lang-btn" id="profileBtnEs" onclick="setLangProfile('es')">Español</button>
-      </div>
-      <div style="height:1px;background:var(--border);margin:10px 0"></div>
-      <!-- Group code -->
-      <div id="profileGroupSection" style="display:none;padding:0 2px 4px">
-        <div class="avatar-section-title" data-i18n="groupCodeLabel">Invite code</div>
-        <div style="background:var(--green-light);border:1px solid rgba(62,207,142,0.3);border-radius:14px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;">
-          <div>
-            <div style="font-family:var(--ui);font-size:22px;font-weight:900;color:var(--green);letter-spacing:5px" id="profileGroupCode">--</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px" id="profileGroupName">—</div>
-          </div>
-          <button onclick="copyInviteCode();showToast(t('toastCopied'))" style="background:var(--green);border:none;border-radius:10px;padding:8px 12px;color:white;cursor:pointer;display:flex;align-items:center" title="Copy"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
-        </div>
-      </div>
-      <div style="height:1px;background:var(--border);margin:10px 0"></div>
-      <button class="profile-item danger" onclick="logoutUser();closeProfile()">
-        <div class="profile-item-icon" style="background:var(--red-light);color:var(--red)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div>
-        <div class="profile-item-label" data-i18n="logoutBtn">Log out</div>
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- FIREBASE (module) -->
+<!-- Firebase (módulo) — expone todo por window._* -->
 <script type="module" src="js/firebase.js"></script>
-
-<!-- Classic scripts — share global scope so inline onclick handlers work -->
-<script src="js/state.js"></script>
+<!-- Scripts clásicos con alcance global (como el resto del proyecto) -->
 <script src="js/i18n.js"></script>
-<script src="js/ui.js"></script>
-<script src="js/currency.js"></script>
-<script src="js/auth.js"></script>
-<script src="js/avatar.js"></script>
-<script src="js/members.js"></script>
-<script src="js/groups.js"></script>
-<script src="js/expenses.js"></script>
-<script src="js/balances.js"></script>
-<script src="js/stats.js"></script>
-<script src="js/budgets.js"></script>
-<script src="js/history.js"></script>
-<script src="js/profile.js"></script>
+<script src="js/core.js"></script>
+<script src="js/data.js"></script>
+<script src="js/views.js"></script>
+<script src="js/sheets.js"></script>
 <script src="js/app.js"></script>
 
 <script>
-if ('serviceWorker' in navigator) {
-  // Auto-update: when a new service worker takes control, reload once so the
-  // fresh code is used immediately (no more "close the app twice" dance).
-  // index.html is served network-first, so this reaches devices stuck on an
-  // old service worker as soon as they open the app.
+if ('serviceWorker' in navigator && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
+  // Al activarse un service worker nuevo, recarga una vez para usar el código nuevo.
   let _swRefreshing = false;
   const _hadController = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (_swRefreshing || !_hadController) return; // skip the first-ever install
+    if (_swRefreshing || !_hadController) return;
     _swRefreshing = true;
     window.location.reload();
   });
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js')
-      .then(reg => { reg.update(); })
-      .catch(()=>{});
+    navigator.serviceWorker.register('sw.js').then(reg => { reg.update(); }).catch(() => {});
   });
 }
 </script>
-
 </body>
 </html>

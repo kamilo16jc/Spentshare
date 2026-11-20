@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SpentShare · Correos automáticos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* Identidad nueva (spentshare-ui.html) */
+  :root{
+    --bg:#F8F7FC;--paper:#fff;--ink:#252134;--muted:#797387;--purple:#6941F5;--deep:#4C24CE;
+    --lavender:#EAE3FF;--lime:#D9F76B;--line:#EAE7F1;--green:#23735B;--page:#EDEBF3;
+    --font:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;--display:'Manrope','DM Sans',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--page);color:var(--ink);font-family:var(--font);min-height:100vh;-webkit-font-smoothing:antialiased}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;transition:transform .18s,background .18s,color .18s}
+  button:active{transform:scale(.965)}
+
+  /* barra superior */
+  .top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:14px 18px;flex-wrap:wrap;padding:14px 22px;background:#F8F7FCe6;backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+  .brand{display:flex;align-items:center;gap:7px;margin-right:auto;font-family:var(--display);font-size:19px;font-weight:800;letter-spacing:-.8px}
+  .brand img{width:34px;height:34px}
+  .brand b{color:var(--purple);font-weight:800}
+  .brand small{font-family:var(--font);color:var(--muted);font-size:13px;font-weight:500;letter-spacing:0;margin-left:8px}
+  .ctl{display:flex;align-items:center;gap:8px}
+  .ctl[hidden]{display:none}
+  .ctl label{font-size:12px;font-weight:600;color:var(--muted)}
+  .seg{display:flex;gap:3px;padding:4px;border-radius:14px;background:#ECE9F3}
+  .seg button{font-size:13px;font-weight:600;color:#797185;padding:7px 12px;border-radius:10px}
+  .seg button.on{background:#fff;color:var(--purple);box-shadow:0 2px 5px #20103C0A}
+
+  /* cuerpo */
+  .wrap{display:grid;grid-template-columns:330px 1fr;gap:30px;padding:26px 22px 60px;max-width:1240px;margin:0 auto}
+  @media (max-width:980px){.wrap{grid-template-columns:1fr}}
+  .step-title{font-family:var(--display);font-size:16px;font-weight:800;letter-spacing:-.4px;margin-bottom:12px;display:flex;align-items:center;gap:9px}
+  .step-title i{font-style:normal;width:24px;height:24px;border-radius:8px;background:var(--lavender);color:var(--purple);display:grid;place-items:center;font-size:12px}
+
+  /* teléfono con la app (UI nueva) */
+  .phone{width:300px;border-radius:42px;background:#252134;padding:9px;box-shadow:0 30px 60px -24px #2d1b6060;margin-bottom:26px}
+  .screen{position:relative;border-radius:34px;background:var(--bg);overflow:hidden;height:500px;padding:14px 16px}
+  .notch{width:92px;height:24px;border-radius:0 0 15px 15px;background:#252134;margin:-14px auto 10px}
+  .app-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .app-brand{display:flex;align-items:center;gap:5px;font-family:var(--display);font-size:15px;font-weight:800;letter-spacing:-.6px}
+  .app-brand img{width:26px;height:26px}.app-brand b{color:var(--purple)}
+  .av{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;flex-shrink:0;border:2px solid #fff}
+  .av.ana{background:#E5DCF7;color:#553A8F}.av.camilo{background:#F3DEC6;color:#754D28}
+  .hello{font-size:12px;color:var(--muted);margin-bottom:2px}
+  .h1{font-family:var(--display);font-size:20px;font-weight:800;letter-spacing:-.8px;margin-bottom:12px}
+  .balance{background:var(--purple);color:#fff;border-radius:24px;padding:16px 16px 14px;position:relative;overflow:hidden;box-shadow:0 14px 30px #6941F523}
+  .balance::before,.balance::after{content:'';position:absolute;border:1px solid #ffffff17;border-radius:50%;width:170px;height:170px;right:-80px;top:14px}
+  .balance::after{width:250px;height:250px;right:-120px;top:-24px}
+  .balance small{font-size:12px;color:#EBE5FF}
+  .balance .amt{font-family:var(--display);font-size:32px;font-weight:800;letter-spacing:-1.6px;margin:4px 0 2px}
+  .balance .desc{font-size:12px;color:#EAE2FF}
+  .settle{background:#fff;border:1px solid var(--line);border-radius:18px;padding:12px;display:flex;align-items:center;gap:10px;margin-top:14px}
+  .settle .copy{flex:1;min-width:0;font-size:13px}
+  .settle .copy strong{display:block;font-weight:650;margin-bottom:2px}
+  .settle .copy span{color:var(--muted);font-size:11.5px}
+  .outline-btn{background:#F3EFFF;color:var(--purple);border:1px solid #DED3FF;font-weight:700;font-size:12px;border-radius:12px;padding:9px 12px}
+  .outline-btn.pulse{animation:btnPulse 1.6s ease-out infinite}
+  @keyframes btnPulse{0%{box-shadow:0 0 0 0 #6941F555}70%{box-shadow:0 0 0 9px #6941F500}100%{box-shadow:0 0 0 0 #6941F500}}
+  .ghost{height:58px;border-radius:16px;background:#fff;border:1px solid var(--line);margin-top:10px;opacity:.6}
+
+  .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--bg);border-radius:28px 28px 0 0;padding:10px 16px 18px;transform:translateY(105%);transition:transform .42s cubic-bezier(.22,1,.36,1);box-shadow:0 -20px 60px #1F123530}
+  .sheet.open{transform:none}
+  .scrim{position:absolute;inset:0;background:#22133C55;opacity:0;pointer-events:none;transition:opacity .25s}
+  .scrim.open{opacity:1}
+  .handle{width:36px;height:4px;border-radius:4px;background:#D9D3E4;margin:0 auto 12px}
+  .sheet h4{font-family:var(--display);font-size:18px;font-weight:800;letter-spacing:-.5px;margin-bottom:10px}
+  .big-amt{text-align:center;font-family:var(--display);font-size:34px;font-weight:800;letter-spacing:-1.5px;color:var(--purple);margin:2px 0 10px}
+  .big-amt small{display:block;font-family:var(--font);font-size:11.5px;font-weight:500;letter-spacing:0;color:var(--muted);margin-bottom:2px}
+  .field{background:#fff;border:1px solid #E2DCEB;border-radius:13px;padding:8px 11px;margin-bottom:8px}
+  .field small{display:block;font-size:11px;font-weight:600;color:#655B77}
+  .field div{font-size:13px;margin-top:2px}
+  .chips{display:flex;gap:6px;margin:2px 0 12px}
+  .chips span{font-size:11.5px;font-weight:600;padding:7px 11px;border-radius:50px;background:#fff;border:1px solid var(--line);color:#777084}
+  .chips span.on{background:var(--purple);border-color:var(--purple);color:#fff}
+  .full-btn{width:100%;border-radius:15px;min-height:46px;font-size:14px;font-weight:700;color:#fff;background:var(--purple)}
+  .notice{font-size:10.5px;color:var(--muted);text-align:center;margin:8px 0 10px;line-height:1.4}
+  .toast{position:absolute;left:12px;right:12px;top:40px;background:#fff;border:1px solid var(--line);color:var(--ink);border-radius:15px;padding:10px 12px;font-size:12px;font-weight:600;display:flex;gap:8px;align-items:center;transform:translateY(-150%);opacity:0;transition:all .4s cubic-bezier(.2,.8,.2,1);box-shadow:0 10px 32px #2d1b6018;z-index:3}
+  .toast.show{transform:none;opacity:1}
+  .toast b{width:22px;height:22px;border-radius:50%;background:var(--lime);color:#252E16;display:grid;place-items:center;font-size:12px;flex-shrink:0}
+
+  /* Cómo me pagan + botones de pago */
+  .cfg-btn{width:300px;min-height:46px;border-radius:15px;background:#F0EBFD;color:var(--purple);border:1px solid #E5DBFC;font-size:14px;font-weight:700;margin:-12px 0 26px}
+  .sheet-intro{font-size:11.5px;color:var(--muted);line-height:1.45;margin:-4px 0 10px}
+  .mrow{display:flex;align-items:center;gap:9px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:8px 10px;margin-bottom:7px}
+  .mark{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;font-family:var(--display);font-size:13px;font-weight:800;flex-shrink:0}
+  .mrow .mcopy{flex:1;min-width:0}
+  .mrow strong{display:block;font-size:12.5px;font-weight:650}
+  .mrow span{display:block;font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mrow em{display:inline-block;font-style:normal;font-size:9.5px;font-weight:700;color:var(--purple);background:var(--lavender);border-radius:20px;padding:2px 6px;margin-top:3px}
+  .mrow em.copy{color:#7A6B3A;background:#F6F0DA}
+  .switch{width:36px;height:21px;border-radius:20px;background:#DDD6EE;position:relative;flex-shrink:0;transition:background .2s}
+  .switch::after{content:'';position:absolute;top:2px;left:2px;width:17px;height:17px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #0002;transition:transform .2s}
+  .switch.on{background:var(--purple)}
+  .switch.on::after{transform:translateX(15px)}
+  .pay-btn{width:100%;display:flex;align-items:center;gap:9px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:8px 10px;margin-bottom:7px;text-align:left;font-size:12.5px;font-weight:650}
+  .pay-btn .go{margin-left:auto;font-size:11.5px;font-weight:700;color:#fff;background:var(--purple);border-radius:10px;padding:6px 9px;white-space:nowrap}
+  .pay-btn .go.copy{color:var(--purple);background:#F0EBFD;border:1px solid #E5DBFC}
+  .link-btn{width:100%;font-size:12.5px;font-weight:600;color:var(--purple);padding:9px 0 0}
+  .steps{list-style:none;counter-reset:s;margin:4px 0 12px}
+  .steps li{counter-increment:s;display:flex;gap:8px;align-items:flex-start;font-size:12.5px;line-height:1.4;margin-bottom:7px}
+  .steps li::before{content:counter(s);width:19px;height:19px;border-radius:50%;background:var(--lavender);color:var(--purple);font-size:10.5px;font-weight:800;display:grid;place-items:center;flex-shrink:0}
+  .copied{background:var(--lime);color:#252E16;border-radius:14px;padding:10px 12px;font-size:12px;margin-bottom:10px;line-height:1.4}
+  .copied b{display:block;font-size:13px;word-break:break-all}
+  .full-btn.ghost-btn{background:#F0EBFD;color:var(--purple);border:1px solid #E5DBFC;margin-top:7px}
+
+  /* lo que pasa por detrás */
+  .flow{list-style:none;padding-left:2px}
+  .flow li{position:relative;padding:0 0 16px 30px;font-size:13.5px;line-height:1.5;color:var(--muted);transition:color .3s}
+  .flow li::before{content:"";position:absolute;left:4px;top:4px;width:12px;height:12px;border-radius:50%;background:#fff;border:2px solid #DDD6EE;transition:all .3s}
+  .flow li::after{content:"";position:absolute;left:10px;top:20px;bottom:0;width:2px;background:#DDD6EE}
+  .flow li:last-child::after{display:none}
+  .flow li.on{color:var(--ink)}
+  .flow li.on::before{background:var(--purple);border-color:var(--purple);box-shadow:0 0 0 5px #6941F522}
+  .flow li.done::before{background:var(--green);border-color:var(--green);box-shadow:none}
+  .flow code{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;background:var(--lavender);color:var(--deep);padding:1px 6px;border-radius:6px}
+  .side-note{font-size:13px;line-height:1.55;color:#5C5470;margin-top:6px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px 16px}
+  .side-note b{color:var(--ink)}
+  .side-note .lang{display:block;margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--lime);color:#4D5A30}
+  .side-note .lang b{color:#252E16}
+
+  /* bandeja + correo */
+  .mail{background:#fff;border:1px solid var(--line);border-radius:24px;overflow:hidden}
+  .mail-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--line);font-size:12px;color:var(--muted);font-weight:600}
+  .mail-top .client{display:flex;align-items:center;gap:8px}
+  .mail-top .dot{width:9px;height:9px;border-radius:50%}
+  .inbox-row{display:flex;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line);background:#FCFAFF;cursor:pointer}
+  .inbox-row.new{animation:rowIn .55s cubic-bezier(.2,.8,.2,1) both}
+  @keyframes rowIn{from{opacity:0;transform:translateY(-16px);background:#EAE3FF}to{opacity:1;transform:none}}
+  .inbox-row img{width:34px;height:34px;flex-shrink:0}
+  .inbox-row .meta{flex:1;min-width:0}
+  .inbox-row .from{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px}
+  .inbox-row .unread{width:8px;height:8px;border-radius:50%;background:var(--purple)}
+  .inbox-row .subj{font-size:13.5px;font-weight:650;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .inbox-row .pre{font-size:12.5px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .inbox-row time{font-size:11.5px;color:var(--muted);font-weight:600}
+  .inbox-empty{padding:26px 16px;text-align:center;color:var(--muted);font-size:13px}
+  .stage{display:flex;justify-content:center;padding:22px 16px 30px;background:#F3F1F8;min-height:420px}
+  .device{transition:width .35s ease;background:#EDEBF3;overflow:hidden;box-shadow:0 20px 50px -24px #2d1b6055}
+  .device.phone-v{width:390px;border-radius:36px;border:9px solid #252134}
+  .device.desk-v{width:720px;max-width:100%;border-radius:14px;border:1px solid var(--line)}
+  .device.desk-v::before{content:"";display:block;height:30px;background:#fff radial-gradient(circle at 16px 15px,#ff5f57 5px,transparent 6px),radial-gradient(circle at 34px 15px,#febc2e 5px,transparent 6px),radial-gradient(circle at 52px 15px,#28c840 5px,transparent 6px);border-bottom:1px solid var(--line)}
+  .device iframe{display:block;width:100%;border:0;height:900px;background:#EDEBF3}
+  .hint{font-size:12.5px;color:var(--muted);text-align:center;padding:12px 16px 0;line-height:1.5}
+  .hint b{color:var(--ink)}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="brand"><img src="/email/logo.png" alt=""><span>Spent<b>Share</b></span><small>Correos automáticos · vista previa</small></div>
+  <div class="ctl"><label>Correo</label><div class="seg" id="segKind"><button data-v="invoice" class="on">Cobro (factura)</button><button data-v="receipt">Pago (recibo)</button><button data-v="expense">Gasto compartido</button><button data-v="invite">Invitación</button></div></div>
+  <div class="ctl" id="ctlPay" hidden><label>Pago</label><div class="seg" id="segPay"><button data-v="full" class="on">Completo</button><button data-v="partial">Parcial</button></div></div>
+  <div class="ctl" id="ctlAccount" hidden><label>¿Camilo ya tiene cuenta?</label><div class="seg" id="segAccount"><button data-v="no" class="on">No</button><button data-v="yes">Sí</button></div></div>
+  <div class="ctl"><label>App de quien envía</label><div class="seg" id="segAppLang"><button data-v="en" class="on">English</button><button data-v="es">Español</button></div></div>
+  <div class="ctl"><label>App de quien recibe</label><div class="seg" id="segMailLang"><button data-v="es" class="on">Español</button><button data-v="en">English</button></div></div>
+  <div class="ctl"><label>Moneda</label><div class="seg" id="segCur"><button data-v="USD" class="on">USD</button><button data-v="COP">COP</button></div></div>
+  <div class="ctl"><label>Vista</label><div class="seg" id="segView"><button data-v="phone" class="on">Teléfono</button><button data-v="desk">Computador</button></div></div>
+  <div class="ctl"><label>Correo en</label><div class="seg" id="segClient"><button data-v="apple" class="on">iPhone</button><button data-v="gmail">Gmail</button></div></div>
+</div>
+
+<div class="wrap">
+  <div>
+    <div class="step-title"><i>1</i>En la app de quien envía</div>
+    <div class="phone"><div class="screen">
+      <div class="notch"></div>
+      <div class="toast" id="toast"><b>&#10003;</b><span id="toastTxt"></span></div>
+      <div class="app-top"><div class="app-brand"><img src="/email/logo.png" alt=""><span>Spent<b>Share</b></span></div><span class="av" id="meAv"></span></div>
+      <div class="hello" id="hello"></div>
+      <div class="h1">Apartamento 302</div>
+      <div class="balance"><small id="balLbl"></small><div class="amt" id="balAmt"></div><div class="desc" id="balDesc"></div></div>
+      <div class="settle">
+        <span class="av" id="otherAv"></span>
+        <div class="copy"><strong id="withTxt"></strong><span id="debtTxt"></span></div>
+        <button class="outline-btn pulse" id="appBtn"></button>
+      </div>
+      <div class="ghost"></div><div class="ghost"></div>
+      <div class="scrim" id="scrim"></div>
+      <div class="sheet" id="sheet"><div class="handle"></div><div id="sheetBody"></div></div>
+    </div></div>
+    <button class="cfg-btn" id="cfgBtn">Cómo me pagan · perfil de Ana</button>
+
+    <div class="step-title"><i>2</i>Lo que pasa solo, por detrás</div>
+    <ul class="flow" id="flow"></ul>
+    <div class="side-note" id="sideNote"></div>
+  </div>
+
+  <div>
+    <div class="step-title"><i>3</i>Lo que llega al correo de quien recibe</div>
+    <div class="mail">
+      <div class="mail-top"><div class="client"><span class="dot" id="clientDot"></span><span id="clientName"></span></div><span id="toWho"></span></div>
+      <div id="inbox"></div>
+      <div class="stage"><div class="device phone-v" id="device"><iframe id="frame" title="Correo"></iframe></div></div>
+    </div>
+    <p class="hint" id="hint"></p>
+    <div id="landingWrap" hidden>
+      <div class="step-title" style="margin-top:28px"><i>4</i>Lo que ve Camilo al tocar «Unirme al grupo»</div>
+      <div class="mail"><div class="stage"><div class="device phone-v" id="landingDevice"><iframe id="landing" title="Unirse con un enlace" style="height:760px"></iframe></div></div></div>
+      <p class="hint" id="landingHint"></p>
+    </div>
+  </div>
+</div>
+
+<script>
+const S = { kind: 'invoice', cur: 'USD', view: 'phone', client: 'apple', pay: 'full', appLang: 'en', mailLang: 'es', sending: false, paidWith: 'zelle', account: 'no' };
+
+// "Cómo me pagan" de Ana (lo que ella configura en su perfil). Datos inventados.
+const METHODS = {
+  USD: [
+    { type: 'zelle', value: 'ana.gomez@ejemplo.com', on: true },
+    { type: 'venmo', value: '@ana-gomez-302', on: true },
+    { type: 'paypal', value: 'anagomez302', on: false },
+    { type: 'cashapp', value: '$anagomez302', on: false },
+  ],
+  COP: [
+    { type: 'nequi', value: '300 000 0000', on: true },
+    { type: 'breb', value: '@anagomez302', on: true },
+  ],
+};
+const payToList = () => METHODS[S.cur].filter(m => m.on).map(({ type, value }) => ({ type, value }));
+const $ = id => document.getElementById(id);
+let E;   // window.SSEmails, se carga sin caché para ver siempre la versión actual
+
+// ── Datos de ejemplo (inventados) ──
+const DATA = {
+  USD: {
+    items: [
+      { date: '2026-11-03T18:10:00-06:00', description: 'Mercado de la semana', category: 'food', paidBy: 'from', total: 86, share: 43 },
+      { date: '2026-11-08T09:30:00-06:00', description: 'Luz de octubre', category: 'utilities', paidBy: 'from', total: 62, share: 31 },
+      { date: '2026-11-12T21:05:00-06:00', description: 'Pizza del viernes', category: 'food', paidBy: 'to', total: 57, share: 28.5 },
+    ],
+    partial: 30,
+    exp: { total: 90, share: 30, before: 15.5 },
+  },
+  COP: {
+    items: [
+      { date: '2026-11-03T18:10:00-06:00', description: 'Mercado de la semana', category: 'food', paidBy: 'from', total: 186000, share: 93000 },
+      { date: '2026-11-08T09:30:00-06:00', description: 'Luz de octubre', category: 'utilities', paidBy: 'from', total: 124000, share: 62000 },
+      { date: '2026-11-12T21:05:00-06:00', description: 'Pizza del viernes', category: 'food', paidBy: 'to', total: 114000, share: 57000 },
+    ],
+    partial: 50000,
+    exp: { total: 186000, share: 62000, before: 36000 },
+  },
+};
+const ANA = { name: 'Ana Gómez', email: 'ana.gomez@ejemplo.com' };
+const CAMILO = { name: 'Camilo Ríos', email: 'camilo.rios@ejemplo.com' };
+const GROUP = { name: 'Apartamento 302' };
+
+// Textos del teléfono: la app de quien ENVÍA, en su idioma
+const APP = {
+  es: {
+    hello: n => `Hola, ${n}`, owedLbl: 'Te deben', oweLbl: 'Debes', balDesc: 'en este grupo',
+    withCamilo: 'Con Camilo', withAna: 'Con Ana', owesYou: amt => `Te debe ${amt}`, youOwe: amt => `Le debes ${amt}`,
+    request: 'Cobrar', settle: 'Liquidar',
+    reqTitle: 'Cobrarle a Camilo', reqAmt: 'Lo que te debe hoy', noteLbl: 'Nota (opcional)',
+    note: 'Lo del mercado y la luz. ¡Gracias!', dueLbl: 'Vence en', days: n => `${n} días`, send: 'Enviar cobro', sending: 'Enviando…',
+    payTitle: 'Una cuenta menos', payAmt: 'Vas a registrar un pago de', partial: 'pago parcial', method: '¿Cómo lo pagaste?',
+    notice: 'Registrar un pago actualiza las cuentas del grupo. No envía dinero a otra persona.', paid: 'Registrar pago',
+    toastReq: 'Cobro enviado. Camilo lo recibe por correo.', toastPay: 'Pago registrado. Les llegó el recibo a los dos.',
+    addExp: '+ Gasto', expTitle: 'Nuevo gasto', expAmt: '¿Cuánto fue?', expDescLbl: 'Descripción', expDesc: 'Mercado de la semana',
+    expCat: 'Comida', expSplitLbl: '¿Cómo se divide?', expSplit: 'Entre todos (3)', expSave: 'Guardar gasto',
+    toastExp: 'Gasto guardado. Le avisamos a Camilo y a Sara.',
+    cfgTitle: 'Cómo me pagan', cfgIntro: 'Solo lo ven las personas de tus grupos cuando te van a pagar. SpentShare nunca mueve dinero.',
+    cfgDirect: 'abre con el monto', cfgCopy: 'se copia el dato', cfgSave: 'Guardar', cfgSaved: 'Listo. Así te van a pagar.',
+    payWith: P => `Págale a ${P} con`, payVia: n => `Pagar`, copyVia: n => `Copiar`,
+    opening: n => `Abriendo ${n}…`, openingSub: 'Ya va con el monto y la nota puestos.', openedQ: P => `¿Ya le pagaste a ${P}?`,
+    yesRecord: 'Sí, registrar pago', notYet: 'Todavía no',
+    copiedLbl: 'Copiado', steps: (n, amt) => ['Abre la app de tu banco', `Entra a ${n} y elige enviar`, `Pega el dato y pon ${amt}`],
+    paidIt: 'Ya le pagué', otherWay: 'Le pagué de otra forma',
+    inviteBtn: 'Invitar', groupMembers: '2 miembros', inviteTitle: 'Invitar a alguien', codeLbl: 'Código del grupo',
+    inviteEmailLbl: 'Su correo', inviteSend: 'Enviar invitación', inviteCopy: 'Copiar enlace',
+    inviteNote: 'Así llevamos las cuentas del apto', toastInvite: 'Invitación enviada a Camilo.',
+  },
+  en: {
+    hello: n => `Hi, ${n}`, owedLbl: 'You’re owed', oweLbl: 'You owe', balDesc: 'in this group',
+    withCamilo: 'With Camilo', withAna: 'With Ana', owesYou: amt => `Owes you ${amt}`, youOwe: amt => `You owe ${amt}`,
+    request: 'Request', settle: 'Settle',
+    reqTitle: 'Request from Camilo', reqAmt: 'What he owes you today', noteLbl: 'Note (optional)',
+    note: 'Groceries and the power bill. Thanks!', dueLbl: 'Due in', days: n => `${n} days`, send: 'Send request', sending: 'Sending…',
+    payTitle: 'One less debt', payAmt: 'You’re recording a payment of', partial: 'partial payment', method: 'How did you pay?',
+    notice: 'Recording a payment updates the group’s balances. It doesn’t send money.', paid: 'Record payment',
+    toastReq: 'Request sent. Camilo gets it by email.', toastPay: 'Payment recorded. You both got the receipt.',
+    addExp: '+ Expense', expTitle: 'New expense', expAmt: 'How much was it?', expDescLbl: 'Description', expDesc: 'Weekly groceries',
+    expCat: 'Food', expSplitLbl: 'How do you split it?', expSplit: 'Between everyone (3)', expSave: 'Save expense',
+    toastExp: 'Expense saved. Camilo and Sara got a heads-up.',
+    cfgTitle: 'How people pay me', cfgIntro: 'Only people in your groups see this when they pay you. SpentShare never moves money.',
+    cfgDirect: 'opens with the amount', cfgCopy: 'copies your details', cfgSave: 'Save', cfgSaved: 'Saved. This is how people will pay you.',
+    payWith: P => `Pay ${P} with`, payVia: n => `Pay`, copyVia: n => `Copy`,
+    opening: n => `Opening ${n}…`, openingSub: 'The amount and note are already filled in.', openedQ: P => `Did you pay ${P}?`,
+    yesRecord: 'Yes, record payment', notYet: 'Not yet',
+    copiedLbl: 'Copied', steps: (n, amt) => ['Open your bank’s app', `Go to ${n} and choose send`, `Paste it and enter ${amt}`],
+    paidIt: 'I paid', otherWay: 'I paid another way',
+    inviteBtn: 'Invite', groupMembers: '2 members', inviteTitle: 'Invite someone', codeLbl: 'Group code',
+    inviteEmailLbl: 'Their email', inviteSend: 'Send invite', inviteCopy: 'Copy link',
+    inviteNote: 'This is how we keep the apartment accounts', toastInvite: 'Invite sent to Camilo.',
+  },
+};
+const LANG_NAME = { es: 'español', en: 'inglés' };
+
+// Si Camilo ya tiene cuenta, en su idioma; si no, en el de Ana (quien invita)
+const inviteLang = () => S.account === 'yes' ? S.mailLang : S.appLang;
+
+function landing() {
+  const on = S.kind === 'invite';
+  $('landingWrap').hidden = !on;
+  if (!on) return;
+  const q = new URLSearchParams({ lang: inviteLang(), account: S.account === 'yes' ? '1' : '0', group: GROUP.name, emoji: '🏡',
+    bg: '#E1F1E9', ink: '#377761', members: 'Ana,Sara', cur: S.cur, from: 'Ana', v: Date.now() });
+  $('landing').src = 'join-preview.html?' + q;
+  $('landingDevice').className = 'device ' + (S.view === 'phone' ? 'phone-v' : 'desk-v');
+  $('landingHint').innerHTML = S.account === 'yes'
+    ? '<b>Ya tiene cuenta:</b> se abre su app y aparece la invitación encima. Un toque y está dentro.'
+    : '<b>No tiene cuenta:</b> la pantalla de entrada ya sabe a qué grupo va. Crea la cuenta (o entra con Google) y queda dentro del grupo, sin escribir ningún código.';
+}
+
+function debtAmount() {
+  return DATA[S.cur].items.reduce((s, i) => s + (i.paidBy === 'to' ? -i.share : i.share), 0);
+}
+function paidAmount() {
+  return S.pay === 'full' ? debtAmount() : DATA[S.cur].partial;
+}
+
+function build() {
+  const D = DATA[S.cur];
+  const common = { lang: S.mailLang, currency: S.cur, group: GROUP, assetBase: '/email/', appUrl: 'https://spentshare.com/' };
+  if (S.kind === 'invite') {
+    return E.renderInvite({
+      lang: inviteLang(), appUrl: 'https://spentshare.com/', assetBase: '/email/',
+      inviter: ANA, group: { name: GROUP.name, emoji: '🏡', currency: S.cur, theme: 'mint' },
+      members: [ANA, { name: 'Sara Díaz' }], code: 'AB-CD12',
+      note: APP[S.appLang].inviteNote, isUser: S.account === 'yes',
+    });
+  }
+  if (S.kind === 'expense') {
+    const X = D.exp;
+    return E.renderExpense({
+      ...common, expenseId: 'exp_42', date: '2026-11-19T19:30:00-06:00',
+      description: APP[S.appLang].expDesc, category: 'food', total: X.total,
+      paidBy: { name: ANA.name, uid: 'ana' }, splitType: 'all',
+      splits: [
+        { name: ANA.name, share: X.share, isPayer: true },
+        { name: CAMILO.name, share: X.share, isYou: true },
+        { name: 'Sara Díaz', share: X.share },
+      ],
+      balanceBefore: X.before, balanceAfter: X.before + X.share, payTo: payToList(),
+    });
+  }
+  if (S.kind === 'invoice') {
+    return E.renderInvoice({
+      ...common, invoiceNo: 'F-2026-0017', requestId: 'req_8K2F3A',
+      issuedAt: '2026-11-19T20:41:00-06:00', dueAt: '2026-11-26T20:41:00-06:00',
+      from: ANA, to: CAMILO, note: APP[S.appLang].note, items: D.items, payTo: payToList(),
+    });
+  }
+  const before = debtAmount();
+  const amount = paidAmount();
+  return E.renderReceipt({
+    ...common, receiptNo: 'R-2026-0042', date: '2026-11-19T20:42:00-06:00', method: S.paidWith,
+    amount, payer: CAMILO, payee: ANA, recordedBy: CAMILO, viewer: 'payee',
+    balanceBefore: before, balanceAfter: before - amount, invoiceNo: 'F-2026-0017',
+  });
+}
+
+// Gmail no ejecuta animaciones CSS ni carga las fuentes: las quitamos para verlo igual
+function forClient(html) {
+  let h = html.replace(/\.gif"/g, '.gif?r=' + Date.now() + '"');   // reinicia el GIF
+  if (S.client === 'gmail') {
+    h = h.replace(/<style id="ss-anim">[\s\S]*?<\/style>/, '').replace(/<link href="https:\/\/fonts[^>]+>/, '');
+  }
+  return h;
+}
+
+function renderEmail() {
+  const mail = build();
+  const frame = $('frame');
+  frame.onload = () => {
+    const doc = frame.contentDocument;
+    const fit = () => { frame.style.height = doc.documentElement.scrollHeight + 'px'; };
+    fit(); setTimeout(fit, 400); setTimeout(fit, 1500);
+    doc.addEventListener('click', e => {
+      const a = e.target.closest('a'); if (!a) return;
+      e.preventDefault();
+      if (a.href.includes('unirse=')) {
+        const y = $('landingWrap').getBoundingClientRect().top + window.scrollY - 90;
+        window.scrollTo(0, y);
+      }
+    });
+  };
+  frame.srcdoc = forClient(mail.html);
+  return mail;
+}
+
+function inboxRow(mail, isNew) {
+  $('inbox').innerHTML = `<div class="inbox-row ${isNew ? 'new' : ''}">
+    <img src="/email/logo.png" alt="">
+    <div class="meta">
+      <div class="from"><span class="unread"></span>SpentShare</div>
+      <div class="subj">${E.esc(mail.subject)}</div>
+      <div class="pre">${E.esc(mail.preheader)}</div>
+    </div><time>${S.mailLang === 'en' ? 'now' : 'ahora'}</time></div>`;
+}
+
+// ── Textos de cada escenario ──
+function paint() {
+  const exp = S.kind === 'expense';
+  const invite = S.kind === 'invite';
+  const inv = S.kind === 'invoice' || exp || invite;   // en estos, Ana envía y Camilo recibe
+  const T = APP[S.appLang];
+  const amt = E.fmtMoney(exp ? DATA[S.cur].exp.before : debtAmount(), S.cur);
+  const sender = inv ? 'Ana' : 'Camilo', receiver = inv ? 'Camilo' : 'Ana';
+  $('meAv').textContent = sender[0]; $('meAv').className = 'av ' + sender.toLowerCase();
+  $('otherAv').textContent = receiver[0]; $('otherAv').className = 'av ' + receiver.toLowerCase();
+  $('hello').textContent = T.hello(sender);
+  $('balLbl').textContent = inv ? T.owedLbl : T.oweLbl;
+  $('balAmt').textContent = amt;
+  $('balDesc').textContent = T.balDesc;
+  $('withTxt').textContent = inv ? T.withCamilo : T.withAna;
+  $('debtTxt').textContent = inv ? T.owesYou(amt) : T.youOwe(amt);
+  $('appBtn').textContent = invite ? T.inviteBtn : exp ? T.addExp : inv ? T.request : T.settle;
+  if (invite) { $('withTxt').textContent = 'Apartamento 302'; $('debtTxt').textContent = T.groupMembers; }
+  $('ctlPay').hidden = S.kind !== 'receipt';
+  $('ctlAccount').hidden = !invite;
+  $('toWho').textContent = invite
+    ? `Para: camilo@ejemplo.com · ${S.account === 'yes' ? `ya tiene cuenta (app en ${LANG_NAME[S.mailLang]})` : 'todavía no tiene cuenta'}`
+    : `Para: ${receiver.toLowerCase()}@ejemplo.com${exp ? ' (y Sara)' : ''} · ${receiver} usa la app en ${LANG_NAME[S.mailLang]}`;
+  $('clientDot').style.background = S.client === 'gmail' ? '#ea4335' : '#6941F5';
+  $('clientName').textContent = S.client === 'gmail' ? 'Gmail' : 'Mail en iPhone';
+  $('device').className = 'device ' + (S.view === 'phone' ? 'phone-v' : 'desk-v');
+
+  const steps = invite ? [
+    'Ana escribe el correo de Camilo en <b>Invitar</b> (o copia el enlace y lo manda por WhatsApp).',
+    'La app llama a <code>sendGroupInvite</code>.',
+    'La función arma el enlace <code>spentshare.com/?unirse=AB-CD12</code> y mira si Camilo ya tiene cuenta, para escribirle en su idioma.',
+    'Resend le manda la invitación. Con ese botón entra directo al grupo.',
+  ] : exp ? [
+    'La app guarda el gasto como siempre (<code>groups/{g}/expenses</code>).',
+    'Se dispara solo <code>onExpenseCreate</code> en Cloud Functions.',
+    'Calcula la parte de cada uno y su nuevo saldo con Ana, y lee el idioma de cada persona.',
+    'Resend le manda a Camilo y a Sara su propio correo, cada uno en su idioma. A Ana no, porque lo anotó ella.',
+  ] : inv ? [
+    'La app llama a <code>sendPaymentRequest</code> con el grupo, a quién y la nota.',
+    'La función junta los gastos entre Ana y Camilo desde la última vez que quedaron a mano.',
+    'Lee el idioma de Camilo en su perfil (<code>users/{uid}.lang</code>) y guarda el cobro <code>F-2026-0017</code> como pendiente.',
+    'Resend le manda la factura a Camilo en su idioma. Si vence sin pago, le llega un recordatorio.',
+  ] : [
+    'La app guarda el pago como siempre (<code>type: settle</code>), con el método de pago.',
+    'Se dispara solo <code>onExpenseCreate</code> en Cloud Functions.',
+    'Descuenta el pago del cobro <code>F-2026-0017</code>, calcula el saldo y lee el idioma de cada uno.',
+    'Resend manda el recibo a Ana y a Camilo, a cada uno en su idioma.',
+  ];
+  $('flow').innerHTML = steps.map(s => `<li>${s}</li>`).join('');
+  if (invite) {
+    $('sideNote').innerHTML = '<b>Un solo enlace:</b> el botón del correo lleva el código del grupo. Si Camilo no tiene cuenta, la crea en esa misma pantalla y queda dentro; si ya tiene, se une con un toque. El mismo enlace se puede copiar y mandar por WhatsApp.'
+      + `<span class="lang"><b>Idioma:</b> ${S.account === 'yes' ? `Camilo ya usa la app en ${LANG_NAME[S.mailLang]}, así que le llega en ${LANG_NAME[S.mailLang]}.` : `Camilo todavía no tiene cuenta, así que le llega en el idioma de Ana (${LANG_NAME[S.appLang]}).`}</span>`;
+    $('hint').innerHTML = 'Toca <b>Unirme al grupo</b> dentro del correo para ver el paso 4.';
+    landing();
+    return;
+  }
+  landing();
+  $('sideNote').innerHTML = (exp
+    ? '<b>Nadie escribe el correo:</b> sale solo cada vez que alguien guarda un gasto. No tiene fecha de vencimiento: solo avisa cuánto te toca y cómo queda tu saldo.'
+    : inv
+    ? '<b>Nadie escribe el correo:</b> sale solo cuando tocas <b>Cobrar</b>. El botón “Ya le pagué” del correo abre la app con el pago listo para registrar.'
+    : '<b>Nadie escribe el correo:</b> sale solo en cuanto alguien registra el pago, desde la app o desde el botón del cobro.')
+    + `<span class="lang"><b>Idioma:</b> ${sender} usa la app en ${LANG_NAME[S.appLang]} y ${receiver} en ${LANG_NAME[S.mailLang]}, así que a ${receiver} le llega en <b>${LANG_NAME[S.mailLang]}</b>.`
+    + (inv && S.appLang !== S.mailLang ? (exp ? ' El nombre del gasto va tal como Ana lo escribió.' : ' La nota y los nombres de los gastos van tal como los escribieron.') : '')
+    + (!inv ? ` ${sender} recibe su propio recibo en ${LANG_NAME[S.appLang]}.` : '') + '</span>';
+  $('hint').innerHTML = S.client === 'gmail'
+    ? '<b>Gmail:</b> se mueve el GIF de arriba; el sello, la barra y las filas aparecen ya quietas (Gmail no corre animaciones CSS).'
+    : '<b>iPhone / Apple Mail:</b> se mueve todo: GIF, filas que suben, sello, barra de saldo y el punto lima de “Pendiente”.';
+}
+
+function showEmail(isNew) {
+  paint();
+  const mail = renderEmail();
+  inboxRow(mail, isNew);
+}
+
+// ── Simulación del envío ──
+const wait = ms => new Promise(r => setTimeout(r, ms));
+function toast(msg) {
+  $('toastTxt').textContent = msg; $('toast').classList.add('show');
+  setTimeout(() => $('toast').classList.remove('show'), 2600);
+}
+
+async function runFlow() {
+  if (S.sending) return;
+  S.sending = true;
+  const lis = [...$('flow').children];
+  lis.forEach(li => li.className = '');
+  $('inbox').innerHTML = '<div class="inbox-empty">Esperando correo…</div>';
+  $('frame').onload = null;
+  $('frame').style.height = '160px';
+  $('frame').srcdoc = '<body style="margin:0;height:160px;display:grid;place-items:center;background:#EDEBF3;font:600 13px system-ui;color:#797387">Enviando…</body>';
+  for (const li of lis) {
+    li.className = 'on'; await wait(650); li.className = 'done';
+  }
+  showEmail(true);
+  [...$('flow').children].forEach(li => li.className = 'done');
+  S.sending = false;
+}
+
+function closeSheet() { $('sheet').classList.remove('open'); $('scrim').classList.remove('open'); }
+
+function openSheet() {
+  const exp = S.kind === 'expense';
+  const inv = S.kind === 'invoice';
+  const T = APP[S.appLang];
+  const amt = E.fmtMoney(debtAmount(), S.cur);
+  if (S.kind === 'invite') {
+    $('sheetBody').innerHTML = `
+      <h4>${T.inviteTitle}</h4>
+      <div class="big-amt"><small>${T.codeLbl}</small>AB-CD12</div>
+      <div class="field"><small>${T.inviteEmailLbl}</small><div>camilo@ejemplo.com</div></div>
+      <button class="full-btn" id="sheetGo">${T.inviteSend}</button>
+      <button class="link-btn">${T.inviteCopy}</button>`;
+    $('sheet').classList.add('open'); $('scrim').classList.add('open');
+    $('sheetGo').onclick = async () => {
+      $('sheetGo').textContent = T.sending; await wait(500); closeSheet(); toast(T.toastInvite); runFlow();
+    };
+    return;
+  }
+  $('sheetBody').innerHTML = exp ? `
+    <h4>${T.expTitle}</h4>
+    <div class="big-amt"><small>${T.expAmt}</small>${E.fmtMoney(DATA[S.cur].exp.total, S.cur)}</div>
+    <div class="field"><small>${T.expDescLbl}</small><div>${T.expDesc}</div></div>
+    <div class="chips"><span class="on">${T.expCat}</span></div>
+    <div class="field"><small>${T.expSplitLbl}</small><div>${T.expSplit}</div></div>
+    <button class="full-btn" id="sheetGo">${T.expSave}</button>` : inv ? `
+    <h4>${T.reqTitle}</h4>
+    <div class="big-amt"><small>${T.reqAmt}</small>${amt}</div>
+    <div class="field"><small>${T.noteLbl}</small><div>${T.note}</div></div>
+    <div class="field" style="border:0;background:none;padding:2px 0 0"><small>${T.dueLbl}</small></div>
+    <div class="chips"><span>${T.days(3)}</span><span class="on">${T.days(7)}</span><span>${T.days(15)}</span></div>
+    <button class="full-btn" id="sheetGo">${T.send}</button>` : paySheet(T);
+  $('sheet').classList.add('open'); $('scrim').classList.add('open');
+  if (!exp && !inv) { bindPaySheet(T); return; }
+  $('sheetGo').onclick = async () => {
+    $('sheetGo').textContent = T.sending;
+    await wait(500);
+    closeSheet();
+    toast(exp ? T.toastExp : inv ? T.toastReq : T.toastPay);
+    runFlow();
+  };
+}
+
+// ── Liquidar: botones para pagarle a Ana con lo que ella configuró ──
+function markHtml(type) {
+  const m = E.PAY_METHODS[type];
+  return `<span class="mark" style="background:${m.colors[0]};color:${m.colors[1]}">${m.mark}</span>`;
+}
+function paySheet(T) {
+  const list = payToList().sort((a, b) => (E.PAY_METHODS[b.type].link ? 1 : 0) - (E.PAY_METHODS[a.type].link ? 1 : 0));
+  const lang = S.appLang;
+  return `
+    <h4>${T.payTitle}</h4>
+    <div class="big-amt" style="margin-bottom:8px"><small>${T.payAmt}</small>${E.fmtMoney(paidAmount(), S.cur)}${S.pay === 'full' ? '' : `<small style="margin-top:2px">${T.partial}</small>`}</div>
+    ${list.length ? `<div class="field" style="border:0;background:none;padding:0 0 4px"><small>${T.payWith('Ana')}</small></div>` : ''}
+    ${list.map(m => {
+      const meta = E.PAY_METHODS[m.type];
+      const direct = !!meta.link;
+      return `<button class="pay-btn" data-type="${m.type}">${markHtml(m.type)}<span>${meta.name[lang]}</span>
+        <span class="go ${direct ? '' : 'copy'}">${direct ? T.payVia() : T.copyVia()}</span></button>`;
+    }).join('')}
+    <button class="link-btn" id="otherWay">${T.otherWay}</button>`;
+}
+function bindPaySheet(T) {
+  document.querySelectorAll('#sheetBody .pay-btn').forEach(b => b.onclick = () => payStep(T, b.dataset.type));
+  $('otherWay').onclick = () => { S.paidWith = 'other'; recordPayment(T); };
+}
+async function payStep(T, type) {
+  const meta = E.PAY_METHODS[type];
+  const name = meta.name[S.appLang];
+  const m = METHODS[S.cur].find(x => x.type === type);
+  const amt = E.fmtMoney(paidAmount(), S.cur);
+  if (meta.link) {
+    // Venmo / PayPal / Cash App: se abre la otra app con todo puesto (aquí lo simulamos)
+    $('sheetBody').innerHTML = `<h4>${T.opening(name)}</h4><div class="copied"><b>${name} · ${amt}</b>${T.openingSub}</div>`;
+    await wait(1300);
+    $('sheetBody').innerHTML = `<h4>${T.openedQ('Ana')}</h4>
+      <div class="big-amt"><small>${name}</small>${amt}</div>
+      <button class="full-btn" id="yesPaid">${T.yesRecord}</button>
+      <button class="full-btn ghost-btn" id="notYet">${T.notYet}</button>`;
+  } else {
+    // Zelle / Nequi / Bre-B: SpentShare copia el dato y explica qué hacer en el banco
+    try { await navigator.clipboard.writeText(m.value.replace(/\s/g, '')); } catch (e) {}
+    $('sheetBody').innerHTML = `<h4>${name}</h4>
+      <div class="copied">${T.copiedLbl}<b>${m.value}</b></div>
+      <ol class="steps">${T.steps(name, amt).map(x => `<li>${x}</li>`).join('')}</ol>
+      <button class="full-btn" id="yesPaid">${T.paidIt}</button>
+      <button class="full-btn ghost-btn" id="notYet">${T.notYet}</button>`;
+  }
+  $('yesPaid').onclick = () => { S.paidWith = type; recordPayment(T); };
+  $('notYet').onclick = closeSheet;
+}
+async function recordPayment(T) {
+  const b = $('yesPaid') || $('otherWay');
+  if (b) b.textContent = T.sending;
+  await wait(500);
+  closeSheet();
+  toast(T.toastPay);
+  runFlow();
+}
+
+// ── "Cómo me pagan": lo que Ana configura en su perfil ──
+function openConfig() {
+  const lang = S.kind === 'receipt' ? S.mailLang : S.appLang;   // el idioma de Ana
+  const T = APP[lang];
+  const list = METHODS[S.cur];
+  $('sheetBody').innerHTML = `
+    <h4>${T.cfgTitle}</h4>
+    <p class="sheet-intro">${T.cfgIntro}</p>
+    ${list.map((m, i) => {
+      const meta = E.PAY_METHODS[m.type];
+      return `<div class="mrow">${markHtml(m.type)}
+        <div class="mcopy"><strong>${meta.name[lang]}</strong><span>${m.value}</span><em class="${meta.link ? '' : 'copy'}">${meta.link ? T.cfgDirect : T.cfgCopy}</em></div>
+        <button class="switch ${m.on ? 'on' : ''}" data-i="${i}" aria-label="${meta.name[lang]}"></button></div>`;
+    }).join('')}
+    <button class="full-btn" id="cfgSave" style="margin-top:6px">${T.cfgSave}</button>`;
+  $('sheet').classList.add('open'); $('scrim').classList.add('open');
+  document.querySelectorAll('#sheetBody .switch').forEach(sw => sw.onclick = () => sw.classList.toggle('on'));
+  $('cfgSave').onclick = () => {
+    document.querySelectorAll('#sheetBody .switch').forEach(sw => { list[sw.dataset.i].on = sw.classList.contains('on'); });
+    closeSheet();
+    toast(T.cfgSaved);
+    showEmail(false);
+  };
+}
+
+// ── Controles ──
+function seg(id, key) {
+  $(id).addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b || S.sending) return;
+    [...$(id).children].forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    S[key] = b.dataset.v;
+    if (key === 'cur') S.paidWith = (payToList()[0] || { type: 'other' }).type;
+    closeSheet();
+    showEmail(key === 'kind');
+  });
+}
+seg('segKind', 'kind'); seg('segCur', 'cur'); seg('segView', 'view'); seg('segClient', 'client'); seg('segPay', 'pay');
+seg('segAppLang', 'appLang'); seg('segMailLang', 'mailLang'); seg('segAccount', 'account');
+$('appBtn').onclick = () => { $('appBtn').classList.remove('pulse'); openSheet(); };
+$('cfgBtn').onclick = () => { if (!S.sending) openConfig(); };
+$('scrim').onclick = closeSheet;
+$('inbox').onclick = () => { if (!S.sending) showEmail(false); };
+
+const loader = document.createElement('script');
+loader.src = '../functions/emails/templates.js?v=' + Date.now();
+loader.onload = () => { E = window.SSEmails; showEmail(false); };
+document.head.appendChild(loader);
+</script>
+</body>
+</html>

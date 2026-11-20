@@ -5,3 +5,5 @@ functions/preview-pdf.js
 functions/preview-sample.pdf
 *.log
 .firebase/
+functions/.secret.local
+functions/.outbox/

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SpentShare · Unirse con un enlace (maqueta)</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/app.css">
+<style>
+  /* solo para encajar dentro del teléfono de la vista previa */
+  body{background:var(--bg)}
+  .app{min-height:100vh}
+  .demo-note{font-size:11px;color:#A59BAD;text-align:center;margin-top:14px}
+</style>
+</head>
+<body>
+<svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden" xmlns="http://www.w3.org/2000/svg">
+<symbol id="i-logo" viewBox="0 0 24 24"><path d="M17 5H9a4 4 0 0 0 0 8h6a3 3 0 0 1 0 6H6M14 2l3 3-3 3M10 16l-4 3 4 3"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+<symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/><circle cx="9" cy="7" r="4"/></symbol>
+<symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+</svg>
+<div class="app" id="app">
+  <header class="topbar"><span class="brand"><span class="brand-mark"><svg class="ico"><use href="#i-logo"/></svg></span><div>Spent<span>Share</span></div></span><div class="top-actions" id="top-right"></div></header>
+  <main id="main"></main>
+</div>
+<div id="modal-root"></div>
+<script>
+const P = new URLSearchParams(location.search);
+const lang = P.get('lang') === 'en' ? 'en' : 'es';
+const hasAccount = P.get('account') === '1';
+const group = { name: P.get('group') || 'Apartamento 302', emoji: P.get('emoji') || '🏡', bg: P.get('bg') || '#E1F1E9', ink: P.get('ink') || '#377761', members: (P.get('members') || 'Ana,Sara').split(','), cur: P.get('cur') || 'USD' };
+const inviter = P.get('from') || 'Ana';
+const T = {
+  es: {
+    invited: f => `${f} te invitó a`, meta: (n, c) => `${n} ${n === 1 ? 'miembro' : 'miembros'} · ${c}`,
+    h1: 'Crea tu cuenta<br>y entras directo.', p: 'Un solo paso. Al terminar ya estás en el grupo.',
+    google: 'Continuar con Google', or: 'o con tu correo', name: 'Tu nombre', namePh: '¿Cómo te llamas?',
+    email: 'Correo electrónico', pass: 'Contraseña', passPh: 'Al menos 8 caracteres', create: 'Crear cuenta y unirme',
+    have: '¿Ya tienes cuenta?', login: 'Inicia sesión', note: 'Maqueta: nada se crea de verdad.',
+    sheetTitle: 'Te invitaron a un plan', sheetP: f => `${f} quiere que lleven las cuentas juntos.`, join: 'Unirme al grupo', notNow: 'Ahora no',
+    doneH: g => `Ya estás en ${g}.`, doneP: 'Mira quién pagó qué y agrega tu primer gasto cuando quieras.', enter: 'Entrar al grupo',
+    hello: 'Hola, Camilo', heading: 'Cuentas claras.',
+  },
+  en: {
+    invited: f => `${f} invited you to`, meta: (n, c) => `${n} ${n === 1 ? 'member' : 'members'} · ${c}`,
+    h1: 'Create your account<br>and you’re in.', p: 'Just one step. When you finish, you’re in the group.',
+    google: 'Continue with Google', or: 'or with your email', name: 'Your name', namePh: 'What’s your name?',
+    email: 'Email', pass: 'Password', passPh: 'At least 8 characters', create: 'Create account and join',
+    have: 'Already have an account?', login: 'Sign in', note: 'Mock-up: nothing is really created.',
+    sheetTitle: 'You’re invited to a plan', sheetP: f => `${f} wants to keep the accounts together.`, join: 'Join the group', notNow: 'Not now',
+    doneH: g => `You’re in ${g}.`, doneP: 'See who paid what and add your first expense whenever you like.', enter: 'Open the group',
+    hello: 'Hi, Camilo', heading: 'Clear accounts.',
+  },
+}[lang];
+const icon = (n, c = 'ico') => `<svg class="${c}"><use href="#i-${n}"/></svg>`;
+const tones = ['', 'camilo', 'leo', 'sara', 'mateo'];
+const av = (n, i) => `<span class="avatar ${tones[(i + 3) % 5]}">${n[0]}</span>`;
+const banner = () => `<div class="invite-banner" style="--tile-bg:${group.bg};--tile-ink:${group.ink}">
+  <span class="tile-symbol">${group.emoji}</span>
+  <div class="invite-copy"><small>${T.invited(inviter)}</small><strong>${group.name}</strong>
+  <span class="invite-meta"><span class="stack">${group.members.map(av).join('')}</span>${T.meta(group.members.length, group.cur)}</span></div></div>`;
+const done = () => `<div class="success"><div class="success-mark">${icon('check')}</div><h2>${T.doneH(group.name)}</h2><p>${T.doneP}</p><button class="full-btn" onclick="location.reload()">${T.enter}</button></div>`;
+
+document.getElementById('top-right').innerHTML = hasAccount ? `<span class="avatar camilo" style="width:39px;height:39px">C</span>` : `<span class="auth-mode">${lang.toUpperCase()}</span>`;
+
+if (!hasAccount) {
+  // Sin cuenta: la pantalla de entrada ya sabe a qué grupo va
+  document.getElementById('main').innerHTML = `<div class="auth-page page has-invite">${banner()}
+    <div class="auth-title"><h1>${T.h1}</h1><p>${T.p}</p></div>
+    <form id="f"><button type="button" class="full-btn white" data-go><span class="google">G</span> ${T.google}</button>
+    <div class="auth-divider">${T.or}</div>
+    <div class="field"><label>${T.name}</label><input placeholder="${T.namePh}"></div>
+    <div class="field"><label>${T.email}</label><input type="email" placeholder="tu@correo.com"></div>
+    <div class="field"><label>${T.pass}</label><div class="password-field"><input type="password" placeholder="${T.passPh}"><button type="button">${icon('eye', 'small-ico')}</button></div></div>
+    <button class="full-btn" type="button" data-go>${T.create}</button>
+    <p class="auth-foot">${T.have} <button type="button">${T.login}</button></p>
+    <p class="demo-note">${T.note}</p></form></div>`;
+} else {
+  // Con cuenta: abre su app y aparece la invitación encima
+  document.getElementById('main').className = 'main';
+  document.getElementById('main').innerHTML = `<div class="page"><div class="page-top"><p class="hello">${T.hello}</p><div class="heading-row"><h1>${T.heading}</h1></div></div></div>`;
+  document.getElementById('modal-root').innerHTML = `<div class="overlay"><section class="sheet"><div class="sheet-handle"></div>
+    <div class="sheet-head"><h2>${T.sheetTitle}</h2><button class="close-btn">${icon('close')}</button></div>
+    ${banner()}<p class="sheet-intro">${T.sheetP(inviter)}</p>
+    <button class="full-btn" data-go>${T.join}</button>
+    <button class="full-btn secondary" style="margin-top:10px">${T.notNow}</button></section></div>`;
+}
+document.addEventListener('click', e => {
+  if (e.target.closest('[data-go]')) {
+    document.getElementById('modal-root').innerHTML = '';
+    document.getElementById('main').className = '';
+    document.getElementById('main').innerHTML = `<div class="auth-page page">${done()}</div>`;
+    parent.postMessage({ ssJoined: true }, '*');
+  }
+});
+</script>
+</body>
+</html>

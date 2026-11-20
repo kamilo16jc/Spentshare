@@ -2,18 +2,43 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isMember(groupId) {
+      return signedIn()
+        && request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.memberUids;
+    }
+
     match /users/{userId} {
       allow read:  if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == userId;
     }
 
     match /groups/{groupId} {
-      allow read, write: if request.auth != null;
+      // Any signed-in user: the join-by-code flow queries by inviteCode and
+      // arrayUnions itself into memberUids before being a member.
+      allow read, write: if signedIn();
 
-      // Cubre expenses, budgets y cualquier subcolección futura del grupo
-      // con el mismo nivel de permiso que ya tenías.
-      match /{document=**} {
-        allow read, write: if request.auth != null;
+      // "Cómo me pagan": members read it, only its owner writes it.
+      match /members/{uid} {
+        allow read:  if isMember(groupId);
+        allow write: if isMember(groupId) && request.auth.uid == uid;
+      }
+
+      // Payment requests ("cobros"): written only by Cloud Functions (admin SDK).
+      match /paymentRequests/{requestId} {
+        allow read:  if isMember(groupId);
+        allow write: if false;
+      }
+
+      // expenses, budgets and any other subcollection: members only.
+      // Rules OR together, so members/ and paymentRequests/ are left out of this
+      // write rule to keep the stricter rules above in force.
+      match /{sub}/{doc=**} {
+        allow read:  if isMember(groupId);
+        allow write: if isMember(groupId) && !(sub in ['members', 'paymentRequests']);
       }
     }
   }

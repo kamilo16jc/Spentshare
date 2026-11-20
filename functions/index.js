@@ -1,8 +1,17 @@
-// Spentshare — email notifications via Resend
+// Spentshare — Cloud Functions (emails via Resend, payment requests, AI helpers)
 // Triggers:
-//  - onExpenseCreate: notify group members when someone adds an expense
-//  - onExpenseDelete: notify group members when someone deletes an expense
-//  - monthlySummary:  scheduled on the 1st of each month, sends per-group PDF recap
+//  - onExpenseCreate:  new expense -> "gasto compartido" email to each participant
+//                      (not to whoever logged it); new settle -> receipt number,
+//                      links the payment request it pays, receipt to payer + payee
+//  - onExpenseDelete:  notify group members when someone deletes an expense
+//  - monthlySummary:   scheduled on the 1st of each month, sends per-group PDF recap
+//  - paymentReminders: daily, one reminder per overdue payment request
+// Callables:
+//  - sendPaymentRequest / cancelPaymentRequest ("cobros"), sendGroupInvite
+//  - enrichExpense / scanReceipt / parseExpense / parseBudget (Claude)
+//
+// Local testing: with the Firebase emulators (FUNCTIONS_EMULATOR === 'true') no email
+// is sent and no AI is called — every email is written to functions/.outbox/ instead.
 
 const { onDocumentCreated, onDocumentDeleted } = require('firebase-functions/v2/firestore');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
@@ -13,15 +22,23 @@ const admin = require('firebase-admin');
 const { Resend } = require('resend');
 const PDFDocument = require('pdfkit');
 const Anthropic = require('@anthropic-ai/sdk');
+const fs = require('fs');
+const path = require('path');
+const emails = require('./emails/templates');
 
 admin.initializeApp();
 const db = admin.firestore();
+// (from the submodule: the emulator's proxied admin.firestore namespace lacks Timestamp)
+const { FieldValue, Timestamp } = require('firebase-admin/firestore');
 
 setGlobalOptions({ region: 'us-east1', maxInstances: 10 });
 
 const RESEND_API_KEY = defineSecret('RESEND_API_KEY');
 const ANTHROPIC_API_KEY = defineSecret('ANTHROPIC_API_KEY');
 const FROM = 'SpentShare <noreply@spentshare.com>';
+const IS_EMULATOR = process.env.FUNCTIONS_EMULATOR === 'true';
+const TIME_ZONE = 'America/Chicago';   // same zone the email templates use
+const EPS = 0.01;                      // amounts below a cent count as zero
 
 // Model used to categorize expenses & detect the store logo.
 // claude-opus-5 is the default; for this high-volume classification task you
@@ -74,6 +91,420 @@ function fmtMoney(amount, code) {
   return c.symbol + intFmt + (decPart ? c.decimalSep + decPart : '');
 }
 
+const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+
+// Firestore Timestamp | Date | ISO string | millis -> Date (or null)
+function toDate(v) {
+  if (!v) return null;
+  if (v instanceof Date) return isNaN(v) ? null : v;
+  if (typeof v.toDate === 'function') return v.toDate();
+  if (typeof v === 'number' || typeof v === 'string') {
+    const d = new Date(v);
+    return isNaN(d) ? null : d;
+  }
+  if (typeof v.seconds === 'number') return new Date(v.seconds * 1000);
+  if (typeof v._seconds === 'number') return new Date(v._seconds * 1000);
+  return null;
+}
+const millis = (v) => { const d = toDate(v); return d ? d.getTime() : 0; };
+
+// The date the user picked for the expense (spentAt), else when it was logged
+function expenseDate(e) {
+  return toDate(e.spentAt) || toDate(e.createdAt) || new Date();
+}
+
+function yearInTz(date) {
+  return new Intl.DateTimeFormat('en-US', { timeZone: TIME_ZONE, year: 'numeric' }).format(date || new Date());
+}
+
+// 'R' + 2026 + 17 -> 'R-2026-0017'
+function docNumber(prefix, date, n) {
+  return `${prefix}-${yearInTz(date)}-${String(n).padStart(4, '0')}`;
+}
+
+// ───────────────────────────────────────────────────────────
+// Shared debt calculation (emails, payment requests, monthly PDF)
+//
+// Balances are PAIRWISE (no debt simplification), same as the app:
+//  - expense: every participant other than the payer owes their share to the payer
+//      · NEW `splitUids`: uids that share the amount equally (payer may or may not be in it)
+//      · legacy `split`: 'all' (every member, amount/memberCount), 'two' (splitWithUid or
+//        first other member, half), 'full' (splitWithUid owes all), 'solo'/other (nobody)
+//  - settle of X from P to R: what P owes R goes down by X
+// ───────────────────────────────────────────────────────────
+
+// splitUids -> the label the email uses
+function splitTypeFor(uids, payer, members) {
+  const set = new Set(uids);
+  if (members.length && set.size === members.length && members.every((u) => set.has(u))) return 'all';
+  if (set.size === 1) return set.has(payer) ? 'solo' : 'full';
+  if (set.size === 2 && set.has(payer)) return 'two';
+  return 'custom';
+}
+
+/**
+ * Who takes part in an expense and how much each one's part is.
+ * @returns {{payer: string|null, shares: Object<string, number>, splitType: string}}
+ *   shares: uid -> share of EVERY participant (the payer too when they take part).
+ *   Debts are the shares of everyone but the payer.
+ */
+function expenseShares(e, memberUids) {
+  const amount = Number(e.amount) || 0;
+  const payer = e.paidByUid || null;
+  const members = memberUids || [];
+  const shares = {};
+
+  if (Array.isArray(e.splitUids) && e.splitUids.filter(Boolean).length) {
+    const uids = [...new Set(e.splitUids.filter(Boolean))];
+    const each = amount / uids.length;
+    uids.forEach((u) => { shares[u] = each; });
+    return { payer, shares, splitType: splitTypeFor(uids, payer, members) };
+  }
+
+  // Legacy docs — exactly like the app's old calc: the payer and the debtors must be members
+  const solo = () => { if (payer) shares[payer] = amount; return { payer, shares, splitType: 'solo' }; };
+  if (!payer || !members.includes(payer)) return solo();
+
+  if (e.split === 'all') {
+    const others = members.filter((u) => u !== payer);
+    if (!others.length) return solo();
+    const each = amount / (others.length + 1);
+    shares[payer] = each;
+    others.forEach((u) => { shares[u] = each; });
+    return { payer, shares, splitType: 'all' };
+  }
+  if (e.split === 'two') {
+    const partner = e.splitWithUid || members.find((u) => u !== payer);
+    if (!partner || partner === payer || !members.includes(partner)) return solo();
+    shares[payer] = amount / 2;
+    shares[partner] = amount / 2;
+    return { payer, shares, splitType: 'two' };
+  }
+  if (e.split === 'full') {
+    const partner = e.splitWithUid;
+    if (!partner || partner === payer || !members.includes(partner)) return solo();
+    shares[partner] = amount;
+    return { payer, shares, splitType: 'full' };
+  }
+  return solo();   // 'solo', legacy 'custom' without splitUids, missing split
+}
+
+// Debt edges of one movement: [{debtor, creditor, amount}] ("debtor owes creditor amount")
+function debtEdges(e, memberUids) {
+  const amount = Number(e.amount) || 0;
+  if (e.type === 'settle') {
+    // P paid R: P owes R less == R owes P more
+    if (!e.paidByUid || !e.settledToUid || e.paidByUid === e.settledToUid || !amount) return [];
+    return [{ debtor: e.settledToUid, creditor: e.paidByUid, amount }];
+  }
+  const { payer, shares } = expenseShares(e, memberUids);
+  if (!payer) return [];
+  return Object.keys(shares)
+    .filter((u) => u !== payer && shares[u] > 0)
+    .map((u) => ({ debtor: u, creditor: payer, amount: shares[u] }));
+}
+
+// How much one movement changes "a owes b" (negative: b owes a)
+function pairContribution(e, a, b, memberUids) {
+  let c = 0;
+  debtEdges(e, memberUids).forEach((x) => {
+    if (x.debtor === a && x.creditor === b) c += x.amount;
+    else if (x.debtor === b && x.creditor === a) c -= x.amount;
+  });
+  return c;
+}
+
+// Net that a owes b over a list of movements (> 0: a owes b · < 0: b owes a)
+function pairNet(expenses, a, b, memberUids) {
+  return (expenses || []).reduce((s, e) => s + pairContribution(e, a, b, memberUids), 0);
+}
+
+// net[a][b] = what a owes b, only between the given members
+function netMatrix(memberUids, expenses) {
+  const net = {};
+  memberUids.forEach((a) => { net[a] = {}; memberUids.forEach((b) => { net[a][b] = 0; }); });
+  (expenses || []).forEach((e) => {
+    debtEdges(e, memberUids).forEach((x) => {
+      if (!net[x.debtor] || !net[x.creditor] || x.debtor === x.creditor) return;
+      net[x.debtor][x.creditor] += x.amount;
+      net[x.creditor][x.debtor] -= x.amount;
+    });
+  });
+  return net;
+}
+
+// ───────────────────────────────────────────────────────────
+// Data loading
+// ───────────────────────────────────────────────────────────
+
+async function loadGroup(groupId) {
+  const snap = await db.doc(`groups/${groupId}`).get();
+  return snap.exists ? { id: snap.id, ...snap.data() } : null;
+}
+
+async function loadExpenses(groupId) {
+  const snap = await db.collection(`groups/${groupId}/expenses`).get();
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+// uid -> {uid, name, email, lang}. hints: uid -> name written on the expense doc
+async function loadPeople(group, uids, hints = {}) {
+  const list = [...new Set((uids || []).filter(Boolean))];
+  const snaps = list.length ? await db.getAll(...list.map((u) => db.doc(`users/${u}`))) : [];
+  const memberUids = (group && group.memberUids) || [];
+  const memberEmails = (group && group.memberEmails) || [];
+  const out = {};
+  list.forEach((uid, i) => {
+    const d = snaps[i] && snaps[i].exists ? snaps[i].data() : {};
+    const idx = memberUids.indexOf(uid);
+    const email = String(d.email || (idx >= 0 ? memberEmails[idx] : '') || '').trim();
+    const name = String(d.name || hints[uid] || (email ? email.split('@')[0] : '') || '?').trim();
+    out[uid] = { uid, name, email, lang: emails.pickLang(d.lang) };
+  });
+  return out;
+}
+
+// "Cómo me pagan" of a member: groups/{g}/members/{uid}.payMethods
+async function loadPayMethods(groupId, uid) {
+  if (!uid) return [];
+  const snap = await db.doc(`groups/${groupId}/members/${uid}`).get();
+  const list = snap.exists ? snap.data().payMethods : null;
+  return Array.isArray(list)
+    ? list.filter((m) => m && typeof m.value === 'string' && m.value.trim())
+      .map((m) => ({ type: String(m.type || 'other'), value: m.value.trim() }))
+    : [];
+}
+
+// ───────────────────────────────────────────────────────────
+// sendMail — EVERY email goes through here.
+// Emulator: nothing is sent; the HTML lands in functions/.outbox/ (+ a log line).
+// ───────────────────────────────────────────────────────────
+
+function outboxComment(fields) {
+  const clean = (v) => String(v == null ? '' : v).replace(/--/g, '- -').replace(/\r?\n/g, ' ');
+  return `<!--\n${Object.entries(fields).filter(([, v]) => v != null && v !== '')
+    .map(([k, v]) => `  ${k}: ${clean(v)}`).join('\n')}\n-->\n`;
+}
+
+async function sendMail({ kind, to, subject, html, text, lang, attachments, meta }) {
+  const recipients = (Array.isArray(to) ? to : [to])
+    .filter((e) => typeof e === 'string' && e.includes('@'));
+  if (!recipients.length) return { ok: false, reason: 'no-recipient' };
+
+  if (IS_EMULATOR) {
+    try {
+      const dir = path.join(__dirname, '.outbox');
+      fs.mkdirSync(dir, { recursive: true });
+      const stamp = new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').replace('.', '-').replace('Z', '');
+      const slug = recipients[0].toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
+      let base = `${stamp}-${kind}-${slug}`;
+      for (let n = 2; fs.existsSync(path.join(dir, `${base}.html`)); n++) base = `${stamp}-${kind}-${slug}-${n}`;
+      const files = (attachments || []).map((a) => {
+        const name = `${base}-${String(a.filename || 'attachment').replace(/[^\w.-]+/g, '_')}`;
+        fs.writeFileSync(path.join(dir, name), Buffer.from(a.content, 'base64'));
+        return name;
+      });
+      const head = outboxComment({
+        kind, to: recipients.join(', '), subject, lang, ...(meta || {}),
+        attachments: files.join(', '),
+      });
+      fs.writeFileSync(path.join(dir, `${base}.html`), head + html, 'utf8');
+      console.log(`[outbox] ${kind} -> ${recipients.join(', ')} [${lang || '-'}] "${subject}" (${base}.html)`);
+      return { ok: true, file: `${base}.html` };
+    } catch (err) {
+      console.error('sendMail outbox error', err);
+      return { ok: false, error: err };
+    }
+  }
+
+  try {
+    const resend = new Resend(RESEND_API_KEY.value());
+    const res = await resend.emails.send({
+      from: FROM, to: recipients, subject, html, text,
+      reply_to: 'noreply@spentshare.com',
+      ...(attachments && attachments.length ? { attachments } : {}),
+    });
+    if (res && res.error) {
+      console.error(`sendMail ${kind} resend error`, res.error);
+      return { ok: false, error: res.error };
+    }
+    return { ok: true, id: res && res.data && res.data.id };
+  } catch (err) {
+    console.error(`sendMail ${kind} error`, err);
+    return { ok: false, error: err };
+  }
+}
+
+// ───────────────────────────────────────────────────────────
+// Trigger: onExpenseCreate (expenses AND settles)
+// ───────────────────────────────────────────────────────────
+exports.onExpenseCreate = onDocumentCreated(
+  { document: 'groups/{groupId}/expenses/{expenseId}', secrets: [RESEND_API_KEY] },
+  async (event) => {
+    const snap = event.data;
+    const data = snap && snap.data();
+    if (!data) return;
+    const { groupId, expenseId } = event.params;
+    try {
+      if (data.type === 'settle') await handleSettleCreated(groupId, expenseId, snap.ref, data);
+      else await handleExpenseCreated(groupId, expenseId, data);
+    } catch (err) {
+      console.error(`onExpenseCreate ${groupId}/${expenseId} error`, err);
+    }
+  }
+);
+
+// New shared expense -> one email per participant (and the payer), never to who logged it
+async function handleExpenseCreated(groupId, expenseId, data) {
+  const amount = Number(data.amount) || 0;
+  const payerUid = data.paidByUid;
+  if (!payerUid || !(amount > 0)) return;
+
+  const group = await loadGroup(groupId);
+  if (!group) return;
+  const members = group.memberUids || [];
+  const { shares, splitType } = expenseShares(data, members);
+  const debtors = Object.keys(shares).filter((u) => u !== payerUid && shares[u] > 0);
+  if (!debtors.length) return;   // solo: nobody owes anything
+
+  const creatorUid = data.createdByUid || null;
+  const recipientUids = [payerUid, ...debtors].filter((u) => u !== creatorUid);
+  if (!recipientUids.length) return;
+
+  const [people, expenses, payTo] = await Promise.all([
+    loadPeople(group, [payerUid, ...debtors, creatorUid], { [payerUid]: data.paidBy }),
+    loadExpenses(groupId),
+    loadPayMethods(groupId, payerUid),
+  ]);
+  const others = expenses.filter((e) => e.id !== expenseId);   // "before" = without this expense
+  const currency = group.currency || 'USD';
+  const payer = people[payerUid];
+  const addedBy = creatorUid && people[creatorUid] ? people[creatorUid] : payer;
+  // payer row first (even with share 0), then everyone who owes a part
+  const splits = [payerUid, ...debtors].map((u) => ({
+    uid: u, name: people[u].name, share: round2(shares[u] || 0), isPayer: u === payerUid,
+  }));
+
+  for (const uid of recipientUids) {
+    const p = people[uid];
+    if (!p || !p.email) continue;
+    const before = uid === payerUid ? 0 : pairNet(others, uid, payerUid, members);
+    const after = uid === payerUid ? 0 : before + pairContribution(data, uid, payerUid, members);
+    const mail = emails.renderExpense({
+      lang: p.lang, currency, group: { name: group.name || '' }, expenseId,
+      date: expenseDate(data), description: data.description || '', category: data.category || 'other',
+      total: amount, paidBy: { name: payer.name, uid: payerUid }, addedBy: { name: addedBy.name },
+      splitType,
+      splits: splits.map((s) => ({ name: s.name, share: s.share, isPayer: s.isPayer, isYou: s.uid === uid })),
+      balanceBefore: round2(before), balanceAfter: round2(after), payTo,
+    });
+    await sendMail({
+      kind: 'expense', to: p.email, lang: mail.lang, ...mail,
+      meta: { group: groupId, expense: expenseId, uid, viewer: uid === payerUid ? 'payer' : 'participant' },
+    });
+  }
+}
+
+// New settle -> receipt number (R-YYYY-NNNN), link to the payment request it pays,
+// receipt to the payer and to the payee (nobody else)
+async function handleSettleCreated(groupId, settleId, settleRef, data) {
+  const payerUid = data.paidByUid;
+  const payeeUid = data.settledToUid;
+  const amount = Number(data.amount) || 0;
+  if (!payerUid || !payeeUid || payerUid === payeeUid || !(amount > 0)) return;
+
+  const groupRef = db.doc(`groups/${groupId}`);
+  const reqCol = groupRef.collection('paymentRequests');
+  const settleDate = toDate(data.createdAt) || new Date();
+
+  // One transaction: receipt number + linking the request. Re-runs are safe:
+  // an existing receiptNo is reused and a request already holding this settle isn't paid twice.
+  const link = await db.runTransaction(async (tx) => {
+    const [settleSnap, groupSnap] = await tx.getAll(settleRef, groupRef);
+    if (!settleSnap.exists || !groupSnap.exists) return null;
+    const s = settleSnap.data();
+    const g = groupSnap.data();
+
+    let reqSnap = null;
+    if (s.requestId) {
+      const r = await tx.get(reqCol.doc(String(s.requestId)));
+      if (r.exists) {
+        const rd = r.data();
+        const already = (rd.settleIds || []).includes(settleId);
+        if (already || (rd.status === 'pending' && rd.fromUid === payeeUid && rd.toUid === payerUid)) reqSnap = r;
+      }
+    }
+    if (!reqSnap) {
+      // most recent pending request from the payee to the payer
+      const q = await tx.get(reqCol.where('fromUid', '==', payeeUid).where('toUid', '==', payerUid).where('status', '==', 'pending'));
+      reqSnap = q.docs.sort((a, b) => millis(b.data().createdAt) - millis(a.data().createdAt))[0] || null;
+    }
+
+    const settleUpdate = {};
+    let receiptNo = s.receiptNo;
+    if (!receiptNo) {
+      const n = Number((g.seq && g.seq.receipt) || 0) + 1;
+      receiptNo = docNumber('R', settleDate, n);
+      tx.update(groupRef, { 'seq.receipt': n });
+      settleUpdate.receiptNo = receiptNo;
+    }
+
+    let request = null;
+    if (reqSnap) {
+      const rd = reqSnap.data();
+      request = { id: reqSnap.id, ...rd };
+      if (!(rd.settleIds || []).includes(settleId)) {
+        const paidAmount = round2(Number(rd.paidAmount || 0) + amount);
+        const upd = { paidAmount, settleIds: FieldValue.arrayUnion(settleId) };
+        if (paidAmount >= Number(rd.amount || 0) - EPS) {
+          upd.status = 'paid';
+          upd.paidAt = FieldValue.serverTimestamp();
+        }
+        tx.update(reqSnap.ref, upd);
+        request.paidAmount = paidAmount;
+        request.status = upd.status || rd.status;
+      }
+      if (s.requestId !== reqSnap.id) settleUpdate.requestId = reqSnap.id;
+    }
+    if (Object.keys(settleUpdate).length) tx.update(settleRef, settleUpdate);
+    return { receiptNo, request, group: { id: groupId, ...g } };
+  });
+  if (!link) return;
+
+  const group = link.group;
+  const members = group.memberUids || [];
+  const recorderUid = data.createdByUid || payerUid;
+  const [people, expenses] = await Promise.all([
+    loadPeople(group, [payerUid, payeeUid, recorderUid], { [payerUid]: data.paidBy, [payeeUid]: data.settledTo }),
+    loadExpenses(groupId),
+  ]);
+  // what the payer owes the payee, before and after this payment
+  const before = pairNet(expenses.filter((e) => e.id !== settleId), payerUid, payeeUid, members);
+  const after = before - amount;
+  const currency = group.currency || 'USD';
+
+  for (const [viewer, uid] of [['payer', payerUid], ['payee', payeeUid]]) {
+    const p = people[uid];
+    if (!p || !p.email) continue;
+    const mail = emails.renderReceipt({
+      lang: p.lang, receiptNo: link.receiptNo, date: settleDate, currency, amount,
+      group: { name: group.name || '' },
+      payer: { name: people[payerUid].name }, payee: { name: people[payeeUid].name },
+      recordedBy: { name: (people[recorderUid] || people[payerUid]).name },
+      viewer, method: data.method || '',
+      balanceBefore: round2(before), balanceAfter: round2(after),
+      invoiceNo: link.request ? link.request.number : undefined,
+    });
+    await sendMail({
+      kind: 'receipt', to: p.email, lang: mail.lang, ...mail,
+      meta: { group: groupId, settle: settleId, uid, viewer, receiptNo: link.receiptNo, request: link.request ? link.request.id : '' },
+    });
+  }
+}
+
+// ───────────────────────────────────────────────────────────
+// Old-style email shell (invite, delete, monthly summary)
+// ───────────────────────────────────────────────────────────
 async function getGroupRecipients(groupId, excludeUid) {
   const groupSnap = await db.doc(`groups/${groupId}`).get();
   if (!groupSnap.exists) return { group: null, recipients: [] };
@@ -87,15 +518,6 @@ async function getGroupRecipients(groupId, excludeUid) {
     if (email && email.includes('@')) recipients.push(email);
   });
   return { group, recipients };
-}
-
-function splitLabel(split, amount, memberCount, currency) {
-  const n = Math.max(memberCount, 1);
-  if (split === 'all')   return `${fmtMoney(amount/n, currency)} por persona`;
-  if (split === 'two')   return `${fmtMoney(amount/2, currency)} entre dos`;
-  if (split === 'full')  return `${fmtMoney(amount, currency)} — me deben el total`;
-  if (split === 'solo')  return 'Solo yo';
-  return '';
 }
 
 function baseEmailShell(innerHtml) {
@@ -119,73 +541,6 @@ function baseEmailShell(innerHtml) {
 }
 
 // ───────────────────────────────────────────────────────────
-// Trigger: onExpenseCreate
-// ───────────────────────────────────────────────────────────
-exports.onExpenseCreate = onDocumentCreated(
-  { document: 'groups/{groupId}/expenses/{expenseId}', secrets: [RESEND_API_KEY] },
-  async (event) => {
-    const data = event.data?.data();
-    if (!data) return;
-    const { groupId } = event.params;
-
-    const { group, recipients } = await getGroupRecipients(groupId, data.createdByUid);
-    if (!group || recipients.length === 0) return;
-
-    const resend = new Resend(RESEND_API_KEY.value());
-    const amount = Number(data.amount || 0);
-    const catEmoji = CAT_EMOJI[data.category] || '📦';
-    const paidBy = data.paidBy || 'Alguien';
-    const isSettle = data.type === 'settle';
-
-    const subject = isSettle
-      ? `🤝 ${paidBy} liquidó una deuda en ${group.name}`
-      : `${catEmoji} ${paidBy} agregó un gasto en ${group.name}`;
-
-    const memberCount = (group.memberUids || []).length;
-    const currency = group.currency || 'USD';
-    const amtFmt = fmtMoney(amount, currency);
-    const splitTxt = isSettle
-      ? `Pago saldando deuda con ${data.settledTo || ''}`
-      : splitLabel(data.split, amount, memberCount, currency);
-
-    const html = baseEmailShell(`
-      <div style="font-size:13px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">
-        ${isSettle ? 'Pago registrado' : 'Nuevo gasto'}
-      </div>
-      <div style="font-size:22px;font-weight:900;margin-bottom:18px">${group.emoji || '🏠'} ${group.name}</div>
-      <div style="background:#fff5f0;border-radius:14px;padding:20px;margin-bottom:18px;border-left:4px solid #ff6b35">
-        <div style="font-size:30px;font-weight:900;color:#ff6b35">${amtFmt} <span style="font-size:13px;color:#888;font-weight:600">${currency}</span></div>
-        <div style="font-size:15px;margin-top:6px">${catEmoji} ${data.description || ''}</div>
-        <div style="font-size:13px;color:#555;margin-top:10px">
-          <strong>Pagó:</strong> ${paidBy}<br>
-          <strong>División:</strong> ${splitTxt}
-        </div>
-      </div>
-      <a href="https://spentshare.com" style="display:inline-block;background:#ff6b35;color:white;text-decoration:none;padding:12px 22px;border-radius:14px;font-weight:700;font-size:14px">
-        Abrir SpentShare →
-      </a>
-    `);
-
-    const text = isSettle
-      ? `${paidBy} registró un pago de ${amtFmt} ${currency} en ${group.name}. Abre https://spentshare.com`
-      : `${paidBy} agregó "${data.description}" (${amtFmt} ${currency}) en ${group.name}. ${splitTxt}. Abre https://spentshare.com`;
-
-    try {
-      await resend.emails.send({
-        from: FROM,
-        to: recipients,
-        subject,
-        html,
-        text,
-        reply_to: 'noreply@spentshare.com',
-      });
-    } catch (err) {
-      console.error('onExpenseCreate resend error', err);
-    }
-  }
-);
-
-// ───────────────────────────────────────────────────────────
 // Trigger: onExpenseDelete
 // ───────────────────────────────────────────────────────────
 exports.onExpenseDelete = onDocumentDeleted(
@@ -198,7 +553,6 @@ exports.onExpenseDelete = onDocumentDeleted(
     const { group, recipients } = await getGroupRecipients(groupId, null); // notify everyone
     if (!group || recipients.length === 0) return;
 
-    const resend = new Resend(RESEND_API_KEY.value());
     const amount = Number(data.amount || 0);
     const catEmoji = CAT_EMOJI[data.category] || '📦';
     const paidBy = data.paidBy || 'Alguien';
@@ -231,18 +585,7 @@ exports.onExpenseDelete = onDocumentDeleted(
 
     const text = `Se eliminó "${data.description}" (${amtFmt} ${currency}) de ${group.name}. Las deudas se recalcularon.`;
 
-    try {
-      await resend.emails.send({
-        from: FROM,
-        to: recipients,
-        subject,
-        html,
-        text,
-        reply_to: 'noreply@spentshare.com',
-      });
-    } catch (err) {
-      console.error('onExpenseDelete resend error', err);
-    }
+    await sendMail({ kind: 'deleted', to: recipients, subject, html, text, lang: 'es', meta: { group: groupId } });
   }
 );
 
@@ -363,42 +706,10 @@ function buildMonthlyPdf({ group, members, expenses, monthLabel, totals, catTota
   });
 }
 
+
 function calcDebtsForMonth(members, expenses) {
-  const net = {};
-  members.forEach(a => { net[a.uid] = {}; members.forEach(b => net[a.uid][b.uid] = 0); });
-  expenses.forEach(e => {
-    if (e.type === 'settle') {
-      const amt = Number(e.amount || 0);
-      if (e.paidByUid && e.settledToUid && net[e.paidByUid] && net[e.settledToUid]) {
-        net[e.paidByUid][e.settledToUid] -= amt;
-        net[e.settledToUid][e.paidByUid] += amt;
-      }
-      return;
-    }
-    const amt = Number(e.amount || 0);
-    let debtors = [];
-    if (e.split === 'all') debtors = members.filter(m => m.uid !== e.paidByUid);
-    else if (e.split === 'two') {
-      const partner = e.splitWithUid || members.filter(m => m.uid !== e.paidByUid)[0]?.uid;
-      debtors = partner ? [{ uid: partner }].filter(m => m.uid !== e.paidByUid) : [];
-    } else if (e.split === 'full') {
-      const partner = e.splitWithUid;
-      if (partner && net[partner] && net[partner][e.paidByUid] !== undefined) {
-        net[partner][e.paidByUid] += amt;
-        net[e.paidByUid][partner] -= amt;
-      }
-      return;
-    }
-    if (debtors.length > 0) {
-      const share = amt / (debtors.length + 1);
-      debtors.forEach(d => {
-        if (net[d.uid] && net[d.uid][e.paidByUid] !== undefined) {
-          net[d.uid][e.paidByUid] += share;
-          net[e.paidByUid][d.uid] -= share;
-        }
-      });
-    }
-  });
+  const uids = members.map(m => m.uid);
+  const net = netMatrix(uids, expenses);
   const debts = [];
   const processed = new Set();
   members.forEach(a => members.forEach(b => {
@@ -413,9 +724,23 @@ function calcDebtsForMonth(members, expenses) {
   return debts;
 }
 
+
 // ───────────────────────────────────────────────────────────
 // Callable: sendGroupInvite — from the app's "Invite a friend" button
+// {groupId, toEmail, note?}. The email's button goes to https://spentshare.com/?unirse=<code>
 // ───────────────────────────────────────────────────────────
+
+// users doc for an email (stored lowercase by the app; also tries the exact value)
+async function findUserByEmail(email) {
+  const raw = String(email || '').trim();
+  const variants = [...new Set([raw.toLowerCase(), raw])].filter(Boolean);
+  for (const v of variants) {
+    const snap = await db.collection('users').where('email', '==', v).limit(1).get();
+    if (!snap.empty) return { uid: snap.docs[0].id, ...snap.docs[0].data() };
+  }
+  return null;
+}
+
 exports.sendGroupInvite = onCall(
   { secrets: [RESEND_API_KEY] },
   async (request) => {
@@ -423,17 +748,18 @@ exports.sendGroupInvite = onCall(
       throw new HttpsError('unauthenticated', 'Login required');
     }
     const uid = request.auth.uid;
-    const { groupId, toEmail } = request.data || {};
-    if (!groupId || !toEmail || typeof toEmail !== 'string' || !toEmail.includes('@')) {
+    const { groupId, note } = request.data || {};
+    const toEmail = typeof (request.data || {}).toEmail === 'string' ? request.data.toEmail.trim() : '';
+    if (!groupId || typeof groupId !== 'string' || !toEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(toEmail)) {
       throw new HttpsError('invalid-argument', 'groupId and valid toEmail required');
     }
 
-    const groupSnap = await db.doc(`groups/${groupId}`).get();
-    if (!groupSnap.exists) {
+    const group = await loadGroup(groupId);
+    if (!group) {
       throw new HttpsError('not-found', 'Group not found');
     }
-    const group = { id: groupSnap.id, ...groupSnap.data() };
-    if (!(group.memberUids || []).includes(uid)) {
+    const memberUids = group.memberUids || [];
+    if (!memberUids.includes(uid)) {
       throw new HttpsError('permission-denied', 'Not a member of this group');
     }
 
@@ -442,59 +768,37 @@ exports.sendGroupInvite = onCall(
     if (existingEmails.includes(toEmail.toLowerCase())) {
       return { ok: false, reason: 'already-member' };
     }
-
-    const inviterSnap = await db.doc(`users/${uid}`).get();
-    const inviter = inviterSnap.exists ? inviterSnap.data() : {};
-    const inviterName = inviter.name || (request.auth.token.email || 'Alguien').split('@')[0];
-
-    const code = group.inviteCode || '';
-    const groupName = group.name || 'un grupo';
-    const groupEmoji = group.emoji || '🏠';
-
-    const resend = new Resend(RESEND_API_KEY.value());
-    const subject = `${inviterName} te invitó a ${groupName} en SpentShare`;
-
-    const html = baseEmailShell(`
-      <div style="font-size:13px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">
-        Invitación a grupo
-      </div>
-      <div style="font-size:22px;font-weight:900;margin-bottom:18px">${groupEmoji} ${groupName}</div>
-      <div style="font-size:15px;color:#333;line-height:1.6;margin-bottom:20px">
-        <strong>${inviterName}</strong> te invitó a compartir gastos en <strong>${groupName}</strong>.
-        Juntá a tus amigos, dividí cuentas y llevá el control de quién debe qué — sin complicaciones.
-      </div>
-      <div style="background:#fff5f0;border-radius:14px;padding:22px;margin-bottom:20px;border-left:4px solid #ff6b35;text-align:center">
-        <div style="font-size:12px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Código de invitación</div>
-        <div style="font-size:32px;font-weight:900;color:#ff6b35;letter-spacing:4px;font-family:'Courier New',monospace">${code}</div>
-        <div style="font-size:11px;color:#888;margin-top:6px">Válido por 30 días</div>
-      </div>
-      <div style="font-size:14px;color:#555;line-height:1.6;margin-bottom:20px">
-        <strong>¿Cómo unirte?</strong><br>
-        1. Entrá a <a href="https://spentshare.com" style="color:#ff6b35">spentshare.com</a><br>
-        2. Creá una cuenta (o iniciá sesión)<br>
-        3. Tocá "Unirse con código" y pegá el código de arriba
-      </div>
-      <a href="https://spentshare.com" style="display:inline-block;background:#ff6b35;color:white;text-decoration:none;padding:14px 26px;border-radius:14px;font-weight:700;font-size:15px">
-        Abrir SpentShare →
-      </a>
-    `);
-
-    const text = `${inviterName} te invitó a ${groupName} en SpentShare.\n\nCódigo de invitación: ${code}\n\nEntrá a https://spentshare.com, creá una cuenta y tocá "Unirse con código".`;
-
-    try {
-      await resend.emails.send({
-        from: FROM,
-        to: [toEmail],
-        subject,
-        html,
-        text,
-        reply_to: 'noreply@spentshare.com',
-      });
-      return { ok: true };
-    } catch (err) {
-      console.error('sendGroupInvite resend error', err);
-      throw new HttpsError('internal', 'Email send failed');
+    const invitee = await findUserByEmail(toEmail);
+    if (invitee && memberUids.includes(invitee.uid)) {
+      return { ok: false, reason: 'already-member' };
     }
+
+    const people = await loadPeople(group, [uid, ...memberUids]);
+    const inviterDoc = await db.doc(`users/${uid}`).get();
+    const inviterLang = inviterDoc.exists ? inviterDoc.data().lang : null;
+    const inviter = {
+      name: people[uid].name !== '?' ? people[uid].name : (request.auth.token.email || 'SpentShare').split('@')[0],
+      email: people[uid].email || request.auth.token.email || '',
+    };
+    // the language of who receives it if they already have an account, else the inviter's
+    const lang = emails.pickLang(invitee && invitee.lang ? invitee.lang : inviterLang);
+
+    const mail = emails.renderInvite({
+      lang,
+      inviter,
+      group: { name: group.name || '', emoji: group.emoji || '', currency: group.currency || 'USD', theme: group.theme || 'violet' },
+      members: memberUids.map((u) => ({ name: people[u].name })),
+      code: group.inviteCode || '',
+      note: typeof note === 'string' ? note.trim().slice(0, 300) : '',
+      isUser: !!invitee,
+    });
+
+    const sent = await sendMail({
+      kind: 'invite', to: toEmail, lang: mail.lang, ...mail,
+      meta: { group: groupId, from: uid, isUser: invitee ? 'yes' : 'no', joinUrl: mail.joinUrl },
+    });
+    if (!sent.ok) throw new HttpsError('internal', 'Email send failed');
+    return { ok: true, isUser: !!invitee, lang: mail.lang };
   }
 );
 
@@ -510,7 +814,6 @@ exports.monthlySummary = onSchedule(
     timeoutSeconds: 540,
   },
   async () => {
-    const resend = new Resend(RESEND_API_KEY.value());
 
     // Previous month range
     const now = new Date();
@@ -586,13 +889,14 @@ exports.monthlySummary = onSchedule(
           </a>
         `);
 
-        await resend.emails.send({
-          from: FROM,
+        await sendMail({
+          kind: 'monthly',
           to: recipients,
           subject: `📈 Resumen de ${group.name} — ${monthLabel}`,
           html,
           text: `Resumen mensual de ${group.name} (${monthLabel}). Total: ${totalFmt} ${currency}. PDF adjunto.`,
-          reply_to: 'noreply@spentshare.com',
+          lang: 'es',
+          meta: { group: group.id },
           attachments: [
             {
               filename: `spentshare-${group.id}-${prevMonthStart.getFullYear()}-${String(prevMonthStart.getMonth()+1).padStart(2,'0')}.pdf`,
@@ -606,6 +910,213 @@ exports.monthlySummary = onSchedule(
     }
   }
 );
+
+// ───────────────────────────────────────────────────────────
+// Payment requests ("cobros"): groups/{g}/paymentRequests/{r}
+// Written ONLY here (admin SDK); the app just reads them.
+// ───────────────────────────────────────────────────────────
+
+/**
+ * The expenses behind what `debtorUid` owes `creditorUid`: walks every movement in the
+ * order it was logged, tracking the pair's running net, and keeps what happened after the
+ * last moment the debtor owed nothing. Settles move the net but are not listed.
+ *  - creditor paid, debtor takes part -> paidBy 'from', share = debtor's part
+ *  - debtor paid, creditor takes part -> paidBy 'to',   share = creditor's part (a credit)
+ */
+function buildRequestItems(expenses, creditorUid, debtorUid, memberUids) {
+  const sorted = (expenses || []).slice().sort((a, b) => millis(a.createdAt) - millis(b.createdAt));
+  let running = 0;
+  let items = [];
+  sorted.forEach((e) => {
+    const c = pairContribution(e, debtorUid, creditorUid, memberUids);
+    if (Math.abs(c) < 1e-9) return;
+    running += c;
+    if (e.type !== 'settle') {
+      const { shares } = expenseShares(e, memberUids);
+      const base = {
+        expenseId: e.id, date: expenseDate(e), description: String(e.description || ''),
+        category: e.category || 'other', total: round2(e.amount),
+      };
+      if (e.paidByUid === creditorUid && shares[debtorUid] > 0) {
+        items.push({ ...base, paidBy: 'from', share: round2(shares[debtorUid]) });
+      } else if (e.paidByUid === debtorUid && shares[creditorUid] > 0) {
+        items.push({ ...base, paidBy: 'to', share: round2(shares[creditorUid]) });
+      }
+    }
+    if (running <= EPS) items = [];   // all square (or the other way round): start over
+  });
+  return items;
+}
+
+// Firestore items (Timestamps) -> template items (Dates)
+function itemsForTemplate(items) {
+  return (items || []).map((i) => ({ ...i, date: toDate(i.date) || new Date() }));
+}
+
+// Callable: the creditor (caller) asks `debtorUid` for what they owe right now.
+exports.sendPaymentRequest = onCall(
+  { secrets: [RESEND_API_KEY] },
+  async (req) => {
+    if (!req.auth) throw new HttpsError('unauthenticated', 'Login required');
+    const uid = req.auth.uid;
+    const { groupId, debtorUid, note, dueDays } = req.data || {};
+    if (!groupId || typeof groupId !== 'string' || !debtorUid || typeof debtorUid !== 'string') {
+      throw new HttpsError('invalid-argument', 'groupId and debtorUid required');
+    }
+    if (debtorUid === uid) throw new HttpsError('invalid-argument', 'self-request');
+
+    const groupRef = db.doc(`groups/${groupId}`);
+    const group = await loadGroup(groupId);
+    if (!group) throw new HttpsError('not-found', 'Group not found');
+    const members = group.memberUids || [];
+    if (!members.includes(uid)) throw new HttpsError('permission-denied', 'Not a member of this group');
+    if (!members.includes(debtorUid)) throw new HttpsError('invalid-argument', 'debtor-not-member');
+
+    let days = Number(dueDays);
+    if (dueDays == null || !Number.isFinite(days)) days = 7;
+    days = Math.min(60, Math.max(0, Math.round(days)));
+    const cleanNote = typeof note === 'string' ? note.trim().slice(0, 500) : '';
+
+    const expenses = await loadExpenses(groupId);
+    const amount = round2(pairNet(expenses, debtorUid, uid, members));
+    if (amount < EPS) throw new HttpsError('failed-precondition', 'no-debt');
+    const items = buildRequestItems(expenses, uid, debtorUid, members);
+
+    const now = new Date();
+    const dueAt = new Date(now.getTime() + days * 86400000);
+    const currency = group.currency || 'USD';
+    const reqCol = groupRef.collection('paymentRequests');
+    const newRef = reqCol.doc();
+
+    // number + cancel the previous pending request(s) for this pair + the new doc, atomically
+    const number = await db.runTransaction(async (tx) => {
+      const g = await tx.get(groupRef);
+      const pending = await tx.get(reqCol.where('fromUid', '==', uid).where('toUid', '==', debtorUid).where('status', '==', 'pending'));
+      const n = Number((((g.data() || {}).seq) || {}).request || 0) + 1;
+      const num = docNumber('F', now, n);
+      pending.docs.forEach((d) => tx.update(d.ref, { status: 'cancelled', cancelledAt: FieldValue.serverTimestamp() }));
+      tx.update(groupRef, { 'seq.request': n });
+      tx.set(newRef, {
+        number: num, fromUid: uid, toUid: debtorUid, amount, currency, note: cleanNote,
+        dueAt: Timestamp.fromDate(dueAt), createdAt: FieldValue.serverTimestamp(),
+        status: 'pending', paidAmount: 0, paidAt: null, settleIds: [],
+        items: items.map((i) => ({ ...i, date: Timestamp.fromDate(i.date) })),
+        remindedAt: null,
+      });
+      return num;
+    });
+
+    const [people, payTo] = await Promise.all([
+      loadPeople(group, [uid, debtorUid]),
+      loadPayMethods(groupId, uid),
+    ]);
+    const creditor = people[uid];
+    const debtor = people[debtorUid];
+    let emailed = false;
+    if (debtor.email) {
+      const mail = emails.renderInvoice({
+        lang: debtor.lang, invoiceNo: number, requestId: newRef.id, issuedAt: now, dueAt,
+        currency, group: { name: group.name || '' },
+        from: { name: creditor.name, email: creditor.email }, to: { name: debtor.name },
+        note: cleanNote, items, amount, payTo,
+      });
+      const sent = await sendMail({
+        kind: 'invoice', to: debtor.email, lang: mail.lang, ...mail,
+        meta: { group: groupId, request: newRef.id, number, uid: debtorUid },
+      });
+      emailed = !!sent.ok;
+    }
+    return { ok: true, requestId: newRef.id, number, amount, dueAt: dueAt.toISOString(), emailed };
+  }
+);
+
+// Callable: only the creditor can cancel their own pending request
+exports.cancelPaymentRequest = onCall(async (req) => {
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Login required');
+  const { groupId, requestId } = req.data || {};
+  if (!groupId || typeof groupId !== 'string' || !requestId || typeof requestId !== 'string') {
+    throw new HttpsError('invalid-argument', 'groupId and requestId required');
+  }
+  const ref = db.doc(`groups/${groupId}/paymentRequests/${requestId}`);
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) throw new HttpsError('not-found', 'Request not found');
+    const r = snap.data();
+    if (r.fromUid !== req.auth.uid) throw new HttpsError('permission-denied', 'Only who sent the request can cancel it');
+    if (r.status === 'cancelled') return { ok: true, status: 'cancelled' };
+    if (r.status !== 'pending') throw new HttpsError('failed-precondition', 'not-pending');
+    tx.update(ref, { status: 'cancelled', cancelledAt: FieldValue.serverTimestamp() });
+    return { ok: true, status: 'cancelled' };
+  });
+});
+
+// One reminder per overdue request: pending, dueAt <= now, not reminded yet.
+// Uses the collection-group index paymentRequests (status ASC, dueAt ASC).
+async function runPaymentReminders(now = new Date()) {
+  const snap = await db.collectionGroup('paymentRequests')
+    .where('status', '==', 'pending')
+    .where('dueAt', '<=', Timestamp.fromDate(now))
+    .get();
+  const result = { checked: snap.size, sent: 0, skipped: 0, failed: 0 };
+  for (const doc of snap.docs) {
+    const r = doc.data();
+    const remaining = round2(Number(r.amount || 0) - Number(r.paidAmount || 0));
+    if (r.remindedAt || remaining < EPS) { result.skipped++; continue; }
+    try {
+      const groupId = doc.ref.parent.parent.id;
+      const group = await loadGroup(groupId);
+      if (!group) { result.skipped++; continue; }
+      const [people, payTo] = await Promise.all([
+        loadPeople(group, [r.fromUid, r.toUid]),
+        loadPayMethods(groupId, r.fromUid),
+      ]);
+      const creditor = people[r.fromUid];
+      const debtor = people[r.toUid];
+      if (!debtor || !debtor.email) { result.skipped++; continue; }
+      const mail = emails.renderInvoice({
+        reminder: true,
+        lang: debtor.lang, invoiceNo: r.number, requestId: doc.id,
+        issuedAt: toDate(r.createdAt) || now, dueAt: toDate(r.dueAt),
+        currency: r.currency || group.currency || 'USD', group: { name: group.name || '' },
+        from: { name: creditor.name, email: creditor.email }, to: { name: debtor.name },
+        note: r.note || '', items: itemsForTemplate(r.items), amount: remaining, payTo,
+      });
+      const sent = await sendMail({
+        kind: 'reminder', to: debtor.email, lang: mail.lang, ...mail,
+        meta: { group: groupId, request: doc.id, number: r.number, uid: r.toUid },
+      });
+      if (!sent.ok) { result.failed++; continue; }   // try again tomorrow
+      await doc.ref.update({ remindedAt: FieldValue.serverTimestamp() });
+      result.sent++;
+    } catch (err) {
+      result.failed++;
+      console.error(`paymentReminders ${doc.ref.path} error`, err);
+    }
+  }
+  return result;
+}
+
+exports.paymentReminders = onSchedule(
+  {
+    schedule: '0 9 * * *',
+    timeZone: 'America/Chicago',
+    secrets: [RESEND_API_KEY],
+    timeoutSeconds: 300,
+  },
+  async () => {
+    const result = await runPaymentReminders(new Date());
+    console.log('paymentReminders', JSON.stringify(result));
+  }
+);
+
+// Emulator only (never deployed): run the reminders now, from tools/test-emails.mjs
+if (IS_EMULATOR) {
+  exports.devRunPaymentReminders = onCall(async (req) => {
+    if (!req.auth) throw new HttpsError('unauthenticated', 'Login required');
+    const at = req.data && req.data.now ? new Date(req.data.now) : new Date();
+    return runPaymentReminders(isNaN(at) ? new Date() : at);
+  });
+}
 
 // ───────────────────────────────────────────────────────────
 // AI: categorize an expense + detect the store logo (Claude)
@@ -668,6 +1179,7 @@ exports.enrichExpense = onDocumentCreated(
   async (event) => {
     const snap = event.data;
     if (!snap) return;
+    if (IS_EMULATOR) return;   // local emulators: never call the AI
     const data = snap.data() || {};
     if (data.type === 'settle' || data.aiEnriched) return;
     const description = String(data.description || '').trim();
@@ -713,6 +1225,7 @@ exports.scanReceipt = onCall(
   { secrets: [ANTHROPIC_API_KEY], memory: '512MiB', timeoutSeconds: 60 },
   async (req) => {
     if (!req.auth) throw new HttpsError('unauthenticated', 'Login required');
+    if (IS_EMULATOR) return { found: false };   // local emulators: never call the AI
     const { imageBase64, mediaType } = req.data || {};
     if (!imageBase64 || typeof imageBase64 !== 'string') {
       throw new HttpsError('invalid-argument', 'Missing image');
@@ -785,6 +1298,7 @@ exports.parseExpense = onCall(
   { secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 30 },
   async (req) => {
     if (!req.auth) throw new HttpsError('unauthenticated', 'Login required');
+    if (IS_EMULATOR) return { found: false };   // local emulators: never call the AI
     const { text, members, currency } = req.data || {};
     if (!text || typeof text !== 'string' || !text.trim()) {
       throw new HttpsError('invalid-argument', 'Missing text');
@@ -861,6 +1375,7 @@ exports.parseBudget = onCall(
   { secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 30 },
   async (req) => {
     if (!req.auth) throw new HttpsError('unauthenticated', 'Login required');
+    if (IS_EMULATOR) return { found: false };   // local emulators: never call the AI
     const { text, currency } = req.data || {};
     if (!text || typeof text !== 'string' || !text.trim()) {
       throw new HttpsError('invalid-argument', 'Missing text');
