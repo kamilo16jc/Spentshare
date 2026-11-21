@@ -550,6 +550,47 @@ async function main() {
   check(await fsRest('GET', `groups/${TRIP}/recurring/r_left`, tok.sara) === 403, 'non-member cannot read rules');
   check(await fsRest('DELETE', rPath, tok.camilo) === 200, 'creator deletes their rule');
 
+  section('Push notifications (Web Push) — outbox in the emulator');
+  const readPush = () => (fs.existsSync(OUTBOX) ? fs.readdirSync(OUTBOX).filter((f) => f.includes('-push-') && f.endsWith('.json')).sort()
+    .map((f) => JSON.parse(fs.readFileSync(path.join(OUTBOX, f), 'utf8'))) : []);
+  const fakeSub = (n) => ({ endpoint: `https://push.example.test/${n}`, keys: { p256dh: 'x', auth: 'y' }, lang: 'es', updatedAt: FieldValue.serverTimestamp() });
+  await db.doc(`users/${camilo.uid}/push/p_cam`).set(fakeSub('cam'));
+  await db.doc(`users/${ana.uid}/push/p_ana`).set(fakeSub('ana'));
+  const push0 = readPush().length;
+  // 1) a shared expense Ana paid, split with Camilo -> Camilo gets "Ana agregó …" with his share
+  await db.doc(`groups/${APTO}/expenses/t_push`).set({
+    type: 'expense', amount: 30, description: 'Pizza push', category: 'food',
+    paidBy: ana.name, paidByUid: ana.uid, splitUids: [ana.uid, camilo.uid], split: 'two', splitWithUid: camilo.uid,
+    createdByUid: ana.uid, createdAt: FieldValue.serverTimestamp(),
+  });
+  const pExp = await waitFor(() => readPush().slice(push0).find((m) => m.uid === camilo.uid && m.meta && m.meta.expense === 't_push'));
+  check(pExp && pExp.title === 'Ana agregó “Pizza push”' && pExp.body.startsWith('Tu parte: $15.00') && pExp.url === './?gasto=t_push',
+    'expense -> push to Camilo (Spanish): title, his share, opens the expense', pExp && { t: pExp.title, b: pExp.body });
+  check(!readPush().slice(push0).some((m) => m.uid === ana.uid && m.meta && m.meta.expense === 't_push'), 'no push to the person who logged it');
+  // 2) Ana requests -> Camilo gets "Ana te cobra …"
+  const pr = await callFn('sendPaymentRequest', { groupId: APTO, debtorUid: camilo.uid }, tok.ana);
+  const reqId = pr.result && pr.result.requestId;
+  const pReq = await waitFor(() => readPush().find((m) => m.uid === camilo.uid && m.meta && m.meta.request === reqId));
+  check(pReq && /^Ana te cobra \$/.test(pReq.title) && pReq.body.includes('vence el') && pReq.url === `./?pagar=${reqId}` && pReq.tag === `req-${reqId}`,
+    'request -> push to the debtor: "Ana te cobra $…", due date, opens the payment', pReq && { t: pReq.title, b: pReq.body });
+  // 3) Camilo pays (he records it) -> Ana (English) gets "Camilo paid you …"; Camilo, who recorded it, gets nothing
+  await db.doc(`groups/${APTO}/expenses/t_push_settle`).set({
+    type: 'settle', amount: 10, description: 'pago', paidBy: camilo.name, paidByUid: camilo.uid,
+    settledTo: ana.name, settledToUid: ana.uid, method: 'zelle', createdByUid: camilo.uid, createdAt: FieldValue.serverTimestamp(),
+  });
+  const pPaid = await waitFor(() => readPush().find((m) => m.uid === ana.uid && m.meta && m.meta.settle === 't_push_settle'));
+  check(pPaid && pPaid.title === 'Camilo paid you $10.00' && pPaid.body.includes('balance'), 'payment -> push to the payee, in her language (English)', pPaid && pPaid.title);
+  check(!readPush().some((m) => m.uid === camilo.uid && m.meta && m.meta.settle === 't_push_settle'), 'no push to the payer who recorded it');
+  // 4) "Enviar prueba"
+  const tp = await callFn('sendTestPush', {}, tok.ana);
+  check(tp.result && tp.result.sent === 1, '"Send a test" reaches Ana\'s phone', tp.error || tp.result);
+  const tpNone = await callFn('sendTestPush', {}, tok.sara);
+  check(tpNone.result && tpNone.result.sent === 0, 'no phones -> nothing sent (Sara)', tpNone.error || tpNone.result);
+  // 5) rules: only the owner reads or writes their phones
+  check(await fsRest('GET', `users/${ana.uid}/push/p_ana`, tok.ana) === 200, 'the owner reads her phone subscription');
+  check(await fsRest('GET', `users/${ana.uid}/push/p_ana`, tok.sara) === 403, "nobody else reads someone's phone subscription");
+  check(await fsRest('PATCH', `users/${ana.uid}/push/hack`, tok.sara, { endpoint: { stringValue: 'x' } }) === 403, "nobody else adds a phone to someone's account");
+
   section('Outbox');
   const all = readOutbox();
   const byKind = all.reduce((o, m) => { o[m.kind] = (o[m.kind] || 0) + 1; return o; }, {});

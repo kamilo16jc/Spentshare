@@ -1,6 +1,6 @@
-// v31: opción "Que el grupo vea mis cobros automáticos".
+// v32: notificaciones al teléfono (Web Push).
 // Cambiar el número en cada publicación.
-const CACHE_NAME = 'spentshare-v31';
+const CACHE_NAME = 'spentshare-v32';
 // Relative paths (resolved against the SW's own location) so the same file
 // works both on GitHub Pages (/Spentshare/) and on the custom domain (root).
 const ASSETS = [
@@ -15,6 +15,7 @@ const ASSETS = [
   'js/views.js',
   'js/sheets.js',
   'js/app.js',
+  'js/push.js',
   'functions/merchants.js',
   'brand/logo-3d-392.webp',
   'brand/logo-3d-588.webp',
@@ -50,6 +51,26 @@ self.addEventListener('activate', e => {
     )
   );
   self.clients.claim();
+});
+
+// Notificaciones (Web Push, functions/push.js): {title, body, url, tag}
+self.addEventListener('push', e => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (err) { d = { body: e.data ? e.data.text() : '' }; }
+  e.waitUntil(self.registration.showNotification(d.title || 'SpentShare', {
+    body: d.body || '', icon: 'icon-192.png', badge: 'favicon-48.png',
+    tag: d.tag || undefined, renotify: !!d.tag, data: { url: d.url || './' },
+  }));
+});
+// Tocar el aviso: abre la app (o la que ya está abierta) en ese cobro o gasto
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = new URL((e.notification.data && e.notification.data.url) || './', self.registration.scope).href;
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    const open = list.find(c => c.url.startsWith(self.registration.scope));
+    if (open) return open.navigate(url).then(c => (c || open).focus()).catch(() => open.focus());
+    return self.clients.openWindow(url);
+  }));
 });
 
 // Fetch strategy:

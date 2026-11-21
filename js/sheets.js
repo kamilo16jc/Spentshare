@@ -634,11 +634,31 @@ async function submitGroup(form) {
 function profileSheet() {
   const me = S.me || {};
   const row = (action, ic, label, right = icon('chevron', 'small-ico')) => `<button class="menu-row" data-action="${action}">${icon(ic)}<span>${label}</span>${right}</button>`;
+  setTimeout(paintPushState, 0);
   openSheet(t('profile.title'), `<div class="profile-cover"><button class="profile-photo" data-action="pick-avatar" aria-label="${esc(t('profile.photo'))}">${avatar(me, 'big')}<span class="profile-photo-edit">${icon('camera', 'small-ico')}</span></button><div><h3>${esc(me.name || '')}</h3><p>${esc(me.email || '')}</p></div></div>
-    <div class="menu-list">${row('edit-name', 'edit', t('profile.name'))}${row('pay-methods', 'card', t('profile.payMethods'))}${S.group ? row('edit-group', 'spark', t('profile.editGroup')) + row('members', 'users', t('profile.members')) + row('invite', 'link', t('profile.invite')) : ''}
+    <div class="menu-list">${row('edit-name', 'edit', t('profile.name'))}${row('pay-methods', 'card', t('profile.payMethods'))}${row('push', 'bell', t('profile.push'), `<span class="menu-value" id="push-state">…</span>`)}${S.group ? row('edit-group', 'spark', t('profile.editGroup')) + row('members', 'users', t('profile.members')) + row('invite', 'link', t('profile.invite')) : ''}
     <button class="menu-row" data-action="toggle-lang">${icon('globe')}<span>${t('profile.lang')}</span><span class="menu-value">${lang === 'es' ? 'Español' : 'English'}</span></button>
     <button class="menu-row" data-action="motion" role="switch" aria-checked="${S.motion}">${icon('motion')}<span>${t('profile.motion')}</span><i class="switch ${S.motion ? 'on' : ''}" aria-hidden="true"></i></button>
     ${row('logout', 'logout', t('profile.logout'), '')}</div><p class="notice-inline" style="margin-top:15px">${t('profile.foot')}</p>`);
+}
+// Notificaciones al teléfono (js/push.js)
+const pushStateLabel = s => t('push.state.' + s);
+async function paintPushState() { const el = $('#push-state'); if (el) el.textContent = pushStateLabel(await pushStatus()); }
+async function pushSheet() {
+  const s = await pushStatus();
+  const steps = list => `<ol class="steps-list">${list.map(x => `<li>${x}</li>`).join('')}</ol>`;
+  let body;
+  if (s === 'on') body = `<p class="sheet-intro">${t('push.onP')}</p><div id="push-error"></div>
+    <button class="full-btn" data-action="push-test">${icon('send')} ${t('push.test')}</button>
+    <button class="full-btn secondary" data-action="push-off" style="margin-top:10px">${t('push.off')}</button>`;
+  else if (s === 'install') body = `<p class="sheet-intro">${t('push.installP')}</p>${steps([t('push.i1'), t('push.i2'), t('push.i3'), t('push.i4')])}
+    <button class="full-btn secondary" data-action="close">${t('btn.ok')}</button>`;
+  else if (s === 'denied') body = `<p class="sheet-intro">${t('push.deniedP')}</p>${steps([isIOS() ? t('push.d1ios') : t('push.d1'), t('push.d2')])}
+    <button class="full-btn secondary" data-action="close">${t('btn.ok')}</button>`;
+  else if (s === 'unsupported') body = `<p class="sheet-intro">${t('push.unsupportedP')}</p><button class="full-btn secondary" data-action="close">${t('btn.ok')}</button>`;
+  else body = `<p class="sheet-intro">${t('push.offP')}</p>${steps([t('push.w1'), t('push.w2'), t('push.w3'), t('push.w4')])}<div id="push-error"></div>
+    <button class="full-btn" data-action="push-on">${icon('bell')} ${t('push.on')}</button><p class="notice-inline">${t('push.foot')}</p>`;
+  openSheet(t('push.title'), body);
 }
 function nameSheet() {
   openSheet(t('profile.name'), `<form id="name-form" novalidate><div class="field"><label for="name-input">${t('auth.name')}</label><input id="name-input" value="${esc((S.me && S.me.name) || '')}" maxlength="40" required></div><div id="name-error"></div><button class="full-btn" type="submit">${t('btn.save')}</button></form>`);

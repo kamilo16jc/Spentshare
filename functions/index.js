@@ -27,7 +27,8 @@ const Anthropic = require('@anthropic-ai/sdk');
 const fs = require('fs');
 const path = require('path');
 const emails = require('./emails/templates');
-const merchants = require('./merchants');          // generated catalog (tools/build_merchants.py)
+const merchants = require('./merchants');
+const push = require('./push');                  // notificaciones al teléfono (Web Push)          // generated catalog (tools/build_merchants.py)
 const billingDates = require('./billing-dates');   // Chicago calendar for autoBilling
 
 admin.initializeApp();
@@ -343,7 +344,7 @@ async function sendMail({ kind, to, subject, html, text, lang, attachments, meta
 // Trigger: onExpenseCreate (expenses AND settles)
 // ───────────────────────────────────────────────────────────
 exports.onExpenseCreate = onDocumentCreated(
-  { document: 'groups/{groupId}/expenses/{expenseId}', secrets: [RESEND_API_KEY] },
+  { document: 'groups/{groupId}/expenses/{expenseId}', secrets: [RESEND_API_KEY, push.VAPID_PRIVATE_KEY] },
   async (event) => {
     const snap = event.data;
     const data = snap && snap.data();
@@ -392,7 +393,15 @@ async function handleExpenseCreated(groupId, expenseId, data) {
 
   for (const uid of recipientUids) {
     const p = people[uid];
-    if (!p || !p.email) continue;
+    if (!p) continue;
+    const T = push.pushText(p.lang);
+    const owedToPayer = debtors.reduce((s, u) => s + (shares[u] || 0), 0);
+    await push.sendPush(db, uid, {
+      title: T.expense(push.firstName(addedBy.name), data.description || ''),
+      body: uid === payerUid ? T.owedToYou(emails.fmtMoney(owedToPayer, currency), group.name || '') : T.yourShare(emails.fmtMoney(shares[uid] || 0, currency), group.name || ''),
+      url: `./?gasto=${encodeURIComponent(expenseId)}`, tag: `exp-${expenseId}`,
+    }, { kind: 'expense', group: groupId, expense: expenseId });
+    if (!p.email) continue;
     const before = uid === payerUid ? 0 : pairNet(others, uid, payerUid, members);
     const after = uid === payerUid ? 0 : before + pairContribution(data, uid, payerUid, members);
     const mail = emails.renderExpense({
@@ -489,6 +498,13 @@ async function handleSettleCreated(groupId, settleId, settleRef, data) {
   const after = before - amount;
   const currency = group.currency || 'USD';
 
+  if (recorderUid !== payeeUid && people[payeeUid]) {
+    const T = push.pushText(people[payeeUid].lang);
+    await push.sendPush(db, payeeUid, {
+      title: T.paid(push.firstName(people[payerUid].name), emails.fmtMoney(amount, currency)),
+      body: T.paidBody(group.name || ''), url: './', tag: `settle-${settleId}`,
+    }, { kind: 'settle', group: groupId, settle: settleId });
+  }
   for (const [viewer, uid] of [['payer', payerUid], ['payee', payeeUid]]) {
     const p = people[uid];
     if (!p || !p.email) continue;
@@ -1081,12 +1097,20 @@ async function createPaymentRequest({ groupId, creditorUid, debtorUid, note, due
     });
     emailed = !!sent.ok;
   }
+  const T = push.pushText(debtor.lang);
+  const amt = emails.fmtMoney(amount, currency);
+  const aboutName = about ? (about.withPending ? emails.andPending(debtor.lang, about.name) : about.name) : '';
+  await push.sendPush(db, debtorUid, {
+    title: about ? T.requestAbout(push.firstName(creditor.name), aboutName, amt) : T.request(push.firstName(creditor.name), amt),
+    body: T.due(group.name || '', push.shortDate(debtor.lang, dueAt)),
+    url: `./?pagar=${encodeURIComponent(newRef.id)}`, tag: `req-${newRef.id}`,
+  }, { kind: 'invoice', group: groupId, request: newRef.id, auto: auto ? 'yes' : '' });
   return { ok: true, requestId: newRef.id, number, amount, dueAt: dueAt.toISOString(), emailed };
 }
 
 // Callable: the creditor (caller) asks `debtorUid` for what they owe right now.
 exports.sendPaymentRequest = onCall(
-  { secrets: [RESEND_API_KEY] },
+  { secrets: [RESEND_API_KEY, push.VAPID_PRIVATE_KEY] },
   async (req) => {
     if (!req.auth) throw new HttpsError('unauthenticated', 'Login required');
     const { groupId, debtorUid, note, dueDays } = req.data || {};
@@ -1095,6 +1119,17 @@ exports.sendPaymentRequest = onCall(
 );
 
 // Callable: only the creditor can cancel their own pending request
+// Callable: "Enviar prueba" en el perfil — una notificación a todos mis teléfonos
+exports.sendTestPush = onCall(
+  { secrets: [push.VAPID_PRIVATE_KEY] },
+  async (req) => {
+    if (!req.auth) throw new HttpsError('unauthenticated', 'Login required');
+    const u = await db.doc(`users/${req.auth.uid}`).get();
+    const T = push.pushText(emails.pickLang(u.exists ? u.data().lang : 'es'));
+    return push.sendPush(db, req.auth.uid, { title: T.testTitle, body: T.testBody, url: './', tag: 'test' }, { kind: 'test' });
+  },
+);
+
 exports.cancelPaymentRequest = onCall(async (req) => {
   if (!req.auth) throw new HttpsError('unauthenticated', 'Login required');
   const { groupId, requestId } = req.data || {};
@@ -1150,6 +1185,12 @@ async function runPaymentReminders(now = new Date()) {
         meta: { group: groupId, request: doc.id, number: r.number, uid: r.toUid },
       });
       if (!sent.ok) { result.failed++; continue; }   // try again tomorrow
+      const T = push.pushText(debtor.lang);
+      await push.sendPush(db, r.toUid, {
+        title: T.overdue(push.firstName(creditor.name)),
+        body: T.overdueBody(emails.fmtMoney(remaining, r.currency || group.currency || 'USD'), group.name || ''),
+        url: `./?pagar=${encodeURIComponent(doc.id)}`, tag: `req-${doc.id}`,
+      }, { kind: 'reminder', group: groupId, request: doc.id });
       await doc.ref.update({ remindedAt: FieldValue.serverTimestamp() });
       result.sent++;
     } catch (err) {
@@ -1164,7 +1205,7 @@ exports.paymentReminders = onSchedule(
   {
     schedule: '0 9 * * *',
     timeZone: 'America/Chicago',
-    secrets: [RESEND_API_KEY],
+    secrets: [RESEND_API_KEY, push.VAPID_PRIVATE_KEY],
     timeoutSeconds: 300,
   },
   async () => {
@@ -1404,7 +1445,7 @@ exports.autoBilling = onSchedule(
   {
     schedule: '0 8 * * *',
     timeZone: 'America/Chicago',
-    secrets: [RESEND_API_KEY],
+    secrets: [RESEND_API_KEY, push.VAPID_PRIVATE_KEY],
     timeoutSeconds: 540,
   },
   async () => {

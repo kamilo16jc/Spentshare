@@ -1238,5 +1238,6 @@
     return { subject, preheader, html, text, lang, joinUrl };
   }
 
-  return { renderReceipt, renderInvoice, renderExpense, renderInvite, fmtMoney, esc, pickLang, PAY_METHODS, THEMES, LANGS: Object.keys(STR) };
+  const andPending = (lang, x) => STR[pickLang(lang)].andPending(x);
+  return { renderReceipt, renderInvoice, renderExpense, renderInvite, andPending, fmtMoney, esc, pickLang, PAY_METHODS, THEMES, LANGS: Object.keys(STR) };
 }));

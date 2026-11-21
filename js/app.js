@@ -40,6 +40,7 @@ window._onAuthChange = async user => {
   }
   await loadMe();
   await loadGroups();
+  syncPush();   // si este teléfono ya tiene avisos activados, quedan a nombre de quien entró
   // Invitación pendiente (llegó con ?unirse=): con la sesión recién iniciada, se une solo
   const j = pendingJoin();
   if (j && S.justSignedIn) {
@@ -145,6 +146,18 @@ const actions = {
   'toggle-lang': () => { const inProfile = !!$('[data-action="toggle-lang"]', $('#modal-root')); setLang(lang === 'es' ? 'en' : 'es'); render(false); if (inProfile) profileSheet(); },
   'edit-name': nameSheet,
   'pay-methods': payMethodsSheet,
+  push: pushSheet,
+  'push-on': async el => {
+    buttonBusy(el, true, t('push.turningOn'));
+    try { const s = await enablePush(); if (s === 'on') { toast(t('push.enabled')); pushSheet(); } else pushSheet(); }
+    catch (e) { console.error(e); buttonBusy(el, false); formError('push-error', t('push.fail')); }
+  },
+  'push-off': async () => { try { await disablePush(); toast(t('push.disabled')); } catch (e) { console.error(e); } pushSheet(); },
+  'push-test': async el => {
+    buttonBusy(el, true, t('push.sending'));
+    try { const r = await window._callFn('sendTestPush', {}); const n = ((r && r.data) || r || {}).sent || 0; buttonBusy(el, false); toast(n ? t('push.testSent') : t('push.testNone'), n ? 'check' : 'info'); }
+    catch (e) { console.error(e); buttonBusy(el, false); formError('push-error', t('push.fail')); }
+  },
   'pick-avatar': () => $('#avatarFile').click(),
   'scan-receipt': () => $('#receiptFile').click(),
   'ai-toggle': () => { const b = $('#ai-box'); b.hidden = !b.hidden; if (!b.hidden) $('#ai-text').focus(); },
@@ -153,7 +166,7 @@ const actions = {
   'share-link': async () => { try { await navigator.share({ title: 'SpentShare', text: t('invite.shareText', S.group.name), url: inviteLink() }); } catch (e) {} },
   'accept-invite': () => { const j = pendingJoin(); if (j) submitJoin(null, j.code); },
   'decline-invite': () => { clearPendingJoin(); closeSheet(); },
-  logout: async () => { closeSheet(false); clearPendingJoin(); await window._doSignOut(); },
+  logout: async () => { closeSheet(false); clearPendingJoin(); await disablePush().catch(() => null); await window._doSignOut(); },
   // entrada
   'auth-toggle': () => { S.authMode = S.authMode === 'login' ? 'signup' : 'login'; render(); },
   'toggle-password': () => { const i = $('#auth-password'); i.type = i.type === 'password' ? 'text' : 'password'; $('[data-action="toggle-password"]').setAttribute('aria-label', t(i.type === 'password' ? 'aria.showPass' : 'aria.hidePass')); },
