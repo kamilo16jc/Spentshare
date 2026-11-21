@@ -22,7 +22,9 @@ const S = {
   st: { period: 'month', bar: null, cat: null },
   pendingReceipt: null,    // datos de un recibo escaneado o de la IA, para el gasto que se está creando
   autoCharges: {},         // uid -> groups/{g}/autoCharges/{uid} (cobro automático de cada quien)
-  recurring: [],           // groups/{g}/recurring (gastos fijos)
+  recurring: [],           // groups/{g}/recurring (gastos fijos que creé yo)
+  sharedRecurring: [],     // gastos fijos de otros que dejaron ver al grupo (shared)
+  sharedAuto: {},          // uid -> cobro automático de otros que lo dejaron ver (visible)
 };
 
 // ───────────────────────── utilidades ─────────────────────────

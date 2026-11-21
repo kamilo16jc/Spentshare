@@ -56,7 +56,7 @@ function openGroup(gid) {
   const g = S.groups.find(x => x.id === gid);
   if (!g) return;
   S.gid = gid; S.group = g;
-  S.expenses = null; S.budgets = []; S.requests = []; S.meta = {}; S.members = []; S.autoCharges = {}; S.recurring = [];
+  S.expenses = null; S.budgets = []; S.requests = []; S.meta = {}; S.members = []; S.autoCharges = {}; S.recurring = []; S.sharedRecurring = []; S.sharedAuto = {};
   S.act = { cat: 'all', person: 'all', query: '', period: 'all' };
   S.st = { period: 'month', bar: null };
   try { localStorage.setItem('ss_group', gid); } catch (e) {}
@@ -98,6 +98,16 @@ function openGroup(gid) {
       .sort((a, b) => (b.active === false ? 0 : 1) - (a.active === false ? 0 : 1) || ((toDate(a.nextRunAt) || 0) - (toDate(b.nextRunAt) || 0)));
     refresh();
   }, listenFail('recurring', () => { S.recurring = []; })));
+  // Lo de los demás, solo si ellos lo dejaron ver al grupo
+  groupUnsubs.push(window._onSnap(window._query(col(`groups/${gid}/recurring`), window._where('shared', '==', true)), snap => {
+    S.sharedRecurring = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(r => r.createdByUid !== me && r.active !== false)
+      .sort((a, b) => (toDate(a.nextRunAt) || 0) - (toDate(b.nextRunAt) || 0));
+    refresh();
+  }, listenFail('sharedRecurring', () => { S.sharedRecurring = []; })));
+  groupUnsubs.push(window._onSnap(window._query(col(`groups/${gid}/autoCharges`), window._where('visible', '==', true)), snap => {
+    S.sharedAuto = {}; snap.docs.forEach(d => { if (d.id !== me) S.sharedAuto[d.id] = d.data(); });
+    refresh();
+  }, listenFail('sharedAuto', () => { S.sharedAuto = {}; })));
   groupUnsubs.push(window._onSnap(col(`groups/${gid}/members`), snap => {
     S.meta = {}; snap.docs.forEach(d => { S.meta[d.id] = d.data(); });
     refresh();
@@ -219,7 +229,13 @@ async function addSettleDoc({ fromUid, toUid, amount, method, requestId }) {
 const saveAutoCharge = data => window._setDoc(ref(`groups/${S.gid}/autoCharges`, uid()), { ...data, updatedAt: window._srvTs() }, { merge: true });
 function saveRecurring(id, data) {
   if (id) return window._updateDoc(ref(`groups/${S.gid}/recurring`, id), { ...data, updatedAt: window._srvTs() });
-  return window._addDoc(col(`groups/${S.gid}/recurring`), { ...data, runs: 0, createdByUid: uid(), createdAt: window._srvTs() });
+  const shared = !!(S.autoCharges[uid()] && S.autoCharges[uid()].visible);   // sigue mi preferencia de "que el grupo lo vea"
+  return window._addDoc(col(`groups/${S.gid}/recurring`), { ...data, shared, runs: 0, createdByUid: uid(), createdAt: window._srvTs() });
+}
+// "Que el grupo vea mis cobros automáticos": la preferencia va en mi cobro automático y en cada gasto fijo mío
+async function shareMyAuto(visible) {
+  await Promise.all(S.recurring.filter(r => !!r.shared !== visible)
+    .map(r => window._updateDoc(ref(`groups/${S.gid}/recurring`, r.id), { shared: visible })));
 }
 const deleteRecurring = id => window._delDoc(ref(`groups/${S.gid}/recurring`, id));
 

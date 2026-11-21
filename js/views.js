@@ -112,7 +112,15 @@ function autoSection() {
     const active = r.active !== false, nx = toDate(r.nextRunAt);
     return `<button class="auto-row" data-action="recurring" data-id="${r.id}">${expenseIcon(r)}<span class="auto-copy"><strong>${esc(r.description)}</strong><span><b class="num">${money(r.amount)}</b> · ${esc(scheduleLabel(r))}${active && nx ? ' · ' + t('auto.nextShort', fmtDay(nx)) : ''}</span></span>${active ? icon('chevron', 'small-ico') : `<span class="auto-state">${t('auto.paused')}</span>`}</button>`;
   }).join('');
-  return `<section class="section"><div class="section-head"><h2>${t('auto.section')}</h2><button class="text-btn" data-action="recurring-new">${icon('plus', 'small-ico')} ${t('rec.add')}</button></div><div class="auto-list">${charge}${recs}</div></section>`;
+  // Los gastos fijos de otros que lo dejaron ver al grupo (solo lectura)
+  const others = S.sharedRecurring.map(r => {
+    const nx = toDate(r.nextRunAt), split = r.splitUids || [], mineShare = split.includes(uid()) ? (Number(r.amount) || 0) / Math.max(split.length, 1) : 0;
+    const bits = [esc(t('auto.byWho', firstName(nameOf(r.createdByUid)))), `<b class="num">${money(r.amount)}</b>`, esc(scheduleLabel(r))]
+      .concat(nx ? [t('auto.nextShort', fmtDay(nx))] : []).concat(mineShare ? [t('auto.yourPart', money(mineShare))] : []);
+    return `<button class="auto-row" data-action="recurring" data-id="${r.id}">${expenseIcon(r)}<span class="auto-copy"><strong>${esc(r.description)}</strong><span>${bits.join(' · ')}</span></span>${sharedCharged(r) ? `<span class="auto-state on">${t('auto.charged')}</span>` : icon('chevron', 'small-ico')}</button>`;
+  }).join('');
+  const group = others ? `<p class="auto-sub">${t('auto.fromGroup')}</p>${others}` : '';
+  return `<section class="section"><div class="section-head"><h2>${t('auto.section')}</h2><button class="text-btn" data-action="recurring-new">${icon('plus', 'small-ico')} ${t('rec.add')}</button></div><div class="auto-list">${charge}${recs}${group}</div></section>`;
 }
 
 function budgetMini() {

@@ -114,6 +114,7 @@ const actions = {
     try { await cancelRequest(S.reqDraft.requestId); closeSheet(); toast(t('req.cancelled')); } catch (e) { console.error(e); formError('req-error', t('err.save')); }
   },
   'auto-charge': autoChargeSheet,
+  'auto-share': el => { const d = S.auto; if (!d) return; d.visible = !d.visible; el.setAttribute('aria-checked', String(d.visible)); $('.switch', el).classList.toggle('on', d.visible); $('#auto-share-hint').textContent = d.visible ? t('auto.shareOn') : t('auto.shareOff'); },
   'auto-toggle': el => { const d = S.auto; if (!d) return; d.enabled = !d.enabled; el.setAttribute('aria-checked', String(d.enabled)); $('.switch', el).classList.toggle('on', d.enabled); $('#auto-fields').classList.toggle('is-off', !d.enabled); autoRefresh(); },
   'recurring-new': () => recurringSheet(),
   recurring: el => recurringSheet(el.dataset.id),

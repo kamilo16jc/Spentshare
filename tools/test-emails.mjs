@@ -538,6 +538,15 @@ async function main() {
   check(await fsRest('DELETE', `groups/${APTO}/recurring/${RECURRING.internet}`, tok.sara) === 403, 'another member cannot delete it');
   check(await fsRest('GET', `groups/${APTO}/recurring/${RECURRING.internet}`, tok.ana) === 200, 'the creator reads her fixed expense');
   check(await fsRest('GET', `groups/${APTO}/recurring/${RECURRING.internet}`, tok.sara) === 403, "another member cannot read someone else's fixed expense (private)");
+  // "Que el grupo vea mis cobros automáticos": Ana lo enciende
+  check(await fsRest('PATCH', `groups/${APTO}/autoCharges/${ana.uid}?updateMask.fieldPaths=visible`, tok.ana, { visible: { booleanValue: true } }) === 200, 'Ana turns on "visible" on her automatic request');
+  check(await fsRest('PATCH', `groups/${APTO}/recurring/${RECURRING.internet}?updateMask.fieldPaths=shared`, tok.ana, { shared: { booleanValue: true } }) === 200, 'Ana shares her fixed expense with the group');
+  check(await fsRest('GET', `groups/${APTO}/autoCharges/${ana.uid}`, tok.sara) === 200, 'with "visible", another member reads her automatic request');
+  check(await fsRest('GET', `groups/${APTO}/recurring/${RECURRING.internet}`, tok.sara) === 200, 'with "shared", another member reads her fixed expense');
+  check(await fsRest('PATCH', `groups/${APTO}/recurring/${RECURRING.internet}?updateMask.fieldPaths=amount`, tok.sara, { amount: { integerValue: '1' } }) === 403, 'shared is read-only for the others');
+  check(await fsRest('GET', `groups/${TRIP}/recurring/r_left`, tok.sara) === 403, 'shared or not, non-members never read it');
+  check(await fsRest('PATCH', `groups/${APTO}/autoCharges/${ana.uid}?updateMask.fieldPaths=visible`, tok.ana, { visible: { booleanValue: false } }) === 200
+    && await fsRest('GET', `groups/${APTO}/autoCharges/${ana.uid}`, tok.sara) === 403, 'turned off again: private again');
   check(await fsRest('GET', `groups/${TRIP}/recurring/r_left`, tok.sara) === 403, 'non-member cannot read rules');
   check(await fsRest('DELETE', rPath, tok.camilo) === 200, 'creator deletes their rule');
 

@@ -35,9 +35,10 @@ service cloud.firestore {
 
       // Automatic charges: doc id = the creditor's uid; only they set it up.
       // (autoBilling adds lastRunKey/lastRunAt with the admin SDK.)
-      // Private: only its owner sees it; the others only see the request once it is sent.
+      // Private by default: only its owner sees it; the others see the request once it is sent.
+      // If the owner turns on "visible", the group can see it too (read only).
       match /autoCharges/{uid} {
-        allow read:  if isMember(groupId) && request.auth.uid == uid;
+        allow read:  if isMember(groupId) && (request.auth.uid == uid || resource.data.visible == true);
         allow write: if isMember(groupId) && request.auth.uid == uid;
       }
 
@@ -50,7 +51,8 @@ service cloud.firestore {
           return request.resource.data.get('sendCharge', false) != true
             || request.resource.data.get('payerUid', null) == request.auth.uid;
         }
-        allow read:   if isMember(groupId) && resource.data.createdByUid == request.auth.uid;
+        allow read:   if isMember(groupId)
+          && (resource.data.createdByUid == request.auth.uid || resource.data.shared == true);   // shared: its creator lets the group see it
         allow create: if isMember(groupId)
           && request.resource.data.get('createdByUid', null) == request.auth.uid
           && chargesOnlyAsPayer();

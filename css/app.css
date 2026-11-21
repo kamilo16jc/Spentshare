@@ -290,3 +290,5 @@
 .auto-fixed-line img{width:22px;height:22px;border-radius:6px;background:#fff;object-fit:contain;flex-shrink:0;margin-top:1px}
 .auto-dot{width:10px;height:10px;border-radius:4px;background:#C9BCEB;flex-shrink:0;margin:6px 6px 0}
 .inline-link{display:inline;padding:0;min-height:0;font-size:13px}
+/* "Del grupo": gastos fijos que otros dejaron ver */
+.auto-sub{margin:10px 2px 0;font-size:12px;font-weight:650;color:#8A80A0;text-transform:uppercase;letter-spacing:.04em}

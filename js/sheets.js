@@ -330,7 +330,7 @@ function autoChargeSheet() {
   const saved = S.autoCharges[uid()] || null;
   const freq = saved && FREQS.includes(saved.frequency) ? saved.frequency : 'monthly';
   const mode = saved ? (saved.mode === 'fixed' ? 'fixed' : 'balance') : (myFixed().length ? 'fixed' : 'balance');
-  S.auto = { kind: 'charge', enabled: saved ? !!saved.enabled : true, mode, recurringIds: ((saved && saved.recurringIds) || []).slice(), frequency: freq, day: saved ? saved.day : defaultDay(freq), dueDays: (saved && saved.dueDays) || 7, minAmount: (saved && saved.minAmount) || 0, orig: saved ? { frequency: saved.frequency, day: saved.day } : null };
+  S.auto = { kind: 'charge', visible: !!(saved && saved.visible), enabled: saved ? !!saved.enabled : true, mode, recurringIds: ((saved && saved.recurringIds) || []).slice(), frequency: freq, day: saved ? saved.day : defaultDay(freq), dueDays: (saved && saved.dueDays) || 7, minAmount: (saved && saved.minAmount) || 0, orig: saved ? { frequency: saved.frequency, day: saved.day } : null };
   openSheet(t('auto.chargeTitle'), `${groupContext()}<p class="sheet-intro" style="margin-top:16px">${t('auto.chargeIntro')}</p>
     <form id="auto-form" novalidate>
     <div class="menu-list"><button type="button" class="menu-row" data-action="auto-toggle" role="switch" aria-checked="${S.auto.enabled}">${icon('clock')}<span>${t('auto.enable')}</span><i class="switch ${S.auto.enabled ? 'on' : ''}" aria-hidden="true"></i></button></div>
@@ -342,6 +342,8 @@ function autoChargeSheet() {
       <div class="field"><label for="auto-note">${t('auto.noteLbl')}</label><input id="auto-note" maxlength="140" value="${esc((saved && saved.note) || '')}" placeholder="${esc(t('auto.notePh'))}" autocomplete="off"></div>
     </div>
     <div class="auto-preview" id="auto-preview" aria-live="polite">${autoPreview()}</div>
+    <div class="menu-list"><button type="button" class="menu-row" data-action="auto-share" role="switch" aria-checked="${S.auto.visible}">${icon('users')}<span>${t('auto.share')}</span><i class="switch ${S.auto.visible ? 'on' : ''}" aria-hidden="true"></i></button></div>
+    <p class="auto-hint" id="auto-share-hint" style="margin-top:8px">${S.auto.visible ? t('auto.shareOn') : t('auto.shareOff')}</p>
     <div id="auto-error"></div>
     <div class="submit-holder"><button class="full-btn" type="submit">${t('auto.save')}</button></div>
     <p class="notice-inline">${t('auto.foot')}</p></form>`, { name: 'auto-charge' });
@@ -398,8 +400,8 @@ async function submitAuto(form) {
   if (!Number.isFinite(min) || min < 0 || min > 1e9) return formError('auto-error', t('auto.errMin'));
   const b = $('button[type="submit"]', form); if (b.disabled) return;
   formError('auto-error', '');
-  const data = { enabled: !!d.enabled, mode: d.mode, recurringIds: ids, frequency: d.frequency, day: Number(d.day) || 1, minAmount: round2(min), dueDays: Number(d.dueDays) || 7, note: $('#auto-note').value.trim().slice(0, 140) };
-  try { await Promise.all([buttonCheck(b), saveAutoCharge(data)]); }
+  const data = { visible: !!d.visible, enabled: !!d.enabled, mode: d.mode, recurringIds: ids, frequency: d.frequency, day: Number(d.day) || 1, minAmount: round2(min), dueDays: Number(d.dueDays) || 7, note: $('#auto-note').value.trim().slice(0, 140) };
+  try { await Promise.all([buttonCheck(b), saveAutoCharge(data), shareMyAuto(data.visible)]); }
   catch (e) { console.error(e); b.disabled = false; b.innerHTML = t('auto.save'); return formError('auto-error', t('err.save')); }
   closeSheet(); toast(data.enabled ? t('auto.saved') : t('auto.savedOff'));
 }
@@ -408,7 +410,7 @@ async function submitAuto(form) {
 const participantsHtml = () => `<fieldset class="split-fieldset"><legend>${t('add.shareWith')}</legend><div class="participant-options">${S.members.map(m => { const on = S.draft.split.includes(m.uid); return `<button type="button" class="participant-choice ${on ? 'is-selected' : ''}" data-participant="${m.uid}" aria-label="${esc(participantLabel(m.uid))}" aria-pressed="${on}"><span class="participant-avatar">${avatar(m)}<span class="participant-check">${icon('check', 'small-ico')}</span></span><span>${esc(participantLabel(m.uid))}</span></button>`; }).join('')}</div><div class="split-live" id="split-live" aria-live="polite">${splitPreview()}</div></fieldset>`;
 function recurringSheet(id) {
   if (!S.group) return;
-  const r = id ? S.recurring.find(x => x.id === id) : null;
+  const r = id ? (S.recurring.find(x => x.id === id) || S.sharedRecurring.find(x => x.id === id)) : null;
   if (id && !r) return;
   if (r && r.createdByUid !== uid()) return recurringReadOnly(r);
   const freq = r && FREQS.includes(r.frequency) ? r.frequency : 'monthly';
@@ -514,10 +516,15 @@ async function toggleRecurring() {
   try { await saveRecurring(r.id, resume ? { active: true, nextRunAt: window._Timestamp.fromDate(firstRunDate(r)) } : { active: false }); closeSheet(); toast(t(resume ? 'rec.resumed' : 'rec.paused')); }
   catch (e) { console.error(e); formError('rec-error', t('err.save')); }
 }
+// ¿El cobro automático de su dueño cobra este gasto fijo? (solo se sabe si lo dejó ver)
+function sharedCharged(r) {
+  const ac = S.sharedAuto[r.createdByUid];
+  return !!r.sendCharge || !!(ac && ac.enabled && ac.mode === 'fixed' && (ac.recurringIds || []).includes(r.id));
+}
 function recurringReadOnly(r) {
   const nx = toDate(r.nextRunAt), who = u => u === uid() ? t('youCap') : firstName(nameOf(u));
   openSheet(t('rec.title'), `${groupContext()}<div class="detail-hero">${expenseIcon(r)}<h3>${esc(r.description)}</h3><span class="num">${money(r.amount)}</span><p>${esc(scheduleLabel(r))}</p></div>
-    <div class="detail-lines"><div class="detail-line"><span>${t('rec.paidBy')}</span><strong>${esc(who(r.payerUid))}</strong></div><div class="detail-line"><span>${t('rec.split')}</span><strong>${esc((r.splitUids || []).map(who).join(', '))}</strong></div><div class="detail-line"><span>${t('rec.when')}</span><strong>${r.active === false ? t('auto.paused') : esc(whenLabel(nx))}</strong></div><div class="detail-line"><span>${t('rec.charges')}</span><strong>${r.sendCharge ? t('rec.yes') : t('rec.no')}</strong></div></div>
+    <div class="detail-lines"><div class="detail-line"><span>${t('rec.paidBy')}</span><strong>${esc(who(r.payerUid))}</strong></div><div class="detail-line"><span>${t('rec.split')}</span><strong>${esc((r.splitUids || []).map(who).join(', '))}</strong></div><div class="detail-line"><span>${t('rec.when')}</span><strong>${r.active === false ? t('auto.paused') : esc(whenLabel(nx))}</strong></div><div class="detail-line"><span>${t('rec.charges')}</span><strong>${sharedCharged(r) ? t('rec.yes') : t('rec.no')}</strong></div></div>
     ${r.note ? `<div class="note-box"><span>${t('detail.note')}</span><p>${esc(r.note)}</p></div>` : ''}
     <p class="notice-inline">${t('rec.notMine', esc(firstName(nameOf(r.createdByUid))))}</p>`);
 }
