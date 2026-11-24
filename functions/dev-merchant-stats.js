@@ -30,7 +30,13 @@ exports.devAutoStatus = onRequest({ region: 'us-east1' }, async (req, res) => {
   }
   res.json({
     groups,
-    rules: rules.docs.map(d => { const r = d.data(); return { id: d.id, group: d.ref.parent.parent.id, description: r.description, amount: r.amount, payerUid: r.payerUid, createdByUid: r.createdByUid, splitUids: r.splitUids, sendCharge: r.sendCharge, active: r.active, frequency: r.frequency, day: r.day, merchantId: r.merchantId || null, nextRunAt: ts(r.nextRunAt), lastRunAt: ts(r.lastRunAt), runs: r.runs, createdAt: ts(r.createdAt) }; }),
+    rules: await Promise.all(rules.docs.map(async d => {
+      const r = d.data(), g = d.ref.parent.parent.id, dev = global.__ssDev;
+      // cuánto le debe hoy cada participante a quien paga (lo que el cobro puede pedir como máximo)
+      let owes = null;
+      if (dev && groups[g]) { const ex = await dev.loadExpenses(g); owes = {}; (r.splitUids || []).filter(u => u !== r.payerUid).forEach(u => { owes[u] = Math.round(dev.pairNet(ex, u, r.payerUid, groups[g].members) * 100) / 100; }); }
+      return { id: d.id, group: g, description: r.description, amount: r.amount, payerUid: r.payerUid, createdByUid: r.createdByUid, splitUids: r.splitUids, sendCharge: r.sendCharge, active: r.active, frequency: r.frequency, day: r.day, merchantId: r.merchantId || null, nextRunAt: ts(r.nextRunAt), lastRunAt: ts(r.lastRunAt), runs: r.runs, createdAt: ts(r.createdAt), owes };
+    })),
     recurringExpenses: recExp.docs.map(d => { const e = d.data(); return { id: d.id, group: d.ref.parent.parent.id, description: e.description, amount: e.amount, paidByUid: e.paidByUid, createdByUid: e.createdByUid, splitUids: e.splitUids, split: e.split, splitWithUid: e.splitWithUid || null, notify: e.notify, type: e.type, recurringId: e.recurringId || null, requestId: e.requestId || null, createdAt: ts(e.createdAt), spentAt: ts(e.spentAt), merchant: e.merchant || null }; }),
     autoCharges: acs.docs.map(d => { const a = d.data(); return { uid: d.id, group: d.ref.parent.parent.id, enabled: a.enabled, mode: a.mode || 'balance', recurringIds: a.recurringIds || [], frequency: a.frequency, day: a.day, lastRunKey: a.lastRunKey || null }; }),
     autoRequests: autoReqs.docs.map(d => { const r = d.data(); return { id: d.id, group: d.ref.parent.parent.id, number: r.number, fromUid: r.fromUid, toUid: r.toUid, amount: r.amount, status: r.status, auto: !!r.auto, scope: r.scope || null, about: r.about || null, createdAt: ts(r.createdAt), items: (r.items || []).length }; }),

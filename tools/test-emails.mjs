@@ -131,6 +131,7 @@ async function groupExpenses(groupId) {
 
 const money = (n) => `$${Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+const EPS_TEST = 0.005;
 const toList = (ms) => ms.map((m) => `${m.to} [${m.lang}] ${m.subject}`);
 
 // ───────────────────────── tests ─────────────────────────
@@ -549,6 +550,27 @@ async function main() {
     && await fsRest('GET', `groups/${APTO}/autoCharges/${ana.uid}`, tok.sara) === 403, 'turned off again: private again');
   check(await fsRest('GET', `groups/${TRIP}/recurring/r_left`, tok.sara) === 403, 'non-member cannot read rules');
   check(await fsRest('DELETE', rPath, tok.camilo) === 200, 'creator deletes their rule');
+
+  section('Fixed expense charged to someone who is owed money -> shared-expense email instead of nothing');
+  // Camilo charges his fixed expenses; Ana is owed by Camilo, so she can't be charged: she must get the expense email
+  const anaOwesCam0 = owes(await groupExpenses(APTO), ana.uid, camilo.uid, members);
+  await db.doc(`groups/${APTO}/recurring/r_cam_small`).set({
+    active: true, description: 'Café de la oficina', amount: 2, category: 'drinks',
+    payerUid: camilo.uid, splitUids: [camilo.uid, ana.uid], frequency: 'monthly', day: 5, sendCharge: false, dueDays: 7, note: '',
+    createdByUid: camilo.uid, createdAt: FieldValue.serverTimestamp(), nextRunAt: Timestamp.fromDate(new Date(Date.parse(runAt) - 60000)),
+  });
+  await db.doc(`groups/${APTO}/autoCharges/${camilo.uid}`).set({ enabled: true, mode: 'fixed', recurringIds: ['r_cam_small'], dueDays: 7, note: '' }, { merge: true });
+  const ab4 = await callFn('devRunAutoBilling', { now: runAt }, tok.ana);
+  const R4 = ab4.result || {};
+  const camId = `rec_r_cam_small_${bd.compactKey(new Date(Date.parse(runAt) - 60000))}`;
+  const camExp = (await db.doc(`groups/${APTO}/expenses/${camId}`).get()).data() || {};
+  check(anaOwesCam0 + 1 < EPS_TEST && R4.recurring && R4.recurring.created === 1 && R4.recurring.charges === 0,
+    `Ana is owed by Camilo (${money(-anaOwesCam0)}): fixed expense added, no charge`, ab4.error || R4);
+  check(camExp.notify === false && Array.isArray(camExp.notifyUids) && camExp.notifyUids.join() === ana.uid, 'the expense marks Ana to get the normal email (notifyUids)', camExp.notifyUids);
+  const camMails = await mails((m) => m.kind === 'expense' && m.expense === camId, 1);
+  check(camMails.length === 1 && camMails[0].to === ana.email && camMails[0].lang === 'en', 'Ana gets the shared-expense email (English) instead of nothing', toList(camMails));
+  check(!(await db.collection(`groups/${APTO}/paymentRequests`).where('fromUid', '==', camilo.uid).where('toUid', '==', ana.uid).where('status', '==', 'pending').get()).size,
+    'and no request from Camilo to Ana');
 
   section('Push notifications (Web Push) — outbox in the emulator');
   const readPush = () => (fs.existsSync(OUTBOX) ? fs.readdirSync(OUTBOX).filter((f) => f.includes('-push-') && f.endsWith('.json')).sort()

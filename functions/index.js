@@ -361,7 +361,10 @@ exports.onExpenseCreate = onDocumentCreated(
 
 // New shared expense -> one email per participant (and the payer), never to who logged it
 async function handleExpenseCreated(groupId, expenseId, data) {
-  if (data.notify === false) return;   // e.g. a recurring expense that sends its own charge
+  // notify:false = a recurring expense that sends its own charge; notifyUids = the participants who
+  // can't be charged (they don't owe the payer) and still get the shared-expense email
+  const onlyUids = data.notify === false ? (Array.isArray(data.notifyUids) ? data.notifyUids : []) : null;
+  if (onlyUids && !onlyUids.length) return;
   const amount = Number(data.amount) || 0;
   const payerUid = data.paidByUid;
   if (!payerUid || !(amount > 0)) return;
@@ -374,7 +377,7 @@ async function handleExpenseCreated(groupId, expenseId, data) {
   if (!debtors.length) return;   // solo: nobody owes anything
 
   const creatorUid = data.createdByUid || null;
-  const recipientUids = [payerUid, ...debtors].filter((u) => u !== creatorUid);
+  const recipientUids = [payerUid, ...debtors].filter((u) => u !== creatorUid && (!onlyUids || onlyUids.includes(u)));
   if (!recipientUids.length) return;
 
   const [people, expenses, payTo] = await Promise.all([
@@ -1311,6 +1314,16 @@ async function runRecurringRule(doc, now, result, getGroup) {
     notify: !(rule.sendCharge || viaAuto),   // with a charge, the invoice replaces the shared-expense email
     ...(cat ? { merchant: cat.merchant, logoDomain: cat.logoDomain, logoEmoji: cat.logoEmoji, aiEnriched: true } : {}),
   };
+  // With a charge, the invoice replaces the shared-expense email — but only for who will actually
+  // owe the payer after this expense. Someone the payer owes money to can't be charged (the share is
+  // subtracted from what the payer owes them), so they get the usual shared-expense email instead of
+  // nothing at all. (Bug of 22 Nov: Apple cloud in Zorras reached nobody.)
+  if (rule.sendCharge || viaAuto) {
+    const { shares: sh } = expenseShares(expense, members);
+    const after = [...(await loadExpenses(groupId)), expense];
+    const notifyUids = others.filter((u) => (sh[u] || 0) >= EPS && round2(pairNet(after, u, payerUid, members)) < EPS);
+    if (notifyUids.length) expense.notifyUids = notifyUids;
+  }
 
   // expense + advancing the rule in one transaction: retries never duplicate the expense
   const created = await db.runTransaction(async (tx) => {
@@ -1802,4 +1815,4 @@ exports.parseBudget = onCall(
 );
 
 // Solo emulador: estadísticas de comercios para el catálogo de logos (nunca se despliega)
-if (IS_EMULATOR) Object.assign(exports, require('./dev-merchant-stats'));
+if (IS_EMULATOR) { global.__ssDev = { pairNet, loadExpenses }; Object.assign(exports, require('./dev-merchant-stats')); }
